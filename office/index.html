@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Fleet Parlour AI Office Manager</title>
+  <link rel="stylesheet" href="office.css">
+</head>
+<body>
+  <section id="login" class="login-shell">
+    <form id="login-form" class="panel login-card">
+      <img src="../images/Logo.webp" alt="Fleet Parlour" width="82" height="82">
+      <p class="eyebrow">PRIVATE BUSINESS SYSTEM</p>
+      <h1>AI Office Manager</h1>
+      <p>Enquiries, customers, quotes, bookings and AI receptionist.</p>
+      <label>Admin key<input id="admin-key" type="password" required autocomplete="current-password"></label>
+      <button type="submit">Open Office Manager</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <aside>
+      <div class="brand"><img src="../images/Logo.webp" alt="" width="44" height="44"><div><strong>Fleet Office AI</strong><span>Legacy Operations Manager</span></div></div><a class="primary-workspace-link" href="/saas/">← Primary workspace</a>
+      <nav>
+        <button class="nav active" data-view="dashboard">Overview</button>
+        <button class="nav" data-view="inbox">Unified Inbox</button>
+        <button class="nav" data-view="approvals">Approvals</button>
+        <button class="nav" data-view="enquiries">Enquiries</button>
+        <button class="nav" data-view="customers">Customers</button>
+        <button class="nav" data-view="quotes">Quotes</button>
+        <button class="nav" data-view="bookings">Bookings</button>
+        <button class="nav" data-view="jobs">Job Completion</button>
+        <button class="nav" data-view="content">Content Studio</button>
+        <button class="nav" data-view="campaigns">Campaigns</button>
+        <button class="nav" data-view="connections">Connections</button>
+        <button class="nav" data-view="receptionist">AI Receptionist</button>
+        <button class="nav" data-view="website">Website</button>
+      </nav>
+      <button id="logout" class="quiet">Lock Office Manager</button>
+    </aside>
+
+    <main>
+      <header><div><p class="eyebrow">FLEET OFFICE AI · LEGACY OPERATIONS</p><h1 id="page-title">Overview</h1><p class="page-description">Operational tools preserved from the earlier Fleet Parlour manager.</p></div><div class="header-actions"><a class="secondary button-link" href="/saas/">Primary workspace</a><button id="refresh" class="secondary">Refresh</button></div></header>
+      <p id="notice" class="notice" role="status"></p>
+
+      <section id="dashboard-view" class="view"><div id="stats" class="stats"></div><div class="panel"><div class="panel-head"><div><h2>Latest enquiries</h2><span>Your newest opportunities</span></div></div><div id="recent-table" class="table-wrap"></div></div></section>
+
+      <section id="inbox-view" class="view" hidden>
+        <div class="two-col">
+          <form id="import-form" class="panel form-grid">
+            <div class="panel-head full"><div><h2>Import conversation</h2><span>Use this now for WhatsApp, email or social messages handled manually.</span></div></div>
+            <label>Contact type<select name="contact_type" required><option value="business">Fleet Parlour business</option><option value="personal">Personal — exclude completely</option></select></label>
+            <label>Channel<select name="channel" required><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="phone">Phone call</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="sms">SMS</option><option value="website">Website</option><option value="other">Other</option></select></label>
+            <label>Customer name<input name="full_name" required></label>
+            <label>Phone<input name="phone"></label><label>Email<input name="email" type="email"></label>
+            <label class="full">Subject<input name="subject" placeholder="e.g. Rear bumper and roll bar quotation"></label>
+            <label class="full">Complete conversation<textarea name="transcript" rows="10" placeholder="Paste the customer messages and your replies in date order" required></textarea></label>
+            <div class="full warning">Importing creates or updates the customer and prepares a reply for approval. It never messages the customer automatically.</div>
+            <div class="full actions"><button>Import and prepare draft</button></div>
+          </form>
+          <div class="panel"><div class="panel-head"><div><h2>All conversations</h2><span>One timeline per customer and channel</span></div></div><div id="conversations-table" class="table-wrap"></div></div>
+        </div>
+        <div id="conversation-detail" class="panel detail" hidden></div>
+      </section>
+
+      <section id="approvals-view" class="view" hidden><div class="panel"><div class="panel-head"><div><h2>Approval queue</h2><span>Edit, approve or reject. Approval never bypasses an unavailable channel connection.</span></div></div><div id="approvals-list" class="approval-list"></div></div></section>
+
+      <section id="enquiries-view" class="view" hidden><div class="panel"><div class="panel-head"><div><h2>Enquiry pipeline</h2><span>Website and future phone enquiries</span></div><select id="status-filter"><option value="">All statuses</option><option>new</option><option>contacted</option><option>quoted</option><option>booked</option><option>in_progress</option><option>completed</option><option>lost</option></select></div><div id="enquiries-table" class="table-wrap"></div></div><div id="detail" class="panel detail" hidden></div></section>
+
+      <section id="customers-view" class="view" hidden><div class="panel"><div class="panel-head"><div><h2>Customers</h2><span>Automatically created from website enquiries</span></div></div><div id="customers-table" class="table-wrap"></div></div></section>
+
+      <section id="quotes-view" class="view" hidden><div class="two-col"><form id="quote-form" class="panel form-grid"><div class="panel-head full"><div><h2>New quote</h2><span>All prices are entered before GST</span></div></div><label class="full">Customer<select name="customer_id" class="customer-select" required></select></label><label>Valid until<input name="valid_until" type="date"></label><label>Quantity<input name="quantity" type="number" min="0.1" step="0.1" value="1" required></label><label class="full">Description<input name="description" placeholder="e.g. Bull bar scratch removal and mirror polish" required></label><label class="full">Unit price excluding GST ($)<input name="unit_price" type="number" min="0" step="0.01" required></label><label class="full">Notes<textarea name="notes" rows="3"></textarea></label><div class="full actions"><button>Create draft quote</button></div></form><div class="panel"><div class="panel-head"><div><h2>Quotes</h2><span>Select a quote to edit, approve or verify acceptance</span></div></div><div id="quotes-table" class="table-wrap"></div></div></div><div id="quote-detail" class="panel detail" hidden></div></section>
+
+      <section id="bookings-view" class="view" hidden><div class="two-col"><form id="booking-form" class="panel form-grid"><div class="panel-head full"><div><h2>New booking</h2><span>Create a tentative job appointment</span></div></div><label class="full">Customer<select name="customer_id" class="customer-select" required></select></label><label class="full">Job title<input name="title" required></label><label>Start<input name="start_at" type="datetime-local" required></label><label>End<input name="end_at" type="datetime-local"></label><label class="full">Address<input name="address"></label><label class="full">Notes<textarea name="notes" rows="3"></textarea></label><div class="full actions"><button>Create booking</button></div></form><div class="panel"><div class="panel-head"><div><h2>Schedule</h2><span>Upcoming and completed work</span></div></div><div id="bookings-table" class="table-wrap"></div></div></div></section>
+
+      <section id="jobs-view" class="view" hidden><div class="panel"><div class="panel-head"><div><h2>Job completion centre</h2><span>Before/after evidence, consent, invoice, payment, receipt, review and final thank-you</span></div></div><div class="warning">All media stays private. It can be used for marketing only when Marketing Media consent is recorded. Every outgoing document or message requires approval and manual sending until a live channel is connected.</div><div id="jobs-table" class="table-wrap"></div></div><div id="job-detail" class="panel detail" hidden></div></section>
+
+      <section id="content-view" class="view" hidden><div class="two-col"><form id="content-form" class="panel form-grid"><div class="panel-head full"><div><h2>Content Studio</h2><span>One master edit plan, adapted for every platform</span></div></div><label class="full">Project title<input name="title" required></label><label>Format<select name="format"><option value="short_video">Short video / Reel</option><option value="youtube_video">YouTube video</option><option value="carousel">Photo carousel</option><option value="image_post">Image post</option><option value="story">Story</option></select></label><label>Aspect ratio<select name="aspect_ratio"><option>9:16</option><option>16:9</option><option>4:5</option><option>1:1</option></select></label><label>Target duration (seconds)<input name="target_duration_seconds" type="number" min="5" max="3600" value="20"></label><label class="full">Hook<input name="hook" placeholder="First 1–2 seconds"></label><label class="full">Caption<textarea name="caption" rows="4"></textarea></label><label class="full">Call to action<input name="cta" value="Send Fleet Parlour your job photos for a quote"></label><label class="full">Editing prompt / clip instructions<textarea name="editing_prompt" rows="5" placeholder="Start with oxidised before shot, fast process cuts, mirror-shine reveal, logo end card…"></textarea></label><fieldset class="full"><legend>Platforms</legend><label><input type="checkbox" name="platforms" value="facebook"> Facebook</label><label><input type="checkbox" name="platforms" value="instagram"> Instagram</label><label><input type="checkbox" name="platforms" value="tiktok"> TikTok</label><label><input type="checkbox" name="platforms" value="youtube"> YouTube</label><label><input type="checkbox" name="platforms" value="website"> Website</label></fieldset><div class="full warning">Only job media with recorded marketing consent can be attached. Phase 5 saves the edit plan; final clip rendering is not yet enabled.</div><div class="full actions"><button>Save content project</button></div></form><div class="panel"><div class="panel-head"><div><h2>Templates and projects</h2><span>Formats, prompts and platform drafts</span></div></div><div id="templates-list" class="approval-list"></div><div id="content-projects" class="table-wrap"></div></div></div></section>
+
+      <section id="campaigns-view" class="view" hidden><div class="two-col"><form id="campaign-form" class="panel form-grid"><div class="panel-head full"><div><h2>Marketing campaign</h2><span>Email, message, offer and lead-generation drafts</span></div></div><label class="full">Campaign name<input name="name" required></label><label>Type<select name="campaign_type"><option value="offer">New offer</option><option value="follow_up">Customer follow-up</option><option value="newsletter">Email newsletter</option><option value="lead_generation">Lead generation</option></select></label><label>Channel<select name="channel"><option value="email">Email</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="website">Website</option></select></label><label>Audience<select name="audience_rule"><option value="all_marketing_contacts">All opted-in contacts</option><option value="past_customers">Opted-in past customers</option><option value="unconverted_leads">Opted-in unconverted leads</option></select></label><label>Schedule<input name="scheduled_at" type="datetime-local"></label><label class="full">Offer<input name="offer" required></label><label class="full">Message<textarea name="message" rows="6" required></textarea></label><div class="full warning">Customers without marketing consent are automatically excluded. Creating a campaign never sends it.</div><div class="full actions"><button>Create approval draft</button></div></form><div class="panel"><div class="panel-head"><div><h2>Campaigns</h2><span>Approval-controlled marketing queue</span></div></div><div id="campaigns-table" class="table-wrap"></div></div></div></section>
+
+      <section id="connections-view" class="view" hidden><div class="panel"><div class="panel-head"><div><h2>Platform connections</h2><span>Website, WhatsApp, Meta, TikTok, YouTube, email and SMS</span></div></div><div class="warning">Connection buttons are intentionally disabled until the backend has public HTTPS, encrypted credential storage and approved platform applications. Never paste access tokens into website HTML.</div><div id="connections-table" class="table-wrap"></div></div></section>
+
+      <section id="receptionist-view" class="view" hidden><form id="receptionist-form" class="panel form-grid"><div class="panel-head full"><div><h2>AI receptionist configuration</h2><span>Prepared for 0404 946 656; telephone forwarding is not active.</span></div></div><label>Business name<input name="business_name" required></label><label>Human transfer number<input name="transfer_number" required></label><label class="full">Call screening<select name="screening_mode"><option value="business_or_personal">Ask business or personal first</option><option value="business_only">Treat every call as business</option></select></label><label class="full">Greeting<textarea name="greeting" rows="3" required></textarea></label><label class="full">Recording notice<textarea name="recording_notice" rows="3" required></textarea></label><label class="full">Personal-call transfer rules<textarea name="personal_transfer_rules" rows="4" required></textarea></label><label class="full">Questions for business callers<textarea name="required_questions" rows="5" required></textarea></label><label class="full">Service area<textarea name="service_area" rows="2" required></textarea></label><label class="full">Business hours<textarea name="business_hours" rows="2" required></textarea></label><label class="full">Business escalation rules<textarea name="escalation_rules" rows="4" required></textarea></label><div class="full warning">Personal callers must not be stored as business customers. Business-call recording begins only after the caller confirms the call concerns Fleet Parlour and hears the recording notice.</div><div class="full actions"><button>Save receptionist settings</button></div></form></section>
+
+      <section id="website-view" class="view" hidden><div class="panel website-tools"><div><h2>Fleet Parlour website</h2><p>The website is included inside the Office Manager for review. Public pages remain unchanged.</p></div><a class="button-link" href="../index.html" target="_blank" rel="noopener">Open in new tab</a></div><iframe id="website-frame" title="Fleet Parlour website preview" data-src="../index.html"></iframe></section>
+    </main>
+  </div>
+  <script src="office.js" defer></script>
+</body>
+</html>

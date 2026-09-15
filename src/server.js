@@ -14,12 +14,504 @@ import { sendEnquiryNotification } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Current production repository:
+// /src/server.js
+// /saas/
+// /office/
 const backendRoot = path.resolve(__dirname, '..');
-const siteRoot = path.resolve(backendRoot, '..');
+const siteRoot = backendRoot;
+
 dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const env = process.env;
 const port = Number(env.PORT || 3000);
+
+/*
+|--------------------------------------------------------------------------
+| Telnyx Voice / AI Receptionist
+|--------------------------------------------------------------------------
+|
+| Required deployment environment variables:
+|
+| TELNYX_API_KEY=
+| TELNYX_CONNECTION_ID=
+| TELNYX_PUBLIC_KEY=
+| TELNYX_PHONE_NUMBER=
+|
+| Optional until Telnyx AI Assistant is created:
+|
+| TELNYX_AI_ASSISTANT_ID=
+|
+*/
+
+const TELNYX_API_BASE = 'https://api.telnyx.com/v2';
+
+const telnyxProcessedEvents = new Map();
+
+const TELNYX_EVENT_TTL_MS = 60 * 60 * 1000;
+
+function cleanupTelnyxProcessedEvents() {
+  const now = Date.now();
+
+  for (const [eventId, expiresAt] of telnyxProcessedEvents.entries()) {
+    if (expiresAt <= now) {
+      telnyxProcessedEvents.delete(eventId);
+    }
+  }
+}
+
+function rememberTelnyxEvent(eventId) {
+  if (!eventId) {
+    return true;
+  }
+
+  cleanupTelnyxProcessedEvents();
+
+  if (telnyxProcessedEvents.has(eventId)) {
+    return false;
+  }
+
+  telnyxProcessedEvents.set(
+    eventId,
+    Date.now() + TELNYX_EVENT_TTL_MS
+  );
+
+  return true;
+}
+
+function telnyxCommandId(eventId, action) {
+  return crypto
+    .createHash('sha256')
+    .update(`${eventId || 'unknown'}:${action}`)
+    .digest('hex')
+    .slice(0, 32);
+}
+
+async function telnyxApiRequest(endpoint, options = {}) {
+  const apiKey = String(env.TELNYX_API_KEY || '').trim();
+
+  if (!apiKey) {
+    throw new Error('TELNYX_API_KEY is not configured.');
+  }
+
+  const response = await fetch(
+    `${TELNYX_API_BASE}${endpoint}`,
+    {
+      method: options.method || 'POST',
+
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+
+      body:
+        options.body === undefined
+          ? undefined
+          : JSON.stringify(options.body)
+    }
+  );
+
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.errors?.[0]?.detail ||
+      data?.errors?.[0]?.title ||
+      data?.error ||
+      `Telnyx API request failed with HTTP ${response.status}`;
+
+    const error = new Error(message);
+    error.statusCode = response.status;
+    error.telnyxResponse = data;
+console.error(
+  '[TELNYX API ERROR]',
+  JSON.stringify(
+    {
+      status: response.status,
+      endpoint,
+      response: data
+    },
+    null,
+    2
+  )
+);
+    throw error;
+  }
+
+  return data;
+}
+
+async function answerTelnyxCall(callControlId, eventId) {
+  if (!callControlId) {
+    throw new Error('Missing Telnyx call_control_id.');
+  }
+
+  return telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/answer`,
+    {
+      body: {
+        command_id: telnyxCommandId(eventId, 'answer')
+      }
+    }
+  );
+}
+
+async function speakTelnyxCall(
+  callControlId,
+  text,
+  eventId,
+  action = 'speak'
+) {
+  if (!callControlId) {
+    throw new Error('Missing Telnyx call_control_id.');
+  }
+
+  return telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/speak`,
+    {
+      body: {
+        payload: text,
+
+        voice: String(
+          env.TELNYX_TTS_VOICE ||
+          'Telnyx.KokoroTTS.af_heart'
+        ),
+
+        language: 'en',
+
+        command_id:
+          telnyxCommandId(eventId, action)
+      }
+    }
+  );
+}
+
+const METAL_POLISHING_AI_INSTRUCTIONS = `
+You are the AI receptionist and enquiry coordinator for Fleet Parlour,
+a professional truck and metal polishing business.
+
+Your purpose is to make every genuine customer feel welcomed, understood
+and professionally assisted while collecting enough information for the
+Fleet Parlour team to assess the job accurately.
+
+CUSTOMER EXPERIENCE
+
+Be warm, concise and professional.
+
+Do not interrogate the customer with a rigid questionnaire.
+
+Listen to what the customer has already provided and ask only for
+information that is still required.
+
+When the customer is uncertain about technical terminology, explain it
+simply without making them feel inexperienced.
+
+Never invent prices, availability, guarantees, capabilities or completion
+times.
+
+Never guarantee complete scratch, corrosion or pitting removal without
+appropriate assessment.
+
+If the job is unusual or outside confirmed Fleet Parlour capability,
+collect the information and escalate it for human technical review.
+
+METAL POLISHING KNOWLEDGE
+
+Recognise enquiries involving:
+
+- aluminium
+- stainless steel
+- chrome or chrome-like surfaces
+- raw metal
+- polished metal
+- oxidised aluminium
+- corrosion
+- pitting
+- scratches
+- sanding
+- linishing
+- buffing
+- polishing
+- maintenance polishing
+- restoration
+- brushed finishes
+- satin finishes
+- No. 4 / #4 finish
+- No. 6 / #6 finish
+- No. 8 / #8 mirror finish
+- mirror polishing
+- show finish
+- weld cleanup
+- paint or coating removal
+
+Recognise common truck and vehicle components including:
+
+- bullbars
+- fuel tanks
+- hydraulic tanks
+- rims
+- wheels
+- steps
+- toolboxes
+- bumpers
+- grilles
+- exhaust stacks
+- guards
+- fenders
+- trailers
+- stainless accessories
+- aluminium accessories
+- custom fabricated parts
+
+ENQUIRY QUALIFICATION
+
+Determine naturally during the conversation:
+
+1. Customer name.
+2. Best phone/contact method.
+3. Business or fleet name when relevant.
+4. Customer location.
+5. Vehicle, machine or item type.
+6. Make/model when relevant.
+7. Exact components requiring work.
+8. Quantity.
+9. Metal/material if known.
+10. Current condition.
+11. Oxidation, corrosion or pitting.
+12. Scratch condition.
+13. Paint, clear coat or other coatings.
+14. Desired finish.
+15. Whether restoration or maintenance polishing is expected.
+16. Photos or videos available.
+17. Mobile-service or workshop requirement.
+18. Access conditions where relevant.
+19. Desired date/deadline.
+20. Whether this is one-off, fleet or recurring work.
+
+JOB CLASSIFICATION
+
+Classify the enquiry internally as one or more of:
+
+- maintenance_polish
+- restoration
+- scratch_removal
+- sanding_and_polishing
+- mirror_finish
+- stainless_finishing
+- aluminium_polishing
+- industrial_custom
+- inspection_required
+- technical_review_required
+
+HIGH-RISK OR UNCERTAIN REQUESTS
+
+Escalate instead of promising when the customer requests:
+
+- paint stripping
+- unknown coatings
+- severe corrosion
+- severe pitting
+- deep scratch removal
+- structural repair
+- fabrication
+- welding
+- regulated or specification-sensitive industrial finishes
+- unfamiliar metals
+- work outside confirmed Fleet Parlour services
+- guaranteed perfection
+- an immediate fixed price without adequate information
+
+PHOTOS AND VIDEO
+
+When condition materially affects the quote, politely explain that clear
+photos or video will help Fleet Parlour assess preparation requirements
+and provide a more accurate scope.
+
+PRICING
+
+Do not invent a price.
+
+If an approved price exists in the Fleet Office AI pricing system, it may
+be used subject to its conditions.
+
+Otherwise tell the customer that the information will be reviewed and a
+quote or assessment will be prepared.
+
+CUSTOMER SATISFACTION
+
+Never dismiss an enquiry simply because it is unusual.
+
+Collect useful information first.
+
+Explain what happens next.
+
+Set realistic expectations.
+
+Make the customer feel that Fleet Parlour wants to find the best practical
+solution while protecting the customer from unrealistic promises.
+
+INTERNATIONAL ENQUIRIES
+
+Understand common polishing terminology used in Australia, New Zealand,
+United Kingdom, United States, Canada, Europe and other markets.
+
+Do not assume Fleet Parlour physically services an international location.
+
+For enquiries outside the current Fleet Parlour service area, capture the
+lead and mark it for review rather than promising attendance.
+`.trim();
+
+async function startTelnyxAiAssistant(
+  callControlId,
+  eventId
+) {
+  const assistantId =
+    String(env.TELNYX_AI_ASSISTANT_ID || '').trim();
+
+  if (!assistantId) {
+    return {
+      started: false,
+      reason: 'TELNYX_AI_ASSISTANT_ID is not configured.'
+    };
+  }
+
+  const response = await telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/ai_assistant_start`,
+    {
+      body: {
+        assistant: {
+          id: assistantId
+        },
+
+        greeting:
+          'Thank you for calling Fleet Parlour. You are speaking with our AI assistant. How can I help you with your metal polishing enquiry today?',
+
+        instructions:
+          METAL_POLISHING_AI_INSTRUCTIONS,
+
+        interruption_settings: {
+          enable: true
+        },
+
+        command_id:
+          telnyxCommandId(
+            eventId,
+            'ai-assistant-start'
+          )
+      }
+    }
+  );
+
+  return {
+    started: true,
+    response
+  };
+}
+
+async function handleTelnyxCallInitiated(
+  eventId,
+  payload
+) {
+  const callControlId =
+    payload?.call_control_id;
+
+  if (!callControlId) {
+    console.warn(
+      '[TELNYX VOICE] call.initiated missing call_control_id.'
+    );
+
+    return;
+  }
+
+  try {
+    await answerTelnyxCall(
+      callControlId,
+      eventId
+    );
+
+    console.log(
+      '[TELNYX VOICE] Answer command accepted.',
+      {
+        callControlId
+      }
+    );
+  } catch (error) {
+    console.error(
+      '[TELNYX VOICE] Unable to answer call:',
+      error.message
+    );
+  }
+}
+
+async function handleTelnyxCallAnswered(
+  eventId,
+  payload
+) {
+  const callControlId =
+    payload?.call_control_id;
+
+  if (!callControlId) {
+    return;
+  }
+
+  try {
+    const ai =
+      await startTelnyxAiAssistant(
+        callControlId,
+        eventId
+      );
+
+    if (ai.started) {
+      console.log(
+        '[TELNYX VOICE] AI receptionist started.',
+        {
+          callControlId
+        }
+      );
+
+      return;
+    }
+
+    console.warn(
+      '[TELNYX VOICE] AI Assistant is not configured. Using safe greeting.'
+    );
+
+    await speakTelnyxCall(
+      callControlId,
+      'Thank you for calling Fleet Parlour. Our automated receptionist is being configured. Please leave your enquiry through our website or contact Fleet Parlour directly and we will be happy to assist you.',
+      eventId,
+      'fallback-greeting'
+    );
+  } catch (error) {
+    console.error(
+      '[TELNYX VOICE] Unable to start receptionist:',
+      error.message
+    );
+
+    try {
+      await speakTelnyxCall(
+        callControlId,
+        'Thank you for calling Fleet Parlour. We are unable to start our automated receptionist right now. Please contact Fleet Parlour directly and we will be happy to assist you.',
+        eventId,
+        'error-greeting'
+      );
+    } catch (fallbackError) {
+      console.error(
+        '[TELNYX VOICE] Fallback greeting failed:',
+        fallbackError.message
+      );
+    }
+  }
+}
+
+
 
 const databasePath = path.isAbsolute(env.DATABASE_PATH || '')
   ? env.DATABASE_PATH
@@ -53,7 +545,7 @@ const allowedOrigins = String(env.ALLOWED_ORIGINS || '')
 | TikTok Login Kit / OAuth
 |--------------------------------------------------------------------------
 |
-| Add these values to backend/.env:
+| Add these values to the deployment environment / root .env:
 |
 | TIKTOK_CLIENT_KEY=
 | TIKTOK_CLIENT_SECRET=
@@ -61,7 +553,7 @@ const allowedOrigins = String(env.ALLOWED_ORIGINS || '')
 | TIKTOK_SCOPES=user.info.basic,user.info.stats
 |
 | Tokens are saved privately in:
-| backend/data/tiktok-oauth.json
+| data/tiktok-oauth.json
 |
 */
 
@@ -244,7 +736,7 @@ function assertTikTokOauthConfigured() {
     !cfg.redirectUri
   ) {
     const err = new Error(
-      'TikTok OAuth is not configured. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET and TIKTOK_REDIRECT_URI in backend/.env.'
+      'TikTok OAuth is not configured. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET and TIKTOK_REDIRECT_URI in the deployment environment / root .env.'
     );
 
     err.statusCode = 503;
@@ -507,7 +999,13 @@ app.use(
 
 app.use(
   express.json({
-    limit: '1mb'
+    limit: '1mb',
+    verify: (req, res, buf) => {
+      // Telnyx signs the exact raw JSON payload. Keep it only for the webhook route.
+      if (req.originalUrl?.startsWith('/api/webhooks/telnyx')) {
+        req.rawBody = Buffer.from(buf);
+      }
+    }
   })
 );
 
@@ -531,7 +1029,11 @@ app.use(
       true,
 
     legacyHeaders:
-      false
+      false,
+
+    // Voice webhooks can generate several events for one call. Provider
+    // authenticity is checked with the Telnyx signature instead of this limiter.
+    skip: req => req.path === '/webhooks/telnyx'
   })
 );
 
@@ -546,15 +1048,8 @@ app.use(
 app.get('/', (req, res) => res.redirect(302, '/saas/'));
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'fleet-office-ai', time: new Date().toISOString() }));
 
-app.use(
-  express.static(
-    siteRoot,
-    {
-      extensions: ['html'],
-      index: 'index.html'
-    }
-  )
-);
+app.use('/saas', express.static(path.join(siteRoot, 'saas'), { extensions: ['html'] }));
+app.use('/office', express.static(path.join(siteRoot, 'office'), { extensions: ['html'] }));
 
 /*
 |--------------------------------------------------------------------------
@@ -1663,7 +2158,7 @@ app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,thre
 app.post('/api/saas/ai/threads',requireSaasUser,(req,res)=>{const parsed=z.object({title:z.string().trim().min(1).max(200),message:z.string().trim().min(1).max(50000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Title and message required.'});const id=crypto.randomUUID(),messageId=crypto.randomUUID(),now=new Date().toISOString();db.transaction(()=>{db.prepare(`INSERT INTO ai_threads (id,organisation_id,created_by,title,created_at,updated_at) VALUES (?,?,?,?,?,?)`).run(id,req.saas.organisation_id,req.saas.user_id,parsed.data.title,now,now);db.prepare(`INSERT INTO ai_thread_messages (id,thread_id,role,content_type,content,created_at) VALUES (?,?,'user','text',?,?)`).run(messageId,id,parsed.data.message,now)})();res.status(201).json({ok:true,id,ai_response:null,configuration_required:true,note:'Message stored privately. Connect an approved AI provider or local model before generating responses.'})});
 
 app.get('/api/saas/video-renders',requireSaasUser,(req,res)=>res.json({ok:true,jobs:db.prepare(`SELECT * FROM video_render_jobs WHERE organisation_id=? ORDER BY updated_at DESC`).all(req.saas.organisation_id).map(j=>({...j,edit_spec:JSON.parse(j.edit_spec)}))}));
-app.post('/api/saas/video-renders',requireSaasUser,(req,res)=>{const parsed=z.object({quality:z.enum(['720p','1080p','4k']),edit_spec:z.object({aspect_ratio:z.enum(['9:16','16:9','1:1','4:5']),clips:z.array(z.object({media_id:z.string(),start_seconds:z.coerce.number().min(0),end_seconds:z.coerce.number().positive(),transition:z.enum(['cut','fade','zoom','wipe']).default('cut')})).min(1).max(100),captions:z.boolean().default(true),music:z.boolean().default(false),logo:z.boolean().default(true),style_prompt:z.string().max(5000)}).strict()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the render specification and clips.'});const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO video_render_jobs (id,organisation_id,status,quality,edit_spec,created_at,updated_at) VALUES (?,?,'draft',?,?,?,?)`).run(id,req.saas.organisation_id,parsed.data.quality,JSON.stringify(parsed.data.edit_spec),now,now);res.status(201).json({ok:true,id,status:'draft',rendered:false,note:'Professional edit specification saved. FFmpeg worker and licensed media services must be configured before rendering.'})});
+app.post('/api/saas/video-renders',requireSaasUser,(req,res)=>{const parsed=z.object({quality:z.enum(['720p','1080p','4k']),edit_spec:z.object({platform:z.string().max(80).default('Multi-platform'),goal:z.string().max(120).default('More views'),aspect_ratio:z.enum(['9:16','16:9','1:1','4:5']),clips:z.array(z.object({media_id:z.string(),start_seconds:z.coerce.number().min(0),end_seconds:z.coerce.number().positive(),transition:z.enum(['auto','cut','fade','zoom','wipe','match','speed']).default('auto')})).min(1).max(100),pacing:z.string().max(80).default('AI auto'),hook:z.string().max(120).default('AI choose strongest'),caption_style:z.string().max(120).default('AI platform-native'),captions:z.boolean().default(true),music:z.boolean().default(false),logo:z.boolean().default(true),auto_reframe:z.boolean().default(true),auto_highlights:z.boolean().default(true),cta:z.boolean().default(true),style_prompt:z.string().max(5000)}).strict()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the render specification and clips.'});const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO video_render_jobs (id,organisation_id,status,quality,edit_spec,created_at,updated_at) VALUES (?,?,'draft',?,?,?,?)`).run(id,req.saas.organisation_id,parsed.data.quality,JSON.stringify(parsed.data.edit_spec),now,now);res.status(201).json({ok:true,id,status:'draft',rendered:false,note:'Professional edit specification saved. FFmpeg worker and licensed media services must be configured before rendering.'})});
 
 /*
 |--------------------------------------------------------------------------
@@ -2034,6 +2529,20 @@ app.post('/api/admin/jobs/:id/review-received', requireAdmin, (req,res)=>{const 
 
 app.get('/api/admin/channel-connections', requireAdmin, (req,res)=>res.json({ok:true,connections:db.prepare(`SELECT * FROM channel_connections ORDER BY channel`).all().map(c=>({...c,capabilities:JSON.parse(c.capabilities)}))}));
 
+app.get('/api/admin/integration-readiness', requireAdmin, (req,res)=>{
+  const specs=[
+    ['Email',['SMTP_HOST','SMTP_USER','SMTP_PASS']],
+    ['Resend Email',['RESEND_API_KEY']],
+    ['TikTok',['TIKTOK_CLIENT_KEY','TIKTOK_CLIENT_SECRET']],
+    ['Meta / Facebook / Instagram',['META_APP_ID','META_APP_SECRET']],
+    ['WhatsApp Business',['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID']],
+    ['YouTube',['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET']],
+    ['Voice / Telephone',['TELNYX_API_KEY','TELNYX_CONNECTION_ID','TELNYX_PUBLIC_KEY','TELNYX_PHONE_NUMBER']]
+  ];
+  const integrations=specs.map(([name,keys])=>{const missing=keys.filter(k=>!env[k]);return {name,ready:missing.length===0,missing};});
+  res.json({ok:true,integrations,live_activation:false,note:'Readiness only. Provider accounts, approved apps, purchased/ported numbers, HTTPS callback URLs and OAuth authorisation must be completed with each provider before live activation.'});
+});
+
 app.get('/api/admin/content-templates', requireAdmin, (req,res)=>res.json({ok:true,templates:[
   {name:'Before & after reveal',format:'short_video',aspect_ratio:'9:16',duration:20,hook:'Watch this oxidised metal return to a mirror finish',cta:'Request your Perth polishing quote'},
   {name:'Process close-up',format:'short_video',aspect_ratio:'9:16',duration:30,hook:'The polishing step most people skip',cta:'Save this and contact Fleet Parlour'},
@@ -2054,6 +2563,233 @@ app.get('/api/admin/receptionist-settings', requireAdmin, (req,res)=>res.json({o
 
 app.put('/api/admin/receptionist-settings', requireAdmin, (req,res)=>{const parsed=z.object({business_name:z.string().trim().min(1).max(100),greeting:z.string().trim().min(10).max(1000),transfer_number:z.string().trim().min(8).max(30),service_area:z.string().trim().min(2).max(500),business_hours:z.string().trim().min(2).max(500),escalation_rules:z.string().trim().min(10).max(3000),required_questions:z.string().trim().min(10).max(3000),screening_mode:z.enum(['business_only','business_or_personal']),personal_transfer_rules:z.string().trim().min(10).max(3000),recording_notice:z.string().trim().min(10).max(1000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Please check all receptionist settings.'});db.prepare(`UPDATE receptionist_settings SET business_name=@business_name,greeting=@greeting,transfer_number=@transfer_number,service_area=@service_area,business_hours=@business_hours,escalation_rules=@escalation_rules,required_questions=@required_questions,screening_mode=@screening_mode,personal_transfer_rules=@personal_transfer_rules,recording_notice=@recording_notice,updated_at=@updated_at WHERE id=1`).run({...parsed.data,updated_at:new Date().toISOString()});res.json({ok:true})});
 
+// -----------------------------------------------------------------------------
+// Telnyx Voice API webhook
+// -----------------------------------------------------------------------------
+
+function telnyxPublicKeyObject() {
+  const encoded = String(env.TELNYX_PUBLIC_KEY || '').trim();
+  if (!encoded) return null;
+
+  // Telnyx exposes the Ed25519 public key as 32 raw bytes encoded with Base64.
+  // Node's crypto API expects a SubjectPublicKeyInfo (SPKI) wrapper.
+  const raw = Buffer.from(encoded, 'base64');
+  if (raw.length !== 32) {
+    throw new Error('TELNYX_PUBLIC_KEY must decode to a 32-byte Ed25519 public key.');
+  }
+
+  const ed25519SpkiPrefix = Buffer.from('302a300506032b6570032100', 'hex');
+  return crypto.createPublicKey({
+    key: Buffer.concat([ed25519SpkiPrefix, raw]),
+    format: 'der',
+    type: 'spki'
+  });
+}
+
+function verifyTelnyxWebhook(req) {
+  const signature = String(req.get('telnyx-signature-ed25519') || '').trim();
+  const timestamp = String(req.get('telnyx-timestamp') || '').trim();
+  const publicKey = telnyxPublicKeyObject();
+
+  if (!publicKey || !signature || !timestamp || !req.rawBody) return false;
+
+  // Reject stale/replayed requests. Telnyx timestamps are Unix seconds.
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > 300) return false;
+
+  const signedPayload = Buffer.concat([
+    Buffer.from(`${timestamp}|`, 'utf8'),
+    req.rawBody
+  ]);
+
+  let signatureBytes;
+  try {
+    signatureBytes = Buffer.from(signature, 'base64');
+  } catch {
+    return false;
+  }
+
+  return crypto.verify(null, signedPayload, publicKey, signatureBytes);
+}
+
+app.post('/api/webhooks/telnyx', (req, res) => {
+  try {
+    if (!env.TELNYX_PUBLIC_KEY) {
+      console.error(
+        '[TELNYX WEBHOOK] TELNYX_PUBLIC_KEY is not configured.'
+      );
+
+      return res.status(503).json({
+        ok: false,
+        error:
+          'Telnyx webhook verification is not configured.'
+      });
+    }
+
+    if (!verifyTelnyxWebhook(req)) {
+      console.warn(
+        '[TELNYX WEBHOOK] Rejected request with invalid or stale signature.'
+      );
+
+      return res.status(401).json({
+        ok: false,
+        error:
+          'Invalid Telnyx webhook signature.'
+      });
+    }
+
+    const event = req.body?.data;
+
+    const eventId =
+      String(
+        event?.id ||
+        req.body?.data?.id ||
+        ''
+      ).trim();
+
+    const eventType =
+      event?.event_type || 'unknown';
+
+    const payload =
+      event?.payload || {};
+
+    console.log(
+      '[TELNYX WEBHOOK]',
+      {
+        eventId: eventId || null,
+        eventType,
+
+        callControlId:
+          payload.call_control_id || null,
+
+        callSessionId:
+          payload.call_session_id || null,
+
+        from:
+          payload.from || null,
+
+        to:
+          payload.to || null,
+
+        receivedAt:
+          new Date().toISOString()
+      }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Acknowledge Telnyx immediately
+    |--------------------------------------------------------------------------
+    |
+    | Voice processing happens asynchronously after the webhook has been
+    | authenticated. Telnyx should not have to wait for AI or Call Control.
+    |
+    */
+
+    res.status(200).json({
+      ok: true,
+      received: true,
+      verified: true,
+      provider: 'telnyx',
+      event_type: eventType
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate-event protection
+    |--------------------------------------------------------------------------
+    */
+
+    if (!rememberTelnyxEvent(eventId)) {
+      console.log(
+        '[TELNYX WEBHOOK] Duplicate event ignored.',
+        {
+          eventId,
+          eventType
+        }
+      );
+
+      return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Voice lifecycle
+    |--------------------------------------------------------------------------
+    */
+
+    if (eventType === 'call.initiated') {
+      void handleTelnyxCallInitiated(
+        eventId,
+        payload
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.answered') {
+      void handleTelnyxCallAnswered(
+        eventId,
+        payload
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.hangup') {
+      console.log(
+        '[TELNYX VOICE] Call ended.',
+        {
+          callControlId:
+            payload.call_control_id || null,
+
+          callSessionId:
+            payload.call_session_id || null,
+
+          hangupCause:
+            payload.hangup_cause || null,
+
+          hangupSource:
+            payload.hangup_source || null
+        }
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.cost') {
+      console.log(
+        '[TELNYX VOICE] Call cost event received.',
+        {
+          callControlId:
+            payload.call_control_id || null,
+
+          callSessionId:
+            payload.call_session_id || null
+        }
+      );
+
+      return;
+    }
+
+  } catch (error) {
+    console.error(
+      '[TELNYX WEBHOOK ERROR]',
+      error
+    );
+
+    if (!res.headersSent) {
+      return res.status(500).json({
+        ok: false,
+        error:
+          'Telnyx webhook processing failed'
+      });
+    }
+  }
+});
+
+
 /*
 |--------------------------------------------------------------------------
 | Start server
@@ -2065,7 +2801,7 @@ app.listen(
   () => {
 
     console.log(
-      `Fleet Parlour website + enquiry backend running on http://localhost:${port}`
+      `Fleet Office AI backend running on http://localhost:${port}`
     );
 
     console.log(

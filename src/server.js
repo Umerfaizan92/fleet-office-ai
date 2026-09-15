@@ -2778,15 +2778,6 @@ app.post('/api/webhooks/telnyx', (req, res) => {
   }
 });
 
-    console.log('[TELNYX WEBHOOK]', {
-      eventType,
-      callControlId: payload.call_control_id || null,
-      callSessionId: payload.call_session_id || null,
-      from: payload.from || null,
-      to: payload.to || null,
-      receivedAt: new Date().toISOString()
-    });
-
 
 /*
 |--------------------------------------------------------------------------

@@ -27,6 +27,481 @@ dotenv.config({ path: path.join(backendRoot, '.env') });
 const env = process.env;
 const port = Number(env.PORT || 3000);
 
+/*
+|--------------------------------------------------------------------------
+| Telnyx Voice / AI Receptionist
+|--------------------------------------------------------------------------
+|
+| Required deployment environment variables:
+|
+| TELNYX_API_KEY=
+| TELNYX_CONNECTION_ID=
+| TELNYX_PUBLIC_KEY=
+| TELNYX_PHONE_NUMBER=
+|
+| Optional until Telnyx AI Assistant is created:
+|
+| TELNYX_AI_ASSISTANT_ID=
+|
+*/
+
+const TELNYX_API_BASE = 'https://api.telnyx.com/v2';
+
+const telnyxProcessedEvents = new Map();
+
+const TELNYX_EVENT_TTL_MS = 60 * 60 * 1000;
+
+function cleanupTelnyxProcessedEvents() {
+  const now = Date.now();
+
+  for (const [eventId, expiresAt] of telnyxProcessedEvents.entries()) {
+    if (expiresAt <= now) {
+      telnyxProcessedEvents.delete(eventId);
+    }
+  }
+}
+
+function rememberTelnyxEvent(eventId) {
+  if (!eventId) {
+    return true;
+  }
+
+  cleanupTelnyxProcessedEvents();
+
+  if (telnyxProcessedEvents.has(eventId)) {
+    return false;
+  }
+
+  telnyxProcessedEvents.set(
+    eventId,
+    Date.now() + TELNYX_EVENT_TTL_MS
+  );
+
+  return true;
+}
+
+function telnyxCommandId(eventId, action) {
+  return crypto
+    .createHash('sha256')
+    .update(`${eventId || 'unknown'}:${action}`)
+    .digest('hex')
+    .slice(0, 32);
+}
+
+async function telnyxApiRequest(endpoint, options = {}) {
+  const apiKey = String(env.TELNYX_API_KEY || '').trim();
+
+  if (!apiKey) {
+    throw new Error('TELNYX_API_KEY is not configured.');
+  }
+
+  const response = await fetch(
+    `${TELNYX_API_BASE}${endpoint}`,
+    {
+      method: options.method || 'POST',
+
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+
+      body:
+        options.body === undefined
+          ? undefined
+          : JSON.stringify(options.body)
+    }
+  );
+
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.errors?.[0]?.detail ||
+      data?.errors?.[0]?.title ||
+      data?.error ||
+      `Telnyx API request failed with HTTP ${response.status}`;
+
+    const error = new Error(message);
+    error.statusCode = response.status;
+    error.telnyxResponse = data;
+
+    throw error;
+  }
+
+  return data;
+}
+
+async function answerTelnyxCall(callControlId, eventId) {
+  if (!callControlId) {
+    throw new Error('Missing Telnyx call_control_id.');
+  }
+
+  return telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/answer`,
+    {
+      body: {
+        command_id: telnyxCommandId(eventId, 'answer')
+      }
+    }
+  );
+}
+
+async function speakTelnyxCall(
+  callControlId,
+  text,
+  eventId,
+  action = 'speak'
+) {
+  if (!callControlId) {
+    throw new Error('Missing Telnyx call_control_id.');
+  }
+
+  return telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/speak`,
+    {
+      body: {
+        payload: text,
+
+        voice: String(
+          env.TELNYX_TTS_VOICE ||
+          'Telnyx.KokoroTTS.af_heart'
+        ),
+
+        language: 'en',
+
+        command_id:
+          telnyxCommandId(eventId, action)
+      }
+    }
+  );
+}
+
+const METAL_POLISHING_AI_INSTRUCTIONS = `
+You are the AI receptionist and enquiry coordinator for Fleet Parlour,
+a professional truck and metal polishing business.
+
+Your purpose is to make every genuine customer feel welcomed, understood
+and professionally assisted while collecting enough information for the
+Fleet Parlour team to assess the job accurately.
+
+CUSTOMER EXPERIENCE
+
+Be warm, concise and professional.
+
+Do not interrogate the customer with a rigid questionnaire.
+
+Listen to what the customer has already provided and ask only for
+information that is still required.
+
+When the customer is uncertain about technical terminology, explain it
+simply without making them feel inexperienced.
+
+Never invent prices, availability, guarantees, capabilities or completion
+times.
+
+Never guarantee complete scratch, corrosion or pitting removal without
+appropriate assessment.
+
+If the job is unusual or outside confirmed Fleet Parlour capability,
+collect the information and escalate it for human technical review.
+
+METAL POLISHING KNOWLEDGE
+
+Recognise enquiries involving:
+
+- aluminium
+- stainless steel
+- chrome or chrome-like surfaces
+- raw metal
+- polished metal
+- oxidised aluminium
+- corrosion
+- pitting
+- scratches
+- sanding
+- linishing
+- buffing
+- polishing
+- maintenance polishing
+- restoration
+- brushed finishes
+- satin finishes
+- No. 4 / #4 finish
+- No. 6 / #6 finish
+- No. 8 / #8 mirror finish
+- mirror polishing
+- show finish
+- weld cleanup
+- paint or coating removal
+
+Recognise common truck and vehicle components including:
+
+- bullbars
+- fuel tanks
+- hydraulic tanks
+- rims
+- wheels
+- steps
+- toolboxes
+- bumpers
+- grilles
+- exhaust stacks
+- guards
+- fenders
+- trailers
+- stainless accessories
+- aluminium accessories
+- custom fabricated parts
+
+ENQUIRY QUALIFICATION
+
+Determine naturally during the conversation:
+
+1. Customer name.
+2. Best phone/contact method.
+3. Business or fleet name when relevant.
+4. Customer location.
+5. Vehicle, machine or item type.
+6. Make/model when relevant.
+7. Exact components requiring work.
+8. Quantity.
+9. Metal/material if known.
+10. Current condition.
+11. Oxidation, corrosion or pitting.
+12. Scratch condition.
+13. Paint, clear coat or other coatings.
+14. Desired finish.
+15. Whether restoration or maintenance polishing is expected.
+16. Photos or videos available.
+17. Mobile-service or workshop requirement.
+18. Access conditions where relevant.
+19. Desired date/deadline.
+20. Whether this is one-off, fleet or recurring work.
+
+JOB CLASSIFICATION
+
+Classify the enquiry internally as one or more of:
+
+- maintenance_polish
+- restoration
+- scratch_removal
+- sanding_and_polishing
+- mirror_finish
+- stainless_finishing
+- aluminium_polishing
+- industrial_custom
+- inspection_required
+- technical_review_required
+
+HIGH-RISK OR UNCERTAIN REQUESTS
+
+Escalate instead of promising when the customer requests:
+
+- paint stripping
+- unknown coatings
+- severe corrosion
+- severe pitting
+- deep scratch removal
+- structural repair
+- fabrication
+- welding
+- regulated or specification-sensitive industrial finishes
+- unfamiliar metals
+- work outside confirmed Fleet Parlour services
+- guaranteed perfection
+- an immediate fixed price without adequate information
+
+PHOTOS AND VIDEO
+
+When condition materially affects the quote, politely explain that clear
+photos or video will help Fleet Parlour assess preparation requirements
+and provide a more accurate scope.
+
+PRICING
+
+Do not invent a price.
+
+If an approved price exists in the Fleet Office AI pricing system, it may
+be used subject to its conditions.
+
+Otherwise tell the customer that the information will be reviewed and a
+quote or assessment will be prepared.
+
+CUSTOMER SATISFACTION
+
+Never dismiss an enquiry simply because it is unusual.
+
+Collect useful information first.
+
+Explain what happens next.
+
+Set realistic expectations.
+
+Make the customer feel that Fleet Parlour wants to find the best practical
+solution while protecting the customer from unrealistic promises.
+
+INTERNATIONAL ENQUIRIES
+
+Understand common polishing terminology used in Australia, New Zealand,
+United Kingdom, United States, Canada, Europe and other markets.
+
+Do not assume Fleet Parlour physically services an international location.
+
+For enquiries outside the current Fleet Parlour service area, capture the
+lead and mark it for review rather than promising attendance.
+`.trim();
+
+async function startTelnyxAiAssistant(
+  callControlId,
+  eventId
+) {
+  const assistantId =
+    String(env.TELNYX_AI_ASSISTANT_ID || '').trim();
+
+  if (!assistantId) {
+    return {
+      started: false,
+      reason: 'TELNYX_AI_ASSISTANT_ID is not configured.'
+    };
+  }
+
+  const response = await telnyxApiRequest(
+    `/calls/${encodeURIComponent(callControlId)}/actions/ai_assistant_start`,
+    {
+      body: {
+        assistant: {
+          id: assistantId
+        },
+
+        greeting:
+          'Thank you for calling Fleet Parlour. You are speaking with our AI assistant. How can I help you with your metal polishing enquiry today?',
+
+        instructions:
+          METAL_POLISHING_AI_INSTRUCTIONS,
+
+        interruption_settings: {
+          enable: true
+        },
+
+        command_id:
+          telnyxCommandId(
+            eventId,
+            'ai-assistant-start'
+          )
+      }
+    }
+  );
+
+  return {
+    started: true,
+    response
+  };
+}
+
+async function handleTelnyxCallInitiated(
+  eventId,
+  payload
+) {
+  const callControlId =
+    payload?.call_control_id;
+
+  if (!callControlId) {
+    console.warn(
+      '[TELNYX VOICE] call.initiated missing call_control_id.'
+    );
+
+    return;
+  }
+
+  try {
+    await answerTelnyxCall(
+      callControlId,
+      eventId
+    );
+
+    console.log(
+      '[TELNYX VOICE] Answer command accepted.',
+      {
+        callControlId
+      }
+    );
+  } catch (error) {
+    console.error(
+      '[TELNYX VOICE] Unable to answer call:',
+      error.message
+    );
+  }
+}
+
+async function handleTelnyxCallAnswered(
+  eventId,
+  payload
+) {
+  const callControlId =
+    payload?.call_control_id;
+
+  if (!callControlId) {
+    return;
+  }
+
+  try {
+    const ai =
+      await startTelnyxAiAssistant(
+        callControlId,
+        eventId
+      );
+
+    if (ai.started) {
+      console.log(
+        '[TELNYX VOICE] AI receptionist started.',
+        {
+          callControlId
+        }
+      );
+
+      return;
+    }
+
+    console.warn(
+      '[TELNYX VOICE] AI Assistant is not configured. Using safe greeting.'
+    );
+
+    await speakTelnyxCall(
+      callControlId,
+      'Thank you for calling Fleet Parlour. Our automated receptionist is being configured. Please leave your enquiry through our website or contact Fleet Parlour directly and we will be happy to assist you.',
+      eventId,
+      'fallback-greeting'
+    );
+  } catch (error) {
+    console.error(
+      '[TELNYX VOICE] Unable to start receptionist:',
+      error.message
+    );
+
+    try {
+      await speakTelnyxCall(
+        callControlId,
+        'Thank you for calling Fleet Parlour. We are unable to start our automated receptionist right now. Please contact Fleet Parlour directly and we will be happy to assist you.',
+        eventId,
+        'error-greeting'
+      );
+    } catch (fallbackError) {
+      console.error(
+        '[TELNYX VOICE] Fallback greeting failed:',
+        fallbackError.message
+      );
+    }
+  }
+}
+
+
+
 const databasePath = path.isAbsolute(env.DATABASE_PATH || '')
   ? env.DATABASE_PATH
   : path.resolve(
@@ -2130,18 +2605,178 @@ function verifyTelnyxWebhook(req) {
 app.post('/api/webhooks/telnyx', (req, res) => {
   try {
     if (!env.TELNYX_PUBLIC_KEY) {
-      console.error('[TELNYX WEBHOOK] TELNYX_PUBLIC_KEY is not configured.');
-      return res.status(503).json({ ok: false, error: 'Telnyx webhook verification is not configured.' });
+      console.error(
+        '[TELNYX WEBHOOK] TELNYX_PUBLIC_KEY is not configured.'
+      );
+
+      return res.status(503).json({
+        ok: false,
+        error:
+          'Telnyx webhook verification is not configured.'
+      });
     }
 
     if (!verifyTelnyxWebhook(req)) {
-      console.warn('[TELNYX WEBHOOK] Rejected request with invalid or stale signature.');
-      return res.status(401).json({ ok: false, error: 'Invalid Telnyx webhook signature.' });
+      console.warn(
+        '[TELNYX WEBHOOK] Rejected request with invalid or stale signature.'
+      );
+
+      return res.status(401).json({
+        ok: false,
+        error:
+          'Invalid Telnyx webhook signature.'
+      });
     }
 
     const event = req.body?.data;
-    const eventType = event?.event_type || 'unknown';
-    const payload = event?.payload || {};
+
+    const eventId =
+      String(
+        event?.id ||
+        req.body?.data?.id ||
+        ''
+      ).trim();
+
+    const eventType =
+      event?.event_type || 'unknown';
+
+    const payload =
+      event?.payload || {};
+
+    console.log(
+      '[TELNYX WEBHOOK]',
+      {
+        eventId: eventId || null,
+        eventType,
+
+        callControlId:
+          payload.call_control_id || null,
+
+        callSessionId:
+          payload.call_session_id || null,
+
+        from:
+          payload.from || null,
+
+        to:
+          payload.to || null,
+
+        receivedAt:
+          new Date().toISOString()
+      }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Acknowledge Telnyx immediately
+    |--------------------------------------------------------------------------
+    |
+    | Voice processing happens asynchronously after the webhook has been
+    | authenticated. Telnyx should not have to wait for AI or Call Control.
+    |
+    */
+
+    res.status(200).json({
+      ok: true,
+      received: true,
+      verified: true,
+      provider: 'telnyx',
+      event_type: eventType
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Duplicate-event protection
+    |--------------------------------------------------------------------------
+    */
+
+    if (!rememberTelnyxEvent(eventId)) {
+      console.log(
+        '[TELNYX WEBHOOK] Duplicate event ignored.',
+        {
+          eventId,
+          eventType
+        }
+      );
+
+      return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Voice lifecycle
+    |--------------------------------------------------------------------------
+    */
+
+    if (eventType === 'call.initiated') {
+      void handleTelnyxCallInitiated(
+        eventId,
+        payload
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.answered') {
+      void handleTelnyxCallAnswered(
+        eventId,
+        payload
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.hangup') {
+      console.log(
+        '[TELNYX VOICE] Call ended.',
+        {
+          callControlId:
+            payload.call_control_id || null,
+
+          callSessionId:
+            payload.call_session_id || null,
+
+          hangupCause:
+            payload.hangup_cause || null,
+
+          hangupSource:
+            payload.hangup_source || null
+        }
+      );
+
+      return;
+    }
+
+    if (eventType === 'call.cost') {
+      console.log(
+        '[TELNYX VOICE] Call cost event received.',
+        {
+          callControlId:
+            payload.call_control_id || null,
+
+          callSessionId:
+            payload.call_session_id || null
+        }
+      );
+
+      return;
+    }
+
+  } catch (error) {
+    console.error(
+      '[TELNYX WEBHOOK ERROR]',
+      error
+    );
+
+    if (!res.headersSent) {
+      return res.status(500).json({
+        ok: false,
+        error:
+          'Telnyx webhook processing failed'
+      });
+    }
+  }
+});
 
     console.log('[TELNYX WEBHOOK]', {
       eventType,

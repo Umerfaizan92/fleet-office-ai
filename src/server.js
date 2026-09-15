@@ -14,8 +14,14 @@ import { sendEnquiryNotification } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Current production repository:
+// /src/server.js
+// /saas/
+// /office/
 const backendRoot = path.resolve(__dirname, '..');
-const siteRoot = path.resolve(backendRoot, '..');
+const siteRoot = backendRoot;
+
 dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const env = process.env;

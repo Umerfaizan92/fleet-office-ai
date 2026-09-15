@@ -2067,6 +2067,41 @@ app.get('/api/admin/receptionist-settings', requireAdmin, (req,res)=>res.json({o
 
 app.put('/api/admin/receptionist-settings', requireAdmin, (req,res)=>{const parsed=z.object({business_name:z.string().trim().min(1).max(100),greeting:z.string().trim().min(10).max(1000),transfer_number:z.string().trim().min(8).max(30),service_area:z.string().trim().min(2).max(500),business_hours:z.string().trim().min(2).max(500),escalation_rules:z.string().trim().min(10).max(3000),required_questions:z.string().trim().min(10).max(3000),screening_mode:z.enum(['business_only','business_or_personal']),personal_transfer_rules:z.string().trim().min(10).max(3000),recording_notice:z.string().trim().min(10).max(1000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Please check all receptionist settings.'});db.prepare(`UPDATE receptionist_settings SET business_name=@business_name,greeting=@greeting,transfer_number=@transfer_number,service_area=@service_area,business_hours=@business_hours,escalation_rules=@escalation_rules,required_questions=@required_questions,screening_mode=@screening_mode,personal_transfer_rules=@personal_transfer_rules,recording_notice=@recording_notice,updated_at=@updated_at WHERE id=1`).run({...parsed.data,updated_at:new Date().toISOString()});res.json({ok:true})});
 
+// -----------------------------------------------------------------------------
+// Telnyx Voice API webhook
+// -----------------------------------------------------------------------------
+
+app.post('/api/webhooks/telnyx', (req, res) => {
+  try {
+    const event = req.body?.data;
+    const eventType = event?.event_type || 'unknown';
+    const payload = event?.payload || {};
+
+    console.log('[TELNYX WEBHOOK]', {
+      eventType,
+      callControlId: payload.call_control_id || null,
+      callSessionId: payload.call_session_id || null,
+      from: payload.from || null,
+      to: payload.to || null,
+      receivedAt: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      ok: true,
+      received: true,
+      provider: 'telnyx',
+      event_type: eventType
+    });
+  } catch (error) {
+    console.error('[TELNYX WEBHOOK ERROR]', error);
+
+    return res.status(500).json({
+      ok: false,
+      error: 'Telnyx webhook processing failed'
+    });
+  }
+});
+
 /*
 |--------------------------------------------------------------------------
 | Start server

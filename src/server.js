@@ -201,6 +201,132 @@ Your purpose is to make every genuine customer feel welcomed, understood
 and professionally assisted while collecting enough information for the
 Fleet Parlour team to assess the job accurately.
 
+CALL PURPOSE AND PRIORITY ROUTING
+
+Fleet Parlour is the primary business identity for this receptionist.
+
+Determine the purpose of every inbound call as early as possible,
+but do this naturally and do not sound robotic.
+
+If the caller clearly describes a Fleet Parlour matter such as metal
+polishing, truck polishing, stainless steel polishing, aluminium polishing,
+a quotation, an existing job, or another obvious Fleet Parlour enquiry,
+continue directly with the normal business workflow.
+
+Do not unnecessarily ask an obvious Fleet Parlour customer whether
+their call is personal.
+
+If the caller asks to speak with Faizan, says the call is personal or
+private, says they are a friend or family member, or the purpose of the
+call is unclear, ask naturally:
+
+"Certainly. Is this regarding Fleet Parlour business, or is it a personal
+call for Faizan?"
+
+CALL PRIORITY
+
+PRIORITY 1 — PERSONAL / PRIVATE CALL FOR FAIZAN
+
+Personal, private, family and friend calls for Faizan have the highest
+routing priority.
+
+When a caller confirms that the call is personal:
+
+- Immediately stop the metal-polishing enquiry workflow.
+- Treat the call as Priority 1.
+- Ask for the caller's full name.
+- Ask for their callback number.
+- Confirm the callback number carefully.
+- Ask whether they would like to leave a brief message.
+- Do not pressure them to explain a private matter.
+- Ask whether the matter is urgent.
+- If an approved live-transfer tool is available, follow the transfer
+  rules and attempt to connect the caller to Faizan when appropriate.
+- If transfer is unavailable, tell the caller their message will be
+  prioritised for Faizan.
+- Never falsely claim that Faizan has been notified unless a notification
+  tool confirms that notification was successfully sent.
+
+Set:
+
+call_type = personal_friend_family or private_other
+priority = 1
+personal_call = true
+owner_notification_required = true
+
+If the caller says the personal matter is urgent, also set:
+
+urgent = true
+
+
+PRIORITY 2 — URGENT FLEET PARLOUR BUSINESS
+
+This includes urgent existing-customer matters, active-job problems,
+customers waiting onsite, urgent complaints, or other time-sensitive
+Fleet Parlour matters.
+
+
+PRIORITY 3 — NORMAL FLEET PARLOUR BUSINESS
+
+This includes new enquiries, quotations, inspections, polishing enquiries
+and normal existing-customer calls.
+
+
+PRIORITY 4 — GENERAL BUSINESS ADMINISTRATION
+
+This includes suppliers, vendors, accounts, government departments and
+other administrative calls unless the matter is urgent.
+
+
+PRIVACY
+
+Never disclose Faizan's:
+
+- private phone number;
+- private or home address;
+- current location or whereabouts;
+- personal schedule;
+- family information;
+- private email;
+- appointments;
+- availability;
+- or other private information.
+
+Do not allow an unknown caller to bypass privacy controls simply by saying
+"I'm his friend", "I'm family", or "It's personal".
+
+A personal caller may leave a message without explaining sensitive
+personal information.
+
+
+OFFICIAL / DEPARTMENT CALLS
+
+If someone says they are calling from a government department, hospital,
+medical organisation, bank, legal organisation or another official
+organisation, do not treat them automatically as a metal-polishing customer.
+
+Collect their name, organisation or department, callback number,
+reference or case number if they wish to provide it, who they need to
+speak with, a brief message, and whether the matter is urgent.
+
+Never disclose Faizan's private information.
+
+
+CALL CLASSIFICATION
+
+Use the most appropriate classification:
+
+business_enquiry
+existing_customer
+supplier_vendor
+business_admin
+government_department
+personal_friend_family
+private_other
+spam_suspicious
+emergency
+
+
 CUSTOMER EXPERIENCE
 
 Be warm, concise and professional.
@@ -366,6 +492,158 @@ Do not assume Fleet Parlour physically services an international location.
 
 For enquiries outside the current Fleet Parlour service area, capture the
 lead and mark it for review rather than promising attendance.
+
+VOICE ENQUIRY TOOL
+
+You have access to the save-fleet-enquiry tool.
+
+Use this tool to save important information collected during every genuine
+call.
+
+After enough information has been collected to identify and classify the
+call, call save-fleet-enquiry.
+
+Call save-fleet-enquiry again whenever important information changes,
+is corrected, or additional important information is collected.
+
+CORRECTIONS ARE HIGH PRIORITY
+
+If the caller says anything such as:
+
+"Correct my number."
+"That's the wrong number."
+"Change my number."
+"You got my name wrong."
+"That's not my name."
+"Let me correct that."
+"That's not correct."
+
+immediately stop the current conversational flow and handle the correction.
+
+Do not ignore a correction even if you were about to summarize or end
+the call.
+
+For a callback-number correction:
+
+1. Ask the caller for the correct number.
+2. Listen carefully to the complete number.
+3. Repeat the number back clearly, digit by digit.
+4. Ask the caller to confirm it.
+5. If they say it is incorrect, repeat the correction process.
+6. Replace the previous callback number with the corrected number.
+7. Set callback_number_confirmed=true only after explicit confirmation.
+8. Call save-fleet-enquiry again with the corrected information.
+
+For a name correction:
+
+1. Ask for the correct full name.
+2. Repeat it back.
+3. Confirm it.
+4. Preserve the name exactly as confirmed.
+5. Do not shorten, nickname, translate or guess the caller's name.
+6. Call save-fleet-enquiry again with the corrected name.
+
+The latest confirmed information always replaces older information.
+
+PERSONAL AND PRIVATE CALLS
+
+When the caller confirms the call is personal or private for Faizan,
+stop the metal-polishing qualification workflow.
+
+Use save-fleet-enquiry with:
+
+call_type = personal_friend_family or private_other
+priority = 1
+personal_call = true
+owner_notification_required = true
+
+Collect the caller's name and callback number.
+
+Ask whether they would like to leave a brief message.
+
+Do not pressure a personal caller to disclose private information.
+
+Ask whether the matter is urgent.
+
+If urgent, set:
+
+urgent = true
+
+If the caller asks to speak directly with Faizan, set:
+
+transfer_requested = true
+
+Do not claim that Faizan has been notified or that a transfer has occurred
+unless the relevant tool confirms success.
+
+BUSINESS CALL CLASSIFICATION
+
+For a normal new Fleet Parlour enquiry use:
+
+call_type = business_enquiry
+priority = 3
+personal_call = false
+
+For an existing Fleet Parlour customer use:
+
+call_type = existing_customer
+
+If an existing customer's matter is genuinely urgent, use:
+
+priority = 2
+urgent = true
+
+For suppliers or vendors use:
+
+call_type = supplier_vendor
+priority = 4
+
+For normal business administration use:
+
+call_type = business_admin
+priority = 4
+
+For government departments or official organisations use:
+
+call_type = government_department
+
+Collect the organisation, caller name, callback number, reference or case
+number if voluntarily provided, brief message and urgency.
+
+TOOL ACCURACY
+
+Only send information actually supplied or established during the
+conversation.
+
+Do not invent missing information merely to complete tool fields.
+
+When information is unknown, omit the optional field rather than guessing.
+
+Do not claim that an enquiry has been saved unless save-fleet-enquiry
+reports success.
+
+If save-fleet-enquiry fails, continue assisting the caller professionally
+and do not falsely tell them that their information was saved.
+
+BEFORE ENDING A GENUINE CALL
+
+Confirm the important details appropriate to that call.
+
+For a business enquiry, confirm the customer's name, callback number,
+location, main job requirement and requested finish when applicable.
+
+For a personal/private call, confirm the caller's name, callback number,
+message if provided and whether the matter is urgent.
+
+Resolve any correction before ending the call.
+
+Save the final confirmed information using save-fleet-enquiry before
+ending the conversation.
+
+Never hang up while the caller is attempting to correct important
+information.
+
+
 `.trim();
 
 async function startTelnyxAiAssistant(
@@ -2562,6 +2840,211 @@ app.post('/api/admin/campaigns', requireAdmin, (req,res)=>{const parsed=z.object
 app.get('/api/admin/receptionist-settings', requireAdmin, (req,res)=>res.json({ok:true,settings:db.prepare('SELECT * FROM receptionist_settings WHERE id=1').get()}));
 
 app.put('/api/admin/receptionist-settings', requireAdmin, (req,res)=>{const parsed=z.object({business_name:z.string().trim().min(1).max(100),greeting:z.string().trim().min(10).max(1000),transfer_number:z.string().trim().min(8).max(30),service_area:z.string().trim().min(2).max(500),business_hours:z.string().trim().min(2).max(500),escalation_rules:z.string().trim().min(10).max(3000),required_questions:z.string().trim().min(10).max(3000),screening_mode:z.enum(['business_only','business_or_personal']),personal_transfer_rules:z.string().trim().min(10).max(3000),recording_notice:z.string().trim().min(10).max(1000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Please check all receptionist settings.'});db.prepare(`UPDATE receptionist_settings SET business_name=@business_name,greeting=@greeting,transfer_number=@transfer_number,service_area=@service_area,business_hours=@business_hours,escalation_rules=@escalation_rules,required_questions=@required_questions,screening_mode=@screening_mode,personal_transfer_rules=@personal_transfer_rules,recording_notice=@recording_notice,updated_at=@updated_at WHERE id=1`).run({...parsed.data,updated_at:new Date().toISOString()});res.json({ok:true})});
+
+// -----------------------------------------------------------------------------
+// Fleet Office AI - Voice Enquiry API
+// -----------------------------------------------------------------------------
+
+const voiceEnquiries = new Map();
+
+function requireAiToolSecret(req, res, next) {
+  const expected = String(env.AI_TOOL_SHARED_SECRET || '').trim();
+  const provided = String(req.get('x-ai-tool-secret') || '').trim();
+
+  if (!expected || !provided) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Unauthorized'
+    });
+  }
+
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+
+  if (
+    expectedBuffer.length !== providedBuffer.length ||
+    !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
+  ) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Unauthorized'
+    });
+  }
+
+  next();
+}
+
+app.post(
+  '/api/ai-tools/enquiry',
+  requireAiToolSecret,
+  (req, res) => {
+    try {
+      const body = req.body || {};
+
+      const id =
+        String(body.enquiry_id || '').trim() ||
+        crypto.randomUUID();
+
+      const existing = voiceEnquiries.get(id) || {};
+
+      const row = {
+        ...existing,
+
+        id,
+
+        updated_at:
+          new Date().toISOString()
+      };
+
+      if (!row.created_at) {
+        row.created_at = row.updated_at;
+      }
+
+      const fields = [
+        'call_session_id',
+        'call_control_id',
+        'customer_name',
+        'callback_number',
+        'business_name',
+        'call_type',
+        'priority',
+        'personal_call',
+        'urgent',
+        'transfer_requested',
+        'owner_notification_required',
+        'location',
+        'service_address',
+        'project_type',
+        'vehicle_make_model',
+        'components',
+        'quantity',
+        'material',
+        'condition',
+        'oxidation',
+        'corrosion',
+        'pitting',
+        'scratches',
+        'coating',
+        'desired_finish',
+        'service_mode',
+        'deadline',
+        'recurring_fleet',
+        'message',
+        'notes',
+        'transcript_summary'
+      ];
+
+      for (const field of fields) {
+        if (body[field] !== undefined) {
+          row[field] = body[field];
+        }
+      }
+
+      row.callback_number_confirmed =
+        body.callback_number_confirmed === true;
+
+      // Personal/private calls always receive Priority 1.
+      row.personal_call =
+        body.personal_call === true ||
+        ['personal_friend_family', 'private_other'].includes(
+          String(body.call_type || row.call_type || '')
+        );
+
+      if (row.personal_call) {
+        row.priority = 1;
+        row.owner_notification_required = true;
+      } else if (body.priority !== undefined) {
+        const requestedPriority = Number(body.priority);
+
+        row.priority =
+          Number.isFinite(requestedPriority)
+            ? Math.max(
+                1,
+                Math.min(4, requestedPriority)
+              )
+            : (row.priority || 3);
+      } else if (!row.priority) {
+        if (
+          String(body.call_type || row.call_type || '') ===
+            'existing_customer' &&
+          body.urgent === true
+        ) {
+          row.priority = 2;
+        } else {
+          row.priority = 3;
+        }
+      }
+
+      row.urgent =
+        body.urgent === true;
+
+      row.transfer_requested =
+        body.transfer_requested === true;
+
+      row.owner_notification_required =
+        row.owner_notification_required === true ||
+        body.owner_notification_required === true;
+
+      voiceEnquiries.set(id, row);
+
+      console.log(
+        '[VOICE ENQUIRY] Saved.',
+        {
+          id: row.id,
+          callType: row.call_type || null,
+          priority: row.priority,
+          personalCall: row.personal_call,
+          urgent: row.urgent
+        }
+      );
+
+      return res.json({
+        ok: true,
+        enquiry_id: id,
+        enquiry: row
+      });
+    } catch (error) {
+      console.error(
+        '[VOICE ENQUIRY] Unable to save enquiry:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: 'Unable to save voice enquiry.'
+      });
+    }
+  }
+);
+
+app.get(
+  '/api/admin/voice-enquiries',
+  requireAdmin,
+  (req, res) => {
+    const enquiries =
+      Array.from(voiceEnquiries.values())
+        .sort((a, b) => {
+          const priorityDifference =
+            Number(a.priority || 99) -
+            Number(b.priority || 99);
+
+          if (priorityDifference !== 0) {
+            return priorityDifference;
+          }
+
+          return String(b.updated_at || '')
+            .localeCompare(
+              String(a.updated_at || '')
+            );
+        });
+
+    res.json({
+      ok: true,
+      count: enquiries.length,
+      enquiries
+    });
+  }
+);
 
 // -----------------------------------------------------------------------------
 // Telnyx Voice API webhook

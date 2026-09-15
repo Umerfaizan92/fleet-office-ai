@@ -130,7 +130,18 @@ async function telnyxApiRequest(endpoint, options = {}) {
     const error = new Error(message);
     error.statusCode = response.status;
     error.telnyxResponse = data;
-
+console.error(
+  '[TELNYX API ERROR]',
+  JSON.stringify(
+    {
+      status: response.status,
+      endpoint,
+      response: data
+    },
+    null,
+    2
+  )
+);
     throw error;
   }
 

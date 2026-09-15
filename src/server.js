@@ -2787,23 +2787,6 @@ app.post('/api/webhooks/telnyx', (req, res) => {
       receivedAt: new Date().toISOString()
     });
 
-    // Acknowledge verified events quickly. Actual call-control/AI actions will be
-    // added as a separate service layer so webhook retries stay safe/idempotent.
-    return res.status(200).json({
-      ok: true,
-      received: true,
-      verified: true,
-      provider: 'telnyx',
-      event_type: eventType
-    });
-  } catch (error) {
-    console.error('[TELNYX WEBHOOK ERROR]', error);
-    return res.status(500).json({
-      ok: false,
-      error: 'Telnyx webhook processing failed'
-    });
-  }
-});
 
 /*
 |--------------------------------------------------------------------------

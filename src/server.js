@@ -59,7 +59,7 @@ const allowedOrigins = String(env.ALLOWED_ORIGINS || '')
 | TikTok Login Kit / OAuth
 |--------------------------------------------------------------------------
 |
-| Add these values to backend/.env:
+| Add these values to the deployment environment / root .env:
 |
 | TIKTOK_CLIENT_KEY=
 | TIKTOK_CLIENT_SECRET=
@@ -67,7 +67,7 @@ const allowedOrigins = String(env.ALLOWED_ORIGINS || '')
 | TIKTOK_SCOPES=user.info.basic,user.info.stats
 |
 | Tokens are saved privately in:
-| backend/data/tiktok-oauth.json
+| data/tiktok-oauth.json
 |
 */
 
@@ -250,7 +250,7 @@ function assertTikTokOauthConfigured() {
     !cfg.redirectUri
   ) {
     const err = new Error(
-      'TikTok OAuth is not configured. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET and TIKTOK_REDIRECT_URI in backend/.env.'
+      'TikTok OAuth is not configured. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET and TIKTOK_REDIRECT_URI in the deployment environment / root .env.'
     );
 
     err.statusCode = 503;
@@ -513,7 +513,13 @@ app.use(
 
 app.use(
   express.json({
-    limit: '1mb'
+    limit: '1mb',
+    verify: (req, res, buf) => {
+      // Telnyx signs the exact raw JSON payload. Keep it only for the webhook route.
+      if (req.originalUrl?.startsWith('/api/webhooks/telnyx')) {
+        req.rawBody = Buffer.from(buf);
+      }
+    }
   })
 );
 
@@ -537,7 +543,11 @@ app.use(
       true,
 
     legacyHeaders:
-      false
+      false,
+
+    // Voice webhooks can generate several events for one call. Provider
+    // authenticity is checked with the Telnyx signature instead of this limiter.
+    skip: req => req.path === '/webhooks/telnyx'
   })
 );
 
@@ -2041,7 +2051,7 @@ app.get('/api/admin/integration-readiness', requireAdmin, (req,res)=>{
     ['Meta / Facebook / Instagram',['META_APP_ID','META_APP_SECRET']],
     ['WhatsApp Business',['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID']],
     ['YouTube',['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET']],
-    ['Voice / Telephone',['TELNYX_API_KEY','TELNYX_CONNECTION_ID','TELNYX_PHONE_NUMBER']]
+    ['Voice / Telephone',['TELNYX_API_KEY','TELNYX_CONNECTION_ID','TELNYX_PUBLIC_KEY','TELNYX_PHONE_NUMBER']]
   ];
   const integrations=specs.map(([name,keys])=>{const missing=keys.filter(k=>!env[k]);return {name,ready:missing.length===0,missing};});
   res.json({ok:true,integrations,live_activation:false,note:'Readiness only. Provider accounts, approved apps, purchased/ported numbers, HTTPS callback URLs and OAuth authorisation must be completed with each provider before live activation.'});
@@ -2071,8 +2081,64 @@ app.put('/api/admin/receptionist-settings', requireAdmin, (req,res)=>{const pars
 // Telnyx Voice API webhook
 // -----------------------------------------------------------------------------
 
+function telnyxPublicKeyObject() {
+  const encoded = String(env.TELNYX_PUBLIC_KEY || '').trim();
+  if (!encoded) return null;
+
+  // Telnyx exposes the Ed25519 public key as 32 raw bytes encoded with Base64.
+  // Node's crypto API expects a SubjectPublicKeyInfo (SPKI) wrapper.
+  const raw = Buffer.from(encoded, 'base64');
+  if (raw.length !== 32) {
+    throw new Error('TELNYX_PUBLIC_KEY must decode to a 32-byte Ed25519 public key.');
+  }
+
+  const ed25519SpkiPrefix = Buffer.from('302a300506032b6570032100', 'hex');
+  return crypto.createPublicKey({
+    key: Buffer.concat([ed25519SpkiPrefix, raw]),
+    format: 'der',
+    type: 'spki'
+  });
+}
+
+function verifyTelnyxWebhook(req) {
+  const signature = String(req.get('telnyx-signature-ed25519') || '').trim();
+  const timestamp = String(req.get('telnyx-timestamp') || '').trim();
+  const publicKey = telnyxPublicKeyObject();
+
+  if (!publicKey || !signature || !timestamp || !req.rawBody) return false;
+
+  // Reject stale/replayed requests. Telnyx timestamps are Unix seconds.
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > 300) return false;
+
+  const signedPayload = Buffer.concat([
+    Buffer.from(`${timestamp}|`, 'utf8'),
+    req.rawBody
+  ]);
+
+  let signatureBytes;
+  try {
+    signatureBytes = Buffer.from(signature, 'base64');
+  } catch {
+    return false;
+  }
+
+  return crypto.verify(null, signedPayload, publicKey, signatureBytes);
+}
+
 app.post('/api/webhooks/telnyx', (req, res) => {
   try {
+    if (!env.TELNYX_PUBLIC_KEY) {
+      console.error('[TELNYX WEBHOOK] TELNYX_PUBLIC_KEY is not configured.');
+      return res.status(503).json({ ok: false, error: 'Telnyx webhook verification is not configured.' });
+    }
+
+    if (!verifyTelnyxWebhook(req)) {
+      console.warn('[TELNYX WEBHOOK] Rejected request with invalid or stale signature.');
+      return res.status(401).json({ ok: false, error: 'Invalid Telnyx webhook signature.' });
+    }
+
     const event = req.body?.data;
     const eventType = event?.event_type || 'unknown';
     const payload = event?.payload || {};
@@ -2086,15 +2152,17 @@ app.post('/api/webhooks/telnyx', (req, res) => {
       receivedAt: new Date().toISOString()
     });
 
+    // Acknowledge verified events quickly. Actual call-control/AI actions will be
+    // added as a separate service layer so webhook retries stay safe/idempotent.
     return res.status(200).json({
       ok: true,
       received: true,
+      verified: true,
       provider: 'telnyx',
       event_type: eventType
     });
   } catch (error) {
     console.error('[TELNYX WEBHOOK ERROR]', error);
-
     return res.status(500).json({
       ok: false,
       error: 'Telnyx webhook processing failed'
@@ -2113,7 +2181,7 @@ app.listen(
   () => {
 
     console.log(
-      `Fleet Parlour website + enquiry backend running on http://localhost:${port}`
+      `Fleet Office AI backend running on http://localhost:${port}`
     );
 
     console.log(

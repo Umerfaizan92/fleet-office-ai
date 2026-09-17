@@ -12,14 +12,14 @@
   // Prevent accidental navigation on hash links and make section travel obvious.
   $$('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const id=a.getAttribute('href').slice(1),el=id&&document.getElementById(id);if(el){e.preventDefault();el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});history.replaceState(null,'','#'+id)}}));
 
-  // v16 intelligence layer: expand product knowledge/memory everywhere, then add the full workspace AI chat on authenticated workspace pages.
   function loadScript(src,id){
     if(document.getElementById(id))return Promise.resolve();
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.defer=true;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});
   }
   if(location.pathname.startsWith('/saas/')){
-    loadScript('/saas/guide-v16.js?v=16.1','superpro-guide-v16')
+    loadScript('/saas/guide-v17-hotfix.js?v=17.0','superpro-guide-v17-hotfix')
       .catch(()=>{})
-      .finally(()=>{if(location.pathname.includes('/saas/workspace'))loadScript('/saas/ai-operations-v16.js?v=16.1','superpro-ai-ops-v16').catch(()=>{})});
+      .finally(()=>loadScript('/saas/guide-v16.js?v=16.2','superpro-guide-v16').catch(()=>{}))
+      .finally(()=>{if(location.pathname.includes('/saas/workspace'))loadScript('/saas/ai-operations-v16.js?v=16.2','superpro-ai-ops-v16').catch(()=>{})});
   }
 })();

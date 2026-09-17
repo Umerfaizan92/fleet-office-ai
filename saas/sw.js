@@ -1,4 +1,4 @@
-const CACHE='superpro-public-v16';
+const CACHE='superpro-public-v17';
 const PUBLIC=[
   '/saas/',
   '/saas/index.html',
@@ -9,6 +9,9 @@ const PUBLIC=[
   '/saas/product-guide.js?v=13',
   '/saas/v14.js?v=14',
   '/saas/v15.js?v=15',
+  '/saas/superpro-v12.js?v=16.1',
+  '/saas/guide-v16.js?v=16.1',
+  '/saas/ai-operations-v16.js?v=16.1',
   '/saas/answers.html',
   '/saas/superpro-icon-192.png',
   '/saas/superpro-icon-512.png'

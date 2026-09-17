@@ -1,4 +1,4 @@
-const CACHE='superpro-public-v15';
+const CACHE='superpro-public-v16';
 const PUBLIC=[
   '/saas/',
   '/saas/index.html',

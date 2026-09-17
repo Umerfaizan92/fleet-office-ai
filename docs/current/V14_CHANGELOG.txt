@@ -1,0 +1,26 @@
+SUPER PRO AI OFFICE MANAGER — V14 CHANGELOG
+
+Baseline: v13 final candidate. Core v13 security, governance, receptionist, staff chat, historical records, customer 360, Content Studio, Connections, billing foundations and persistent-session work are preserved.
+
+Added in v14:
+- PWA/install section for desktop, laptop, tablet and mobile-compatible browsers.
+- Cross-channel marketing performance foundation for social, email, SMS, WhatsApp, Google/YouTube and website metrics.
+- Expense ledger and recorded job/overall profit centre.
+- Staff/customer operational performance levels with human-review guardrails for bonuses/consequential decisions.
+- Root/original referral attribution with direct inviter and referral level tracking.
+- Business structure + solo/team onboarding and custom workspace sections.
+- AI workspace designer with configured-model support and safe local fallback.
+- Stronger multilingual Product Guide local fallbacks while preserving correct-language voice safeguards.
+- Maker/checker quality loop with independent verifier, run memory, static checker and quality ratchet.
+- Public Answer Center plus SEO/GEO/AEO Search Visibility Centre.
+- robots.txt, sitemap.xml, dynamic canonical URLs, OpenGraph, SoftwareApplication structured data, IndexNow readiness and optional llms.txt.
+- Bing AI/Search visibility snapshot foundation.
+- HighLevel/competitor gap research documentation.
+- V14 deployment, audit and prompt-implementation documentation.
+
+Not falsely claimed:
+- No provider integration is called live until its real credential/authorization passes readiness checks.
+- No guaranteed Google/Bing ranking or AI citation.
+- No fake AWS/security certification.
+- No guaranteed legal compliance from AI setup.
+- No automatic employment/bonus/financial decision from AI performance scores.

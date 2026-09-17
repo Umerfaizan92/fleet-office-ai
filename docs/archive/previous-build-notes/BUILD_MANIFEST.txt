@@ -1,0 +1,38 @@
+Super Pro AI Office Manager Premium Adaptive Governance Final Build — v10
+Base consolidated: gds-wizard-premium-governance-final
+Original latest product base: fleet-office-ai-6-production-candidate (1).zip
+Build date: 2026-09-16
+
+Preserved and consolidated:
+- premium public introduction + AI product specialist
+- typed and voice product guidance
+- satisfaction / account / sign-in journey
+- ABN + email OTP + Australian mobile OTP registration architecture
+- first-login walkthrough + business/industry templates
+- Global AI Search + GDS workspace co-pilot
+- workforce / jobs / AI Operations / Content Studio
+- Telnyx voice foundations and prior backend flows
+- Help & Complaint Desk on every SaaS HTML page
+- evidence, protected/confidential complaint intake and escalation foundations
+- Trust & Governance workspace
+- role/industry policy centre + acknowledgements
+- role-restricted audit/security views
+- append-only/hash-linked governance evidence controls
+- self-service Connections Hub
+- Trust Center / Privacy / Terms / Complaints / Policies / Subprocessors
+
+Final v10 additions:
+- operator-owned, platform-managed key model
+- secret-safe platform capability/readiness endpoint
+- npm run check:config (never prints secret values)
+- responsive adaptive.css on every SaaS HTML page
+- touch/safe-area/reduced-motion support
+- persistent You Are Here navigator
+- Digital User Manual workspace
+- visual live application map
+- role-aware guidance and next-step prompts
+- direct page navigation + AI co-pilot hand-off
+- final static validation script
+
+Important:
+Production credentials are intentionally NOT embedded in this artifact.

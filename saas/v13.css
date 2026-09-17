@@ -1,0 +1,19 @@
+
+/* Super Pro AI Office Manager v13 — final UX correction layer */
+:root{--sp13-gold:#e8be69;--sp13-line:rgba(232,190,105,.28)}
+/* Product Guide: keep proof away from composer/send control. */
+.guide-shell .proof-b{top:150px!important;right:-20px!important;bottom:auto!important}
+.guide-actions{flex-wrap:wrap;justify-content:flex-end}.guide-language{max-width:145px;min-height:30px;border:1px solid rgba(232,190,105,.2);border-radius:9px;background:#0d131b;color:#dce3ec;padding:0 7px;font-size:8px}.guide-voice{max-width:120px}
+.voice-status{min-height:26px;padding:5px 18px 13px!important;line-height:1.45;color:#778395!important}
+/* Floating workspace staff chat: proper window controls and full composer. */
+.staff-chat-panel{display:grid!important;grid-template-rows:auto minmax(0,1fr) auto;height:min(560px,72vh)!important;overflow:hidden!important}
+.staff-chat-panel[hidden]{display:none!important}.staff-chat-log{height:auto!important;min-height:0!important}.staff-chat-window-actions{display:flex!important;gap:6px!important}.staff-chat-window-actions button{display:grid!important;place-items:center!important;flex:0 0 32px!important;padding:0!important}
+.staff-chat-panel form{grid-template-columns:minmax(0,1fr) 76px!important;align-items:stretch!important}.staff-chat-panel textarea{min-width:0!important;min-height:54px!important;max-height:110px!important}.staff-chat-panel form button{min-width:76px!important;padding:0 10px!important}
+/* Never let the floating chat and AI co-pilot sit on top of each other. */
+#gds-staff-chat{left:18px!important;right:auto!important}.copilot-launch,#gds-copilot{right:18px!important}.gds-live-toasts{pointer-events:none}
+/* Global product trust/footer disclosure on every surface. */
+.sp-global-trust-footer{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1.5fr auto;gap:20px;align-items:center;margin-top:36px;padding:18px clamp(18px,3vw,42px);border-top:1px solid rgba(255,255,255,.08);background:#080c11;color:#7f8a99;font:9px/1.55 Inter,'Segoe UI',Arial,sans-serif}.sp-global-trust-footer b,.sp-global-trust-footer span{display:block}.sp-global-trust-footer b{color:#dce3ed;font-size:10px}.sp-global-trust-footer .sp-aws-status{margin-top:3px;color:#8e9aaa}.sp-global-trust-footer nav{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}.sp-global-trust-footer a{color:#ddb45f;text-decoration:none}.sp-global-trust-footer a:hover{text-decoration:underline}
+/* Keep signed-in top bars and actions fully visible. */
+@media(max-width:1100px){.guide-shell .proof-b{right:0!important;top:148px!important}.sp-global-trust-footer{grid-template-columns:1fr 1fr}.sp-global-trust-footer nav{grid-column:1/-1;justify-content:flex-start}}
+@media(max-width:760px){.guide-actions{max-width:220px}.guide-language{max-width:108px}.sp-global-trust-footer{grid-template-columns:1fr}.sp-global-trust-footer nav{grid-column:auto}.staff-chat-panel{width:calc(100vw - 20px)!important;height:min(72vh,560px)!important}.staff-chat-panel form{grid-template-columns:minmax(0,1fr) 72px!important}}
+@media(max-width:480px){.guide-actions{gap:4px}.guide-language{max-width:102px;font-size:7px}.staff-chat-panel form{grid-template-columns:1fr!important}.staff-chat-panel form button{min-height:44px!important;width:100%!important}}

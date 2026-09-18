@@ -2016,7 +2016,11 @@ function requireAdmin(
 }
 
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many authentication attempts. Try again later.'}});
-const verificationLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many verification attempts. Please try again later.'}});
+const verificationLookupLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many verification lookups. Please wait briefly and try again.'}});
+const businessVerificationLimiter=rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many business verification requests. Please wait briefly and try again.'}});
+const registrationStartLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many account verification starts. Please wait briefly and try again.'}});
+const otpResendLimiter=rateLimit({windowMs:10*60*1000,limit:8,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many code resend requests. Please wait before requesting another code.'}});
+const otpVerifyLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many incorrect verification attempts. Please wait before trying again.'}});
 const sessionCookieName='fp_session';
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const passwordHash=(password,salt)=>crypto.scryptSync(password,salt,64,{N:16384,r:8,p:1}).toString('hex');
@@ -2236,7 +2240,7 @@ async function deliverRegistrationCodes(row,emailCode,smsCode){
 
 app.use('/api/saas',(req,res,next)=>{res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('Pragma','no-cache');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.get('origin');if(origin){try{const u=new URL(origin);const expectedHost=req.get('host');if(u.host!==expectedHost)return res.status(403).json({ok:false,error:'Cross-origin request blocked.'});}catch{return res.status(403).json({ok:false,error:'Invalid request origin.'});}}}next();});
 
-app.get('/api/saas/verification-provider/status',verificationLimiter,async(req,res)=>{
+app.get('/api/saas/verification-provider/status',verificationLookupLimiter,async(req,res)=>{
   try{
     const profile=await getTelnyxVerifyProfile();
     res.json({ok:true,sms:{
@@ -2255,7 +2259,7 @@ app.get('/api/saas/verification-provider/status',verificationLimiter,async(req,r
   }
 });
 
-app.get('/api/saas/address/search',verificationLimiter,async(req,res)=>{
+app.get('/api/saas/address/search',verificationLookupLimiter,async(req,res)=>{
   const q=String(req.query.q||'').trim();
   if(q.length<4)return res.json({ok:true,suggestions:[]});
   try{
@@ -2279,7 +2283,7 @@ app.get('/api/saas/address/search',verificationLimiter,async(req,res)=>{
   }catch(err){res.json({ok:true,suggestions:[],provider_unavailable:true,manual_entry:true})}
 });
 
-app.post('/api/saas/business/verify',verificationLimiter,async(req,res)=>{
+app.post('/api/saas/business/verify',businessVerificationLimiter,async(req,res)=>{
   const parsed=z.object({identifier_type:z.enum(['ABN','ACN','OTHER']).default('ABN'),business_identifier:z.string().min(1).max(80),business_name:z.string().trim().min(2).max(150).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a valid business name and Australian business identifier.'});
   try{
@@ -2287,7 +2291,7 @@ app.post('/api/saas/business/verify',verificationLimiter,async(req,res)=>{
     res.json({ok:true,business:{identifier_type:result.identifier_type,identifier:result.identifier,abn:result.abn||'',status:result.status,legal_name:result.legal_name,state:result.state,postcode:result.postcode,business_names:result.business_names||[],source:result.source},test_mode:verificationTestMode});
   }catch(err){res.status(err.statusCode||400).json({ok:false,error:err.message});}
 });
-app.post('/api/saas/abn/verify',verificationLimiter,async(req,res)=>{
+app.post('/api/saas/abn/verify',businessVerificationLimiter,async(req,res)=>{
   const parsed=z.object({abn:z.string().min(1).max(30),business_name:z.string().trim().min(2).max(150).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a valid business name and ABN.'});
   try{const result=await verifyAustralianBusinessIdentifier('ABN',parsed.data.abn,parsed.data.business_name||'');res.json({ok:true,business:{identifier_type:'ABN',identifier:result.identifier,abn:result.abn,status:result.status,legal_name:result.legal_name,state:result.state,postcode:result.postcode,business_names:result.business_names||[],source:result.source},test_mode:verificationTestMode});}catch(err){res.status(err.statusCode||400).json({ok:false,error:err.message});}
@@ -2295,7 +2299,7 @@ app.post('/api/saas/abn/verify',verificationLimiter,async(req,res)=>{
 
 function referralLineage(code){let current=String(code||'').trim().toUpperCase(),root=current,level=1,seen=new Set();for(let i=0;i<12&&current&&!seen.has(current);i++){seen.add(current);const c=db.prepare(`SELECT organisation_id FROM referral_codes WHERE code=? AND status='active'`).get(current);if(!c)break;const org=db.prepare(`SELECT referrer_code FROM organisations WHERE id=?`).get(c.organisation_id);if(!org?.referrer_code)break;root=String(org.referrer_code).trim().toUpperCase();current=root;level++}return {root_code:root||String(code||'').trim().toUpperCase(),direct_code:String(code||'').trim().toUpperCase(),level}}
 
-app.post('/api/saas/registration/start',verificationLimiter,async(req,res)=>{
+app.post('/api/saas/registration/start',registrationStartLimiter,async(req,res)=>{
   const schema=z.object({business_name:z.string().trim().min(2).max(150),identifier_type:z.enum(['ABN','ACN','OTHER']).default('ABN'),business_identifier:z.string().min(1).max(80),state:z.enum(['ACT','NSW','NT','QLD','SA','TAS','VIC','WA']),postcode:z.string().regex(/^\d{4}$/),address_unit:z.string().trim().max(40).optional().or(z.literal('')),address_street_number:z.string().trim().max(30).optional().or(z.literal('')),address_street_name:z.string().trim().max(180).optional().or(z.literal('')),address_suburb:z.string().trim().max(120).optional().or(z.literal('')),address_formatted:z.string().trim().max(500).optional().or(z.literal('')),address_source:z.string().trim().max(80).optional().or(z.literal('')),full_name:z.string().trim().min(2).max(150),email:z.string().trim().email().max(200),phone:z.string().trim().min(8).max(30),password:z.string().min(14).max(200),confirm_password:z.string().min(14).max(200),plan_id:z.enum(['starter','operations','scale']).default('starter'),accept_terms:z.literal(true),terms_version:z.string().trim().min(3).max(80),referral_code:z.string().trim().max(40).optional().or(z.literal(''))}).refine(v=>v.password===v.confirm_password,{message:'Passwords do not match.',path:['confirm_password']});
   const parsed=schema.safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Use valid business and account details, an Australian mobile number, matching passwords of at least 14 characters, and accept the legal notices.'});
@@ -2319,7 +2323,7 @@ app.post('/api/saas/registration/start',verificationLimiter,async(req,res)=>{
   }catch(err){res.status(err.statusCode||400).json({ok:false,error:err.message});}
 });
 
-app.post('/api/saas/registration/resend',verificationLimiter,async(req,res)=>{
+app.post('/api/saas/registration/resend',otpResendLimiter,async(req,res)=>{
   const parsed=z.object({pending_id:z.string().uuid(),channel:z.enum(['email','sms'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid verification request.'});
   const row=db.prepare(`SELECT * FROM pending_registrations WHERE id=? AND expires_at>?`).get(parsed.data.pending_id,new Date().toISOString());if(!row)return res.status(410).json({ok:false,error:'This verification request expired. Start registration again.'});
   const code=otpCode(),hash=otpHash(row.id,code),now=new Date(),expires=new Date(now.getTime()+10*60*1000);
@@ -2340,7 +2344,7 @@ app.post('/api/saas/registration/resend',verificationLimiter,async(req,res)=>{
   }
 });
 
-app.post('/api/saas/registration/verify',verificationLimiter,async(req,res)=>{
+app.post('/api/saas/registration/verify',otpVerifyLimiter,async(req,res)=>{
   const parsed=z.object({pending_id:z.string().uuid(),email_code:z.string().regex(/^\d{6}$/),sms_code:z.string().regex(/^\d{6}$/)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter both six-digit verification codes.'});
   const row=db.prepare(`SELECT * FROM pending_registrations WHERE id=?`).get(parsed.data.pending_id);if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'The verification codes expired. Start registration again.'});if(row.verification_attempts>=8)return res.status(429).json({ok:false,error:'Too many incorrect codes. Start registration again for your security.'});
   const emailOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.email_code)),Buffer.from(row.email_code_hash));

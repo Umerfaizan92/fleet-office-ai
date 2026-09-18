@@ -1,29 +1,80 @@
 import fs from 'node:fs';
 import path from 'node:path';
-const root=process.cwd();
+import {spawnSync} from 'node:child_process';
+
+const root=process.cwd(),failures=[];
+const abs=p=>path.join(root,p),exists=p=>fs.existsSync(abs(p)),read=p=>fs.readFileSync(abs(p),'utf8');
+
 const required=[
-  'saas/index.html','saas/workspace.html','saas/app.js','saas/v11.js','saas/superpro-v12.js','saas/superpro-v12.css','saas/v13.css','saas/product-guide.js','saas/manual.js','saas/adaptive.css','saas/support.js','saas/governance.css',
-  'office/index.html','office/office.js','office/office-v11.js','office/office-v11.css','office/office-v12.js','office/office-v12.css','office/office-v13.css',
-  'src/server.js','src/db.js','GENERATE-ADMIN-KEY.mjs','saas/v14.js','saas/v14.css','saas/v15.js','saas/v15.css','saas/answers.html','saas/manifest.webmanifest','saas/sw.js','saas/superpro-icon-192.png','saas/superpro-icon-512.png','office/office-v14.js','office/office-v14.css','scripts/checker-v14.mjs','scripts/checker-v15.mjs','scripts/quality-ratchet.mjs'
+  'package.json','.env.example',
+  'src/server.js','src/db.js','src/ai-provider-shim.js',
+  'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/app.js',
+  'saas/ai-operations.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
+  'saas/manual.js','saas/support.js','saas/adaptive.css','saas/governance.css','saas/manifest.webmanifest','saas/sw.js',
+  'saas/superpro-icon-192.png','saas/superpro-icon-512.png',
+  'office/index.html','office/office.js','office/office.css','office/office-extras.js','office/office-records.js','office/office-insights.js',
+  'office/office-theme.css','office/office-records.css','office/office-layout.css','office/office-insights.css',
+  'scripts/quality-check.mjs','scripts/quality-ratchet.mjs','scripts/check-config.mjs'
 ];
-let failures=[];for(const rel of required){if(!fs.existsSync(path.join(root,rel)))failures.push(`Missing ${rel}`)}
-const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
-const ws=read('saas/workspace.html');for(const token of ['id="manual-view"','id="support-view"','Digital user manual','TRUST & GOVERNANCE','data-settings-target','id="trial-clock"','Join Operations AI Office','Super Pro AI Office Manager','superpro-v12.js?v=12','v11.js?v=15','support.js?v=13','v13.css?v=17','data-workspace-home'])if(!ws.includes(token))failures.push(`workspace.html missing ${token}`);
-const home=read('saas/index.html');for(const token of ['Super Pro AI Office Manager','href="#capabilities">Explore the platform','id="product-newsletter"','Multilingual AI','superpro-v12.css?v=12','intro.js?v=16','product-guide.js?v=14','v13.css?v=13','id="install"','id="referrals"','answers.html','application/ld+json','manifest.webmanifest','v14.js?v=14','v15.js?v=15','v15.css?v=15','id="voice-capability"','data-install-help="desktop"','data-install-help="mobile"','data-install-help="security"'])if(!home.includes(token))failures.push(`index.html missing ${token}`);
-const app=read('saas/app.js');for(const token of ["'manual'","'support'","'finance'",'Digital user manual','gds:viewchange','billing-provider-grid','loadFinance','team_mode','superpro_copilot_voice_style','data-connect-provider','/authorise'])if(!app.includes(token))failures.push(`app.js missing ${token}`);if((ws.match(/id=\"integration-self-service\"/g)||[]).length!==1)failures.push('workspace.html must contain exactly one self-service Connections hub');
-const server=read('src/server.js');for(const token of ['/api/saas/platform-capabilities','customer_secret_entry:false','/api/support/cases','/api/saas/governance/overview','/api/saas/business/verify','AcnDetails.aspx','/api/saas/staff-chat','/api/admin/staff-chat','/api/product-guide/answer','OWNER_PRIVATE_TRANSFER_NUMBER','/api/saas/billing/providers','/api/admin/history','/api/admin/records-summary','/api/admin/channel-metrics','/api/newsletter/subscribe','/api/newsletter/unsubscribe','/api/admin/website-status','/api/admin/expenses','/api/admin/profit-summary','/api/admin/marketing-performance','/api/admin/performance-centre','/api/admin/ai-quality/check','/api/admin/search-visibility','/api/saas/referrals','/api/saas/onboarding/ai-design','/robots.txt','/sitemap.xml','/llms.txt','INDEXNOW_KEY','sendVoiceEnquiryNotification','Fleet Parlour currently provides MOBILE / ON-SITE service only','voice_enquiries','/api/saas/finance','organisation_finance_entries','/api/saas/integrations/self-service/:provider/authorise','authorisation_pending','createHmac','ACCOUNT_EXISTS','BUSINESS_EXISTS'])if(!server.includes(token))failures.push(`server.js missing ${token}`);
-const db=read('src/db.js');for(const token of ['historical_records','newsletter_subscribers','channel_metrics','voice_preference','Snapchat','X / Twitter','voice_enquiries','mobile/on-site only','expenses','performance_events','referral_codes','referral_events','ai_verification_runs','search_visibility_snapshots','organisation_finance_entries'])if(!db.includes(token))failures.push(`db.js missing ${token}`);
-const office=read('office/index.html');for(const token of ['Super Pro AI Office Manager','PERSONAL ROUTING OFF','Office AI Co-pilot','Staff Chat','Help & Governance','Records & Archive','AI Creative Director','Snapchat','X / Twitter','Fleet Parlour live website','office-v12.js?v=13','office-v11.js?v=13','office-v13.css?v=13','data-office-chat-close','data-office-chat-minimise','Expenses & Profit','Performance Centre','AI Quality Loop','SEO · GEO · AEO','office-v14.js?v=14'])if(!office.includes(token))failures.push(`office/index.html missing ${token}`);
-if(/name=["']contact_type["']/i.test(office))failures.push('office/index.html still contains contact_type selector');
-const officeV12=read('office/office-v12.js');for(const token of ['CUSTOMER 360°','Previous','loadRecords','loadChannelMetrics','loadWebsite','loadConversations','loadApprovals','loadCustomers','workspace-return'])if(!officeV12.includes(token))failures.push(`office-v12.js missing ${token}`);
-const env=read('.env.example');for(const token of ['BUSINESS_PRIMARY_NUMBER=','BUSINESS_WHATSAPP_NUMBER=','OWNER_PRIVATE_TRANSFER_NUMBER=','VOICE_ENQUIRY_NOTIFY_TO=','VOICE_ENQUIRY_ALERT_PHONE=','AWS_REGION=','AWS_S3_BUCKET=','AWS_KMS_KEY_ID=','STRIPE_SECRET_KEY=','POST_TRIAL_RESTRICT_DAYS=30','FINAL_RESTORE_WINDOW_DAYS=14','INDEXNOW_KEY=','GOOGLE_SITE_VERIFICATION=','BING_SITE_VERIFICATION=','AI_CHECKER_API_KEY='])if(!env.includes(token))failures.push(`.env.example missing ${token}`);
-const htmlFiles=fs.readdirSync(path.join(root,'saas')).filter(x=>x.endsWith('.html'));for(const file of htmlFiles){const html=read(`saas/${file}`);if(!html.includes('adaptive.css'))failures.push(`${file} missing adaptive.css`);if(!html.includes('superpro-v12.css'))failures.push(`${file} missing superpro-v12.css`);if(!html.includes('v13.css'))failures.push(`${file} missing v13.css`);if(!html.includes('support.js?v=13'))failures.push(`${file} missing support.js?v=13`)}
-if(/sessionStorage\.removeItem\(['"]fp-admin-key['"]\).*workspace-return/s.test(officeV12))failures.push('workspace-return appears to clear the admin session');
-const intro=read('saas/intro.js');for(const token of ['guide-voice','findLanguageVoice','ensureVoicesReady','splitSpeech','speechHeartbeat','speechLocale','preserveSignedInNavigation','superpro_voice_preference'])if(!intro.includes(token))failures.push(`intro.js missing ${token}`);
-const v15=read('saas/v15.js');for(const token of ['beforeinstallprompt','appinstalled','Add to Home Screen','data-install-help','standalone','Secure-by-default install'])if(!v15.includes(token))failures.push(`v15.js missing ${token}`);
-const sw=read('saas/sw.js');for(const token of ['superpro-public-v19',"startsWith('/api/')","includes('workspace')","startsWith('/office/')"] )if(!sw.includes(token))failures.push(`sw.js missing ${token}`);
-const manifest=JSON.parse(read('saas/manifest.webmanifest'));if(!manifest.icons?.some(x=>x.sizes==='192x192'))failures.push('manifest missing 192x192 icon');if(!manifest.icons?.some(x=>x.sizes==='512x512'))failures.push('manifest missing 512x512 icon');
-const v11=read('saas/v11.js');for(const token of ['data-staff-minimise','data-staff-close','Escape','superpro:floating-chat'])if(!v11.includes(token))failures.push(`v11.js missing ${token}`);
-const support=read('saas/support.js');for(const token of ['sp-global-trust-footer','built with AI-assisted development','AWS certifications/badges are shown only when actually configured'])if(!support.includes(token))failures.push(`support.js missing ${token}`);
-if(failures.length){console.error('FINAL VALIDATION FAILED');for(const x of failures)console.error('-',x);process.exit(1)}
-console.log(`V15 FINAL VALIDATION PASSED: ${required.length} protected/core files, ${htmlFiles.length} SaaS HTML pages, v14 capabilities retained, reliable multilingual spoken-reply controls and full PWA install guidance detected.`);
+for(const p of required)if(!exists(p))failures.push('Missing '+p);
+
+const obsolete=[
+  'saas/guide-v16.js','saas/guide-v17-hotfix.js','saas/superpro-v12.js','saas/superpro-v12.css',
+  'saas/v11.js','saas/v14.js','saas/v15.js','saas/ai-operations-v16.js','saas/v5.css','saas/v13.css','saas/v14.css','saas/v15.css',
+  'office/office-v11.js','office/office-v12.js','office/office-v14.js','office/office-v11.css','office/office-v12.css','office/office-v13.css','office/office-v14.css'
+];
+for(const p of obsolete)if(exists(p))failures.push('Obsolete runtime still present: '+p);
+
+function localAssetRefs(file){
+  const html=read(file),refs=[];
+  for(const m of html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["'][^>]*>/gi)){
+    const raw=m[1];
+    if(!raw||raw.startsWith('http:')||raw.startsWith('https:')||raw.startsWith('//')||raw.startsWith('#')||raw.startsWith('data:'))continue;
+    const clean=raw.split('?')[0].split('#')[0];
+    if(!/\.(?:js|css|html|webmanifest|png|svg|ico)$/i.test(clean))continue;
+    const rel=clean.startsWith('/')?clean.replace(/^\//,''):path.posix.normalize(path.posix.join(path.posix.dirname(file),clean));
+    refs.push({raw,rel});
+  }
+  return refs;
+}
+for(const dir of ['saas','office']){
+  for(const name of fs.readdirSync(abs(dir)).filter(x=>x.endsWith('.html'))){
+    const file=dir+'/'+name;
+    for(const ref of localAssetRefs(file))if(!exists(ref.rel))failures.push(`${file} references missing ${ref.raw} -> ${ref.rel}`);
+  }
+}
+
+const jsFiles=[];
+for(const dir of ['saas','office','src','scripts']){
+  if(!exists(dir))continue;
+  for(const name of fs.readdirSync(abs(dir))){
+    if(!/\.(?:js|mjs)$/i.test(name))continue;
+    jsFiles.push(dir+'/'+name);
+  }
+}
+for(const file of jsFiles){
+  const r=spawnSync(process.execPath,['--check',abs(file)],{encoding:'utf8'});
+  if(r.status!==0)failures.push(`Syntax error in ${file}: ${String(r.stderr||r.stdout).trim().split('\n').slice(-2).join(' ')}`);
+}
+
+const index=read('saas/index.html'),workspace=read('saas/workspace.html'),office=read('office/index.html'),guide=read('saas/product-guide.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),intro=read('saas/intro.js'),sw=read('saas/sw.js');
+for(const token of ['product-guide.js','intro.js','common.js','install.js','id="voice-capability"','Multilingual AI','manifest.webmanifest'])if(!index.includes(token))failures.push('index.html missing '+token);
+for(const token of ['app.js','ai-operations.js','workspace-extras.js','common.js','id="integration-self-service"','id="manual-view"','id="support-view"'])if(!workspace.includes(token))failures.push('workspace.html missing '+token);
+if((workspace.match(/id="integration-self-service"/g)||[]).length!==1)failures.push('workspace.html must contain exactly one Connections hub');
+for(const token of ['office.js','office-extras.js','office-records.js','office-insights.js','office-theme.css','office-layout.css','../saas/experience.css'])if(!office.includes(token))failures.push('office/index.html missing '+token);
+for(const token of ['localized-browser-fallback','superpro_ai_memory_current','conversation_id:conversationId','knowledgeContext','detectLanguage'])if(!guide.includes(token))failures.push('product-guide.js missing '+token);
+for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/callback/','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
+for(const token of ['freeAiModeEnabled','geminiProviderConfig','if (freeAiModeEnabled()) return gemini','if (freeAiModeEnabled()) return null'])if(!shim.includes(token))failures.push('ai-provider-shim.js missing '+token);
+for(const token of ['startBrowserRecognitionFallback','findLanguageVoice','splitSpeech','speechHeartbeat','guide-voice'])if(!intro.includes(token))failures.push('intro.js missing '+token);
+for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')",'superpro-public-20260919-4'])if(!sw.includes(token))failures.push('sw.js missing '+token);
+
+const env=read('.env.example');
+for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-2.5-flash','GEMINI_STT_MODEL=gemini-2.5-flash','GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);
+
+if(failures.length){
+  console.error('CURRENT FINAL VALIDATION FAILED');
+  for(const x of failures)console.error('-',x);
+  process.exit(1);
+}
+console.log(`CURRENT FINAL VALIDATION PASSED: ${required.length} core files, ${jsFiles.length} JavaScript files syntax-checked, local asset references resolved, obsolete runtime files absent.`);

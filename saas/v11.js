@@ -44,6 +44,20 @@
       }catch{}
     }
     setTimeout(checkProductRelease,2200);
+    async function checkRegulatorySourcesIfDue(){
+      const interval=6*60*60*1000,key='superpro_regulatory_check_at';
+      const last=Number(localStorage.getItem(key)||0);if(Date.now()-last<interval)return;
+      localStorage.setItem(key,String(Date.now()));
+      try{
+        const d=await api('/api/saas/regulatory/check',{method:'POST',body:'{}'});
+        const changed=(d.results||[]).filter(x=>x.changed);
+        if(changed.length){
+          push(`${changed.length} official regulatory source page${changed.length===1?' has':'s have'} changed. Review the source before treating it as a new obligation.`,'success');
+        }
+      }catch{}
+    }
+    setTimeout(checkRegulatorySourcesIfDue,4200);
+    setInterval(checkRegulatorySourcesIfDue,60*60*1000);
 
     let baseline=new Set();async function poll(){try{const d=await api('/api/saas/live-activity');const rows=d.events||[];if(!baseline.size){rows.forEach(x=>baseline.add(x.id));return}for(const e of rows.slice().reverse()){if(!baseline.has(e.id)){baseline.add(e.id);push(`${String(e.event_type||'workspace update').replaceAll('_',' ')} completed.`)}}if(baseline.size>100)baseline=new Set(rows.map(x=>x.id))}catch{}}
     setTimeout(poll,1500);setInterval(poll,7000);

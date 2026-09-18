@@ -112,12 +112,20 @@ export async function sendEnquiryNotification(env, enquiry, files = []) {
   };
 }
 export async function sendSaasVerificationEmail(env, { to, code, businessName }) {
-  if (!env.RESEND_API_KEY) {
+  const valid = (value) => {
+    const text = String(value || '').trim();
+    return Boolean(text) && !/^(YOUR_|REPLACE_|CHANGE_ME|CHANGEME)/i.test(text);
+  };
+  if (!valid(env.RESEND_API_KEY)) {
     return { sent: false, reason: 'resend_not_configured' };
   }
 
   const resend = new Resend(env.RESEND_API_KEY);
-  const from = env.SAAS_VERIFY_FROM || env.NOTIFY_FROM || 'Super Pro AI Office Manager Security <security@fleetparlour.com.au>';
+  const from = valid(env.SAAS_VERIFY_FROM)
+    ? env.SAAS_VERIFY_FROM
+    : valid(env.NOTIFY_FROM)
+      ? env.NOTIFY_FROM
+      : 'Super Pro AI Office Manager Security <security@fleetparlour.com.au>';
 
   const { data, error } = await resend.emails.send({
     from,

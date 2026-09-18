@@ -32,7 +32,7 @@ function geminiProviderConfig() {
   return {
     base:'https://generativelanguage.googleapis.com/v1beta',
     key:String(key).trim(),
-    model:meaningfulConfigValue(env.GEMINI_MODEL)?String(env.GEMINI_MODEL).trim():'gemini-3.8-flash',
+    model:meaningfulConfigValue(env.GEMINI_MODEL)?String(env.GEMINI_MODEL).trim():'gemini-2.5-flash',
     source:'gemini-free-first'
   };
 }
@@ -244,7 +244,7 @@ async function callProvider(base,key,model,messages,id) {
 function secondaryConfig(primary={}) {
   const candidates = [
     completeProvider(env.AI_CHECKER_PROVIDER_BASE_URL,env.AI_CHECKER_API_KEY,env.AI_CHECKER_MODEL) ? { base:env.AI_CHECKER_PROVIDER_BASE_URL, key:env.AI_CHECKER_API_KEY, model:env.AI_CHECKER_MODEL } : null,
-    meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-3.8-flash' } : null,
+    meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-2.5-flash' } : null,
     meaningfulConfigValue(env.OPENAI_API_KEY) ? { base:'https://api.openai.com/v1', key:env.OPENAI_API_KEY, model:meaningfulConfigValue(env.OPENAI_MODEL)?env.OPENAI_MODEL:'gpt-5.6-luna' } : null
   ].filter(Boolean).filter(x=>completeProvider(x.base,x.key,x.model));
   return candidates.find(x => !(x.base === primary.base && x.key === primary.key && x.model === primary.model)) || null;

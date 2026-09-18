@@ -1232,5 +1232,78 @@ export function createDb(databasePath) {
     insertPolicy.run(`au-${key}-${version}`,'AU',industry,audience,key,title,version,'draft',null,summary,body,ack,source,policyNow,policyNow);
   }
 
+
+  // v16.3 identity, address, OTP-delivery and account-recovery migrations.
+  const orgAddressColumns = new Set(db.prepare(`PRAGMA table_info(organisations)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['address_unit', `TEXT`],
+    ['address_street_number', `TEXT`],
+    ['address_street_name', `TEXT`],
+    ['address_suburb', `TEXT`],
+    ['address_state', `TEXT`],
+    ['address_postcode', `TEXT`],
+    ['address_formatted', `TEXT`],
+    ['address_source', `TEXT`]
+  ]) {
+    if (!orgAddressColumns.has(name)) db.exec(`ALTER TABLE organisations ADD COLUMN ${name} ${definition}`);
+  }
+
+  const pendingAddressColumns = new Set(db.prepare(`PRAGMA table_info(pending_registrations)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['address_unit', `TEXT`],
+    ['address_street_number', `TEXT`],
+    ['address_street_name', `TEXT`],
+    ['address_suburb', `TEXT`],
+    ['address_state', `TEXT`],
+    ['address_postcode', `TEXT`],
+    ['address_formatted', `TEXT`],
+    ['address_source', `TEXT`]
+  ]) {
+    if (!pendingAddressColumns.has(name)) db.exec(`ALTER TABLE pending_registrations ADD COLUMN ${name} ${definition}`);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS verification_delivery_log (
+      id TEXT PRIMARY KEY,
+      purpose TEXT NOT NULL,
+      subject_id TEXT,
+      user_id TEXT,
+      channel TEXT NOT NULL,
+      destination_masked TEXT NOT NULL,
+      provider TEXT,
+      provider_message_id TEXT,
+      status TEXT NOT NULL,
+      reason TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS account_recovery_challenges (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      recovery_type TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      business_identifier_type TEXT,
+      business_identifier TEXT,
+      code_hash TEXT NOT NULL,
+      verified_at TEXT,
+      reset_token_hash TEXT,
+      reset_token_expires_at TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_verification_delivery_subject
+      ON verification_delivery_log(subject_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_recovery_expiry
+      ON account_recovery_challenges(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_recovery_user
+      ON account_recovery_challenges(user_id, created_at DESC);
+  `);
+
   return db;
 }

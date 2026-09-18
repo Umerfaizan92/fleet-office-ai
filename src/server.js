@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { createDb } from './db.js';
 import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
+import './ai-provider-shim.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

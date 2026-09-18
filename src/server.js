@@ -2473,6 +2473,14 @@ app.post('/api/saas/mfa/verify',requireSaasUser,(req,res)=>{const parsed=z.objec
 
 app.get('/api/health/storage',(req,res)=>res.json({ok:true,persistent_storage_detected:persistentStorageDetected,production:env.NODE_ENV==='production',recommendation:env.NODE_ENV==='production'&&!persistentStorageDetected?'Configure a Render persistent disk at /var/data (paid service) or migrate the relational datastore to a managed database before relying on customer accounts.':null}));
 
+function freeAiModeEnabled(){
+  return !/^(?:0|false|off|no)$/i.test(String(env.FREE_AI_MODE ?? '1').trim());
+}
+function geminiApiKey(){
+  if(meaningfulConfigValue(env.GEMINI_API_KEY))return String(env.GEMINI_API_KEY).trim();
+  if(meaningfulConfigValue(env.GOOGLE_AI_API_KEY))return String(env.GOOGLE_AI_API_KEY).trim();
+  return '';
+}
 function openAiSpeechConfig(){
   const explicitBase=meaningfulConfigValue(env.AI_TTS_PROVIDER_BASE_URL)?String(env.AI_TTS_PROVIDER_BASE_URL).trim().replace(/\/$/,''):'';
   const primary=resolveAiProviderConfig();
@@ -2486,32 +2494,82 @@ function speechVoiceChoice(preference='auto'){
   if(preference==='female')return meaningfulConfigValue(env.AI_TTS_FEMALE_VOICE)?String(env.AI_TTS_FEMALE_VOICE).trim():'coral';
   return meaningfulConfigValue(env.AI_TTS_VOICE)?String(env.AI_TTS_VOICE).trim():'marin';
 }
+function geminiVoiceChoice(preference='auto'){
+  if(preference==='male')return meaningfulConfigValue(env.GEMINI_TTS_MALE_VOICE)?String(env.GEMINI_TTS_MALE_VOICE).trim():'Puck';
+  if(preference==='female')return meaningfulConfigValue(env.GEMINI_TTS_FEMALE_VOICE)?String(env.GEMINI_TTS_FEMALE_VOICE).trim():'Aoede';
+  return meaningfulConfigValue(env.GEMINI_TTS_AUTO_VOICE)?String(env.GEMINI_TTS_AUTO_VOICE).trim():'Kore';
+}
 function speechInstructions(language='en',preference='auto'){
   const styles={en:'natural Australian English unless the text clearly uses another English variety',ur:'natural Pakistani Urdu with native Urdu pronunciation; for Roman Urdu, speak the intended Urdu words rather than reading them as English',hi:'natural Indian Hindi with native Hindi pronunciation; understand common Roman Hindi spellings',pa:'natural Punjabi pronunciation matching the wording and script; for Roman Punjabi, speak the intended Punjabi words',ar:'natural fluent Arabic matching the wording and regional cues in the text',bn:'natural Bengali pronunciation',ta:'natural Tamil pronunciation',zh:'natural Mandarin Chinese pronunciation',ja:'natural Japanese pronunciation',ko:'natural Korean pronunciation',es:'natural Spanish pronunciation matching the wording',fr:'natural French pronunciation matching the wording'};
   const voiceStyle=preference==='male'?'Use a warm, professional lower voice profile.':preference==='female'?'Use a warm, professional brighter voice profile.':'Use a natural professional conversational voice profile.';
   return `Speak in ${styles[language]||'the language of the supplied text with native pronunciation'}. ${voiceStyle} Use natural rhythm, pauses, emphasis and conversational intonation. Do not sound robotic. Never apply an English accent to non-English text. Preserve names, business terms, dates and numbers accurately. Do not read markdown symbols, URLs or formatting punctuation aloud unless necessary for meaning.`;
 }
-async function makeSpeechAudio({text,language='en',voice='auto'}){
-  const cfg=openAiSpeechConfig();if(!cfg)throw Object.assign(new Error('Server speech is not configured.'),{status:503});
+function pcm16Mono24kToWav(pcm){
+  const data=Buffer.isBuffer(pcm)?pcm:Buffer.from(pcm);const out=Buffer.alloc(44+data.length);
+  out.write('RIFF',0);out.writeUInt32LE(36+data.length,4);out.write('WAVE',8);out.write('fmt ',12);out.writeUInt32LE(16,16);out.writeUInt16LE(1,20);out.writeUInt16LE(1,22);out.writeUInt32LE(24000,24);out.writeUInt32LE(48000,28);out.writeUInt16LE(2,32);out.writeUInt16LE(16,34);out.write('data',36);out.writeUInt32LE(data.length,40);data.copy(out,44);return out;
+}
+async function makeGeminiSpeechAudio({text,language='en',voice='auto'}){
+  const key=geminiApiKey();if(!key)throw Object.assign(new Error('Gemini free voice is not configured.'),{status:503});
+  const model=meaningfulConfigValue(env.GEMINI_TTS_MODEL)?String(env.GEMINI_TTS_MODEL).trim():'gemini-2.5-flash-preview-tts';
+  const prompt=`${speechInstructions(language,voice)}\n\nRead the following reply faithfully. Do not add, remove or translate content:\n${text}`;
+  const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+    method:'POST',headers:{'x-goog-api-key':key,'content-type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:geminiVoiceChoice(voice)}}}}})
+  });
+  const data=await response.json().catch(()=>({}));const encoded=data?.candidates?.[0]?.content?.parts?.find(p=>p?.inlineData?.data)?.inlineData?.data;
+  if(!response.ok||!encoded){console.warn('[VOICE TTS GEMINI] provider error',response.status,JSON.stringify(data).slice(0,400));throw Object.assign(new Error('Gemini free voice generation is temporarily unavailable.'),{status:502});}
+  const pcm=Buffer.from(encoded,'base64');if(!pcm.length)throw Object.assign(new Error('Gemini voice returned empty audio.'),{status:502});
+  return {audio:pcm16Mono24kToWav(pcm),contentType:'audio/wav',provider:'gemini-free'};
+}
+async function makeOpenAiSpeechAudio({text,language='en',voice='auto'}){
+  const cfg=openAiSpeechConfig();if(!cfg)throw Object.assign(new Error('OpenAI server speech is not configured.'),{status:503});
   const response=await fetch(cfg.base+'/audio/speech',{method:'POST',headers:{authorization:'Bearer '+cfg.key,'content-type':'application/json','accept':'audio/mpeg'},body:JSON.stringify({model:meaningfulConfigValue(env.AI_TTS_MODEL)?String(env.AI_TTS_MODEL).trim():'gpt-4o-mini-tts',voice:speechVoiceChoice(voice),input:text,response_format:'mp3',instructions:speechInstructions(language,voice)})});
-  if(!response.ok){const detail=await response.text().catch(()=> '');console.warn('[VOICE TTS] provider error',response.status,detail.slice(0,400));throw Object.assign(new Error('Server voice generation is temporarily unavailable.'),{status:502});}
-  const audio=Buffer.from(await response.arrayBuffer());if(!audio.length)throw Object.assign(new Error('Voice provider returned empty audio.'),{status:502});return audio;
+  if(!response.ok){const detail=await response.text().catch(()=> '');console.warn('[VOICE TTS OPENAI] provider error',response.status,detail.slice(0,400));throw Object.assign(new Error('OpenAI server voice is temporarily unavailable.'),{status:502});}
+  const audio=Buffer.from(await response.arrayBuffer());if(!audio.length)throw Object.assign(new Error('OpenAI voice returned empty audio.'),{status:502});return {audio,contentType:'audio/mpeg',provider:'openai'};
+}
+async function makeSpeechAudio(input){
+  const free=freeAiModeEnabled(),gkey=geminiApiKey();
+  if(free&&gkey){try{return await makeGeminiSpeechAudio(input)}catch(err){console.warn('[VOICE TTS] Gemini free fallback failed:',err.message)}}
+  const openai=openAiSpeechConfig();if(openai){try{return await makeOpenAiSpeechAudio(input)}catch(err){console.warn('[VOICE TTS] OpenAI fallback failed:',err.message)}}
+  if(gkey&&!free)return makeGeminiSpeechAudio(input);
+  throw Object.assign(new Error('Server voice is unavailable; browser voice fallback will be used.'),{status:503});
 }
 async function speechEndpoint(req,res,max=3500){
   const parsed=z.object({text:z.string().trim().min(1).max(max),language:z.string().trim().max(20).default('en'),voice:z.enum(['auto','female','male']).default('auto')}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Voice text is invalid.'});
-  try{const audio=await makeSpeechAudio(parsed.data);res.setHeader('Content-Type','audio/mpeg');res.setHeader('Cache-Control','no-store');res.setHeader('Content-Length',String(audio.length));return res.send(audio)}catch(err){console.warn('[VOICE TTS] failed:',err.message);return res.status(err.status||502).json({ok:false,error:err.message||'Server voice generation could not complete.',fallback:'browser'})}
+  try{const result=await makeSpeechAudio(parsed.data);res.setHeader('Content-Type',result.contentType);res.setHeader('X-SuperPro-Voice-Provider',result.provider);res.setHeader('Cache-Control','no-store');res.setHeader('Content-Length',String(result.audio.length));return res.send(result.audio)}catch(err){console.warn('[VOICE TTS] failed:',err.message);return res.status(err.status||502).json({ok:false,error:err.message||'Server voice generation could not complete.',fallback:'browser'})}
 }
 app.post('/api/product-guide/speech',productGuideLimiter,(req,res)=>speechEndpoint(req,res,1800));
 app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,(req,res)=>speechEndpoint(req,res,3500));
 
 const voiceInputUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ok=/^(audio\/|video\/webm)/i.test(String(file.mimetype||''));cb(ok?null:new Error('Unsupported microphone audio format.'),ok)}});
+async function transcribeWithGemini(file,requested='auto'){
+  const key=geminiApiKey();if(!key)throw new Error('Gemini free transcription is not configured.');
+  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim():'gemini-2.5-flash';
+  const mime=file.mimetype||'audio/webm';const prompt=requested==='auto'
+    ? 'Transcribe the speech exactly. Preserve the language and writing style used by the speaker. For Urdu, Hindi or Punjabi spoken in Roman/Latin form, return a natural Roman-script transcription when that is what was spoken. Return transcript text only, with no labels, explanation, timestamps or markdown.'
+    : `Transcribe the speech exactly in language code ${requested}. Return transcript text only, with no labels, explanation, timestamps or markdown.`;
+  const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':key,'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inlineData:{mimeType:mime,data:file.buffer.toString('base64')}}]}],generationConfig:{temperature:0}})});
+  const data=await response.json().catch(()=>({}));const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p?.text||'').join('').trim();
+  if(!response.ok||!text){console.warn('[VOICE STT GEMINI] provider error',response.status,JSON.stringify(data).slice(0,400));throw new Error('Gemini free transcription could not be completed.');}
+  return {text,language:requested==='auto'?detectGuideLanguage(text):requested,source:'gemini-free-transcription'};
+}
+async function transcribeWithOpenAi(file,requested='auto'){
+  const cfg=openAiSpeechConfig();if(!cfg)throw new Error('OpenAI transcription is not configured.');
+  const form=new FormData();const mime=file.mimetype||'audio/webm';form.append('file',new Blob([file.buffer],{type:mime}),file.originalname||'microphone.webm');form.append('model',meaningfulConfigValue(env.AI_STT_MODEL)?String(env.AI_STT_MODEL).trim():'gpt-4o-mini-transcribe');if(requested&&requested!=='auto')form.append('language',requested);
+  const response=await fetch(cfg.base+'/audio/transcriptions',{method:'POST',headers:{authorization:'Bearer '+cfg.key},body:form});const data=await response.json().catch(()=>({}));const text=String(data.text||'').trim();
+  if(!response.ok||!text){console.warn('[VOICE STT OPENAI] provider error',response.status,JSON.stringify(data).slice(0,400));throw new Error('OpenAI transcription could not be completed.');}
+  return {text,language:requested==='auto'?detectGuideLanguage(text):requested,source:'openai-transcription'};
+}
 async function transcribeVoice(req,res){
   if(!req.file?.buffer?.length)return res.status(400).json({ok:false,error:'No microphone audio was received.'});
-  const cfg=openAiSpeechConfig();if(!cfg)return res.status(503).json({ok:false,error:'Server speech recognition is not configured.',fallback:'browser'});
   const requested=String(req.body?.language||'auto').trim().toLowerCase();
   try{
-    const form=new FormData();const mime=req.file.mimetype||'audio/webm';form.append('file',new Blob([req.file.buffer],{type:mime}),req.file.originalname||'microphone.webm');form.append('model',meaningfulConfigValue(env.AI_STT_MODEL)?String(env.AI_STT_MODEL).trim():'gpt-4o-mini-transcribe');if(requested&&requested!=='auto')form.append('language',requested);
-    const response=await fetch(cfg.base+'/audio/transcriptions',{method:'POST',headers:{authorization:'Bearer '+cfg.key},body:form});const data=await response.json().catch(()=>({}));if(!response.ok||!String(data.text||'').trim()){console.warn('[VOICE STT] provider error',response.status,JSON.stringify(data).slice(0,400));return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}const text=String(data.text).trim(),language=requested==='auto'?detectGuideLanguage(text):requested;return res.json({ok:true,text,language,source:'server-transcription'});
+    let result=null;
+    if(freeAiModeEnabled()&&geminiApiKey()){try{result=await transcribeWithGemini(req.file,requested)}catch(err){console.warn('[VOICE STT] Gemini free fallback failed:',err.message)}}
+    if(!result&&openAiSpeechConfig()){try{result=await transcribeWithOpenAi(req.file,requested)}catch(err){console.warn('[VOICE STT] OpenAI fallback failed:',err.message)}}
+    if(!result&&geminiApiKey())result=await transcribeWithGemini(req.file,requested);
+    if(!result)return res.status(503).json({ok:false,error:'Server speech recognition is unavailable; browser recognition can be used.',fallback:'browser'});
+    return res.json({ok:true,...result});
   }catch(err){console.warn('[VOICE STT] failed:',err.message);return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}
 }
 app.post('/api/product-guide/transcribe',productGuideLimiter,voiceInputUpload.single('audio'),transcribeVoice);

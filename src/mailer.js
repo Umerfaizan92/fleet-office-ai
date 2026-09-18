@@ -111,24 +111,44 @@ export async function sendEnquiryNotification(env, enquiry, files = []) {
     email_id: data?.id || null
   };
 }
+function usableEnvValue(value) {
+  const text = String(value || '').trim();
+  return Boolean(text) && !/^(YOUR_|REPLACE_|CHANGE_ME|CHANGEME)/i.test(text);
+}
+
+function normaliseSender(value, defaultName = 'Super Pro AI Office Manager Security') {
+  if (!usableEnvValue(value)) return null;
+  const raw = String(value).trim().replace(/^["']|["']$/g, '');
+  const emailMatch = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (!emailMatch) return null;
+  const email = emailMatch[0].toLowerCase();
+  const angleMatch = raw.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/);
+  if (angleMatch) {
+    const name = String(angleMatch[1] || defaultName).replace(/^["']|["']$/g, '').trim() || defaultName;
+    return `${name} <${email}>`;
+  }
+  if (raw.toLowerCase() === email) return `${defaultName} <${email}>`;
+  const name = raw
+    .replace(emailMatch[0], '')
+    .replace(/[<>()[\]{}"'=:;,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || defaultName;
+  return `${name} <${email}>`;
+}
+
 export async function sendSaasVerificationEmail(env, { to, code, businessName }) {
-  const valid = (value) => {
-    const text = String(value || '').trim();
-    return Boolean(text) && !/^(YOUR_|REPLACE_|CHANGE_ME|CHANGEME)/i.test(text);
-  };
-  if (!valid(env.RESEND_API_KEY)) {
+  if (!usableEnvValue(env.RESEND_API_KEY)) {
     return { sent: false, reason: 'resend_not_configured' };
   }
 
   const resend = new Resend(env.RESEND_API_KEY);
-  const from = valid(env.SAAS_VERIFY_FROM)
-    ? env.SAAS_VERIFY_FROM
-    : valid(env.NOTIFY_FROM)
-      ? env.NOTIFY_FROM
-      : 'Super Pro AI Office Manager Security <security@fleetparlour.com.au>';
+  const candidates = [
+    normaliseSender(env.SAAS_VERIFY_FROM),
+    normaliseSender(env.NOTIFY_FROM),
+    'Super Pro AI Office Manager Security <security@fleetparlour.com.au>'
+  ].filter(Boolean).filter((value, index, all) => all.indexOf(value) === index);
 
-  const { data, error } = await resend.emails.send({
-    from,
+  const payload = {
     to: [to],
     subject: 'Super Pro AI Office Manager security verification code',
     text: [
@@ -142,13 +162,20 @@ export async function sendSaasVerificationEmail(env, { to, code, businessName })
       '',
       'If you did not start this registration, you can ignore this email.'
     ].join('\n')
-  });
+  };
 
-  if (error) {
-    throw new Error(`Verification email failed: ${error.message || JSON.stringify(error)}`);
+  let lastError = null;
+  for (const from of candidates) {
+    const { data, error } = await resend.emails.send({ ...payload, from });
+    if (!error) return { sent: true, email_id: data?.id || null, sender: from };
+    lastError = error;
+    const message = String(error?.message || JSON.stringify(error));
+    const senderProblem = /from|sender|domain|verify|verified/i.test(message);
+    if (!senderProblem) break;
   }
 
-  return { sent: true, email_id: data?.id || null };
+  const message = String(lastError?.message || lastError || 'provider error');
+  throw new Error(`Verification email failed: ${message}`);
 }
 
 export async function sendSupportEscalationEmail(env, { to, supportCase }) {

@@ -244,6 +244,9 @@ async function callProvider(base,key,model,messages,id) {
   return callGeneric(base,key,model,messages,id);
 }
 function secondaryConfig(primary={}) {
+  // Strict free mode must never fall through to OpenAI or another paid
+  // compatibility provider when Gemini is unavailable or quota-limited.
+  if (freeAiModeEnabled()) return null;
   const candidates = [
     completeProvider(env.AI_CHECKER_PROVIDER_BASE_URL,env.AI_CHECKER_API_KEY,env.AI_CHECKER_MODEL) ? { base:env.AI_CHECKER_PROVIDER_BASE_URL, key:env.AI_CHECKER_API_KEY, model:env.AI_CHECKER_MODEL } : null,
     meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-2.5-flash' } : null,

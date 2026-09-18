@@ -2140,6 +2140,18 @@ async function verifyAustralianBusinessIdentifier(identifierType,identifier,busi
 }
 async function verifyAustralianBusiness(abn,businessName=''){return verifyAustralianBusinessIdentifier('ABN',abn,businessName)}
 async function sendSmsVerification(to,code,businessName){
+  if(configuredValue(env.TELNYX_API_KEY)&&configuredValue(env.TELNYX_VERIFY_PROFILE_ID)){
+    const response=await fetch('https://api.telnyx.com/v2/verifications/sms',{
+      method:'POST',
+      headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json','accept':'application/json'},
+      body:JSON.stringify({phone_number:to,verify_profile_id:env.TELNYX_VERIFY_PROFILE_ID})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(response.ok)return {sent:true,message_id:data?.data?.id||null,provider:'telnyx_verify'};
+    const detail=data?.errors?.[0]?.detail||data?.errors?.[0]?.title||data?.message||`HTTP ${response.status}`;
+    throw new Error(`SMS verification failed: ${detail}`);
+  }
+
   const from=env.TELNYX_FROM_NUMBER||env.TELNYX_PHONE_NUMBER;
   if(!configuredValue(env.TELNYX_API_KEY)||!configuredValue(from))return {sent:false,reason:'telnyx_sms_not_configured'};
   const body={from,to,text:`Super Pro AI Office Manager verification code: ${code}. Expires in 10 minutes. Do not share this code. Business: ${businessName}`};
@@ -2147,12 +2159,25 @@ async function sendSmsVerification(to,code,businessName){
   for(let attempt=1;attempt<=2;attempt++){
     const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json'},body:JSON.stringify(body)});
     const data=await response.json().catch(()=>({}));
-    if(response.ok)return {sent:true,message_id:data?.data?.id||null};
+    if(response.ok)return {sent:true,message_id:data?.data?.id||null,provider:'telnyx_messaging'};
     lastError=data?.errors?.[0]?.detail||data?.errors?.[0]?.title||data?.message||`HTTP ${response.status}`;
     if(!(response.status===429||response.status>=500)||attempt===2)break;
     await new Promise(resolve=>setTimeout(resolve,350));
   }
   throw new Error(`SMS verification failed: ${lastError}`);
+}
+async function verifySmsVerificationCode(phone,code){
+  if(configuredValue(env.TELNYX_API_KEY)&&configuredValue(env.TELNYX_VERIFY_PROFILE_ID)){
+    const response=await fetch(`https://api.telnyx.com/v2/verifications/by_phone_number/${encodeURIComponent(phone)}/actions/verify`,{
+      method:'POST',
+      headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json','accept':'application/json'},
+      body:JSON.stringify({code,verify_profile_id:env.TELNYX_VERIFY_PROFILE_ID})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)return {ok:false,reason:data?.errors?.[0]?.detail||data?.errors?.[0]?.title||data?.message||`HTTP ${response.status}`};
+    return {ok:String(data?.data?.response_code||'').toLowerCase()==='accepted',response_code:data?.data?.response_code||null};
+  }
+  return {ok:null,provider:'local_hash'};
 }
 async function deliverRegistrationCodes(row,emailCode,smsCode){
   const emailResult=await sendSaasVerificationEmail(env,{to:row.email,code:emailCode,businessName:row.business_name}).catch(err=>({sent:false,reason:err.message}));
@@ -2254,10 +2279,18 @@ app.post('/api/saas/registration/resend',verificationLimiter,async(req,res)=>{
   }
 });
 
-app.post('/api/saas/registration/verify',verificationLimiter,(req,res)=>{
+app.post('/api/saas/registration/verify',verificationLimiter,async(req,res)=>{
   const parsed=z.object({pending_id:z.string().uuid(),email_code:z.string().regex(/^\d{6}$/),sms_code:z.string().regex(/^\d{6}$/)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter both six-digit verification codes.'});
   const row=db.prepare(`SELECT * FROM pending_registrations WHERE id=?`).get(parsed.data.pending_id);if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'The verification codes expired. Start registration again.'});if(row.verification_attempts>=8)return res.status(429).json({ok:false,error:'Too many incorrect codes. Start registration again for your security.'});
-  const emailOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.email_code)),Buffer.from(row.email_code_hash)),smsOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.sms_code)),Buffer.from(row.sms_code_hash));if(!emailOk||!smsOk){db.prepare(`UPDATE pending_registrations SET verification_attempts=verification_attempts+1,updated_at=? WHERE id=?`).run(new Date().toISOString(),row.id);return res.status(401).json({ok:false,error:'One or both verification codes are incorrect.'});}
+  const emailOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.email_code)),Buffer.from(row.email_code_hash));
+  let smsOk=false,smsReason='';
+  if(configuredValue(env.TELNYX_VERIFY_PROFILE_ID)){
+    const verified=await verifySmsVerificationCode(row.phone,parsed.data.sms_code).catch(err=>({ok:false,reason:err.message}));
+    smsOk=Boolean(verified.ok);smsReason=verified.reason||verified.response_code||'';
+  }else{
+    smsOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.sms_code)),Buffer.from(row.sms_code_hash));
+  }
+  if(!emailOk||!smsOk){db.prepare(`UPDATE pending_registrations SET verification_attempts=verification_attempts+1,updated_at=? WHERE id=?`).run(new Date().toISOString(),row.id);return res.status(401).json({ok:false,error:smsReason?`SMS verification was not accepted: ${smsReason}`:'One or both verification codes are incorrect.'});}
   if(db.prepare(`SELECT id FROM users WHERE email=? OR phone=?`).get(row.email,row.phone))return res.status(409).json({ok:false,error:'An account already uses this email address or mobile number.'});if(db.prepare(`SELECT id FROM organisations WHERE business_identifier_type=? AND business_identifier=?`).get(row.business_identifier_type,row.business_identifier))return res.status(409).json({ok:false,error:'A workspace already exists for this verified business identifier.'});
   let slug=row.business_name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45)||'business';while(db.prepare(`SELECT id FROM organisations WHERE slug=?`).get(slug))slug=`${slug}-${crypto.randomBytes(2).toString('hex')}`;
   const userId=crypto.randomUUID(),orgId=crypto.randomUUID(),now=new Date().toISOString(),trialEnds=new Date(Date.now()+14*86400000).toISOString();

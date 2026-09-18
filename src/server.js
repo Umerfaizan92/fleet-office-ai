@@ -2166,7 +2166,8 @@ async function getTelnyxVerifyProfile(){
     sms_enabled:Boolean(profile.sms),
     australia_allowed:destinations.includes('AU'),
     app_name_configured:Boolean(String(sms.app_name||'').trim()),
-    template_configured:Boolean(String(sms.messaging_template_id||'').trim()),
+    template_configured:true,
+    template_mode:String(sms.messaging_template_id||'').trim()?'selected':'telnyx_default',
     sender_configured:Boolean(String(sms.alpha_sender||sms.sender_phone_number||'').trim()),
     alpha_sender:sms.alpha_sender||'',
     timeout_seconds:Number(sms.default_verification_timeout_secs||300)
@@ -2180,7 +2181,7 @@ async function assertTelnyxVerifyReady(){
   if(!profile.sms_enabled)throw new Error('Telnyx Verify profile has no SMS channel configured.');
   if(!profile.australia_allowed)throw new Error('Telnyx Verify profile does not allow Australia. In Telnyx Verify Profile, add Australia (AU) under International Destinations.');
   if(!profile.app_name_configured)throw new Error('Telnyx Verify SMS App Name is missing. Edit the Verify Profile and add an SMS App Name such as Super Pro AI.');
-  if(!profile.template_configured)throw new Error('Telnyx Verify SMS template is missing. Edit the Verify Profile and select the Default SMS verification template.');
+  // Telnyx Verify supports its built-in default SMS template when no custom template ID is selected.
   return profile;
 }
 

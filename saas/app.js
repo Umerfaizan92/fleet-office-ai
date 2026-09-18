@@ -356,4 +356,29 @@ async function loadSelfServiceIntegrations(force=false){
 
 $('#open-help-desk')?.addEventListener('click',()=>window.GDSSupport?.open?.());
 
-$('#ai-design-business')?.addEventListener('click',async()=>{const f=$('#onboarding-form'),description=$('#business-description')?.value?.trim();if(!description){note('Describe your business first so AI can design a relevant starting structure.',true);return}try{const d=await api('/api/saas/onboarding/ai-design',{method:'POST',body:JSON.stringify({business_description:description,business_structure:f.elements.business_structure.value,team_mode:f.elements.team_mode.value})});const x=d.design;f.elements.business_type.value=x.business_type||f.elements.business_type.value;f.elements.services.value=(x.services||[]).join('\n');if(f.elements.custom_sections)f.elements.custom_sections.value=(x.custom_sections||[]).join('\n');if(!f.elements.brand_voice.value.trim())f.elements.brand_voice.value=x.brand_voice||'';if(!f.elements.ai_instructions.value.trim())f.elements.ai_instructions.value=x.ai_instructions||'';const p=$('#ai-design-preview');if(p){const b=p.querySelector('b'),sp=p.querySelector('span');if(b)b.textContent='AI design ready for review';if(sp)sp.textContent=`${x.business_type} · ${(x.services||[]).length} services · ${(x.custom_sections||[]).length} suggested sections. Review everything before saving.`}note('AI prepared a starting business setup. Review it before saving.')}catch(e){note(e.message,true)}});
+$('#ai-design-business')?.addEventListener('click',async()=>{
+  const f=$('#onboarding-form'),description=$('#business-description')?.value?.trim(),button=$('#ai-design-business');
+  if(!description){note('Describe your business first so AI can design a relevant starting structure.',true);return}
+  button.disabled=true;button.textContent='AI is designing your workspace…';
+  try{
+    const d=await api('/api/saas/onboarding/ai-design',{method:'POST',body:JSON.stringify({
+      business_description:description,
+      industry_code:f.elements.industry_code?.value||selectedIndustryCode,
+      business_structure:f.elements.business_structure.value,
+      team_mode:f.elements.team_mode.value
+    })});
+    const x=d.design||{};
+    f.elements.business_type.value=x.business_type||f.elements.business_type.value;
+    f.elements.services.value=(x.services||[]).join('\n');
+    if(f.elements.custom_sections)f.elements.custom_sections.value=(x.custom_sections||[]).join('\n');
+    if(!f.elements.brand_voice.value.trim())f.elements.brand_voice.value=x.brand_voice||'';
+    if(!f.elements.ai_instructions.value.trim())f.elements.ai_instructions.value=x.ai_instructions||'';
+    if(x.workspace_modules)applyIndustryModules(x.workspace_modules);
+    if(d.industry)renderSelectedIndustry(d.industry);
+    if(d.official_sources&&d.industry)renderRegulatoryProfile({...d.industry,sources:d.official_sources});
+    const p=$('#ai-design-preview');
+    if(p){const bb=p.querySelector('b'),sp=p.querySelector('span');if(bb)bb.textContent='AI design ready for human review';if(sp)sp.textContent=(x.business_type||'Business')+' · '+(x.services||[]).length+' services · '+(x.custom_sections||[]).length+' suggested sections. Nothing consequential is executed until you review and save.'}
+    note('AI prepared an industry-aware starting setup. Review the services, controls and official-source guidance before saving.');
+  }catch(e){note(e.message,true)}
+  finally{button.disabled=false;button.textContent='AI design my setup'}
+});

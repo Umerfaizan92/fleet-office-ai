@@ -1305,5 +1305,59 @@ export function createDb(databasePath) {
       ON account_recovery_challenges(user_id, created_at DESC);
   `);
 
+  // v16.5 industry-aware workspace and official-source monitoring.
+  const onboardingIndustryColumns = new Set(db.prepare(`PRAGMA table_info(onboarding_profiles)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['industry_code', `TEXT NOT NULL DEFAULT 'custom'`],
+    ['regulatory_monitor_enabled', `INTEGER NOT NULL DEFAULT 1`],
+    ['workspace_modules_json', `TEXT NOT NULL DEFAULT '[]'`]
+  ]) {
+    if (!onboardingIndustryColumns.has(name)) db.exec(`ALTER TABLE onboarding_profiles ADD COLUMN ${name} ${definition}`);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS regulatory_source_snapshots (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      source_name TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      content_hash TEXT,
+      http_status INTEGER,
+      check_status TEXT NOT NULL,
+      changed INTEGER NOT NULL DEFAULT 0,
+      checked_at TEXT NOT NULL,
+      note TEXT,
+      UNIQUE(organisation_id, source_id),
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS product_release_events (
+      id TEXT PRIMARY KEY,
+      version TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      details_json TEXT NOT NULL DEFAULT '[]',
+      released_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_regulatory_snapshots_org
+      ON regulatory_source_snapshots(organisation_id, checked_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_product_release_events_date
+      ON product_release_events(released_at DESC);
+  `);
+
+  const releaseRows = [
+    ['super-pro-v15.5','15.5','AI, verification and workspace reliability update',
+      'Improved AI answers and spoken replies, strengthened email/SMS verification, and added industry-aware regulatory source foundations.',
+      JSON.stringify([
+        {area:'AI Co-pilot',before:'Floating workspace chat could return repetitive guidance and had no dependable spoken reply.',now:'Co-pilot routes questions through connected AI where configured, keeps product context, and includes spoken reply controls plus a voice test.'},
+        {area:'Account verification',before:'SMS verification depended on ordinary messaging configuration and browser validation assumed six digits.',now:'Customer mobile verification uses Telnyx Verify when configured and accepts the provider code format actually received.'},
+        {area:'Business setup',before:'A small set of generic service-business templates was shown.',now:'Industry packs can tailor services, modules, documents and official regulatory sources while keeping owner review and customisation.'}
+      ]),'2026-09-18T10:00:00.000Z']
+  ];
+  const insertRelease = db.prepare(`INSERT OR IGNORE INTO product_release_events (id,version,title,summary,details_json,released_at) VALUES (?,?,?,?,?,?)`);
+  for (const row of releaseRows) insertRelease.run(...row);
+
   return db;
 }

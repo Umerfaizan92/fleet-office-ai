@@ -78,15 +78,32 @@
   ];
   function findActions(query){const q=clean(query);return navigation.map(n=>({...n,score:n.keys.reduce((s,k)=>s+(q.includes(clean(k))?10:0),0)+(q.includes(clean(n.label))?15:0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)}
   function detectLanguage(text){const t=String(text||''),low=` ${t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ')} `;if(/[ےںٹڈڑھچپگژکگیہ]/.test(t)||/(?:^|\s)(?:ہے|ہیں|میں|آپ|کیا|کیسے|نہیں|اور|یہ|وہ|جو|کو|سے|کا|کی)(?:\s|$)/.test(t))return 'ur';if(/[\u0600-\u06FF]/.test(t))return 'ar';if(/[\u0900-\u097F]/.test(t))return 'hi';if(/[\u0A00-\u0A7F]/.test(t))return 'pa';if(/[\u4E00-\u9FFF]/.test(t))return 'zh';if(/[\u3040-\u30FF]/.test(t))return 'ja';if(/[\uAC00-\uD7AF]/.test(t))return 'ko';if(/[\u0980-\u09FF]/.test(t))return 'bn';if(/[\u0B80-\u0BFF]/.test(t))return 'ta';const has=w=>low.includes(` ${w} `),score=ws=>ws.reduce((n,w)=>n+(has(w)?1:0),0);if(score(['tusi','tuhanu','mainu','kiven','naal','assi','sanu','veere','paaji'])>=2)return 'pa';if(score(['mujhe','mera','meri','aap','apko','kaise','kyun','nahi','nahin','chahiye','batao','samjhao','karna','karo','hai','hain','mein','acha','theek'])>=3)return 'ur';if(/[áéíóúñ¿¡]/i.test(t))return 'es';if(/[àâçéèêëîïôûùüÿœ]/i.test(t))return 'fr';return 'en'}
+  const emergencyLanguageReply={
+    ur:'جی ہاں، میں آپ سے اردو میں بات کر سکتا ہوں۔ آپ اپنا سوال اردو یا رومن اردو میں پوچھیں، میں اسی زبان میں جواب دوں گا۔ آپ Super Pro AI Office Manager کے سیٹ اپ، AI Operations، کالز، WhatsApp، ملازمین، جابز، سیکیورٹی یا کسی بھی فیچر کے بارے میں پوچھ سکتے ہیں۔',
+    hi:'हाँ, मैं आपसे हिंदी में बात कर सकता हूँ। आप अपना सवाल हिंदी या Roman Hindi में पूछें और मैं उसी भाषा में जवाब दूँगा। आप Super Pro AI Office Manager के setup, AI Operations, calls, WhatsApp, employees, jobs, security या किसी भी feature के बारे में पूछ सकते हैं।',
+    pa:'ਹਾਂ, ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰ ਸਕਦਾ ਹਾਂ। ਤੁਸੀਂ ਪੰਜਾਬੀ ਜਾਂ Roman Punjabi ਵਿੱਚ ਸਵਾਲ ਪੁੱਛੋ ਅਤੇ ਮੈਂ ਉਸੇ ਭਾਸ਼ਾ ਵਿੱਚ ਜਵਾਬ ਦੇਵਾਂਗਾ। ਤੁਸੀਂ setup, AI Operations, calls, WhatsApp, staff, jobs ਜਾਂ security ਬਾਰੇ ਪੁੱਛ ਸਕਦੇ ਹੋ।',
+    ar:'نعم، يمكنني التحدث معك بالعربية. اطرح سؤالك بالعربية وسأجيبك باللغة نفسها. يمكنك السؤال عن الإعداد، وعمليات الذكاء الاصطناعي، والمكالمات، وواتساب، والموظفين، والوظائف، والأمان أو أي ميزة أخرى.',
+    es:'Sí, puedo hablar contigo en español. Haz tu pregunta en español y responderé en el mismo idioma. Puedes preguntar sobre configuración, AI Operations, llamadas, WhatsApp, personal, trabajos, seguridad o cualquier función.',
+    fr:'Oui, je peux parler avec vous en français. Posez votre question en français et je répondrai dans la même langue. Vous pouvez demander de l’aide sur la configuration, AI Operations, les appels, WhatsApp, le personnel, les tâches, la sécurité ou toute autre fonction.',
+    bn:'হ্যাঁ, আমি আপনার সঙ্গে বাংলায় কথা বলতে পারি। বাংলায় প্রশ্ন করুন, আমি একই ভাষায় উত্তর দেব। সেটআপ, AI Operations, কল, WhatsApp, কর্মী, কাজ, নিরাপত্তা বা অন্য যেকোনো ফিচার সম্পর্কে জিজ্ঞেস করতে পারেন।',
+    ta:'ஆம், நான் உங்களுடன் தமிழில் பேச முடியும். உங்கள் கேள்வியை தமிழில் கேளுங்கள்; அதே மொழியில் பதிலளிப்பேன். அமைப்பு, AI Operations, அழைப்புகள், WhatsApp, பணியாளர்கள், வேலைகள், பாதுகாப்பு அல்லது வேறு எந்த அம்சத்தையும் கேட்கலாம்.',
+    zh:'可以，我可以用中文和你交流。请直接用中文提问，我会用中文回答。你可以询问设置、AI Operations、电话、WhatsApp、员工、工作、安全或其他功能。',
+    ja:'はい、日本語でお話しできます。日本語で質問してください。同じ言語で回答します。設定、AI Operations、通話、WhatsApp、スタッフ、仕事、セキュリティ、その他の機能について質問できます。',
+    ko:'네, 한국어로 대화할 수 있습니다. 한국어로 질문하면 같은 언어로 답변하겠습니다. 설정, AI Operations, 통화, WhatsApp, 직원, 작업, 보안 또는 다른 기능에 대해 물어보세요.'
+  };
   async function answerAsync(query,context='public',previousTopic='',language='auto'){
     const local=answer(query,context,previousTopic);
     const detected=language&&language!=='auto'?language:detectLanguage(query);
     try{
-      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({question:String(query||''),context,language})});
+      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:String(query||''),context,language:detected})});
       const d=await r.json().catch(()=>({}));
-      if(r.ok&&d.text&&d.source==='configured-ai-provider')return {...local,text:String(d.text).trim(),language:d.language||detected,source:d.source};
-      if(r.ok&&d.text&&detected!=='en'&&local.topic==='fallback')return {...local,text:String(d.text).trim(),language:d.language||detected,source:d.source||'server-fallback'};
+      if(r.ok&&d.text){
+        return {...local,text:String(d.text).trim(),language:detected,source:d.source||'server-guidance'};
+      }
     }catch{}
+    if(detected!=='en'&&emergencyLanguageReply[detected]){
+      return {...local,text:emergencyLanguageReply[detected],language:detected,source:'localized-browser-fallback'};
+    }
     return {...local,language:detected,source:'browser-product-knowledge'};
   }
   window.GDSProductGuide={topics,answer,answerAsync,findActions,clean,detectLanguage};

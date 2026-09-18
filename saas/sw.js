@@ -11,7 +11,7 @@ const PUBLIC=[
   '/saas/v15.js?v=15',
   '/saas/superpro-v12.js?v=17.1',
   '/saas/guide-v17-hotfix.js?v=17.3',
-  '/saas/guide-v16.js?v=16.3',
+  '/saas/guide-v16.js?v=16.3.3',
   '/saas/ai-operations-v16.js?v=18.1',
   '/saas/answers.html',
   '/saas/superpro-icon-192.png',

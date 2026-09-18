@@ -29,6 +29,22 @@
     const notice=$('#notice');if(notice){new MutationObserver(()=>{const t=notice.textContent.trim();if(t)push(t,notice.style.color?.includes('red')?'error':'success')}).observe(notice,{childList:true,characterData:true,subtree:true})}
     const channel=('BroadcastChannel'in window)?new BroadcastChannel('gds-workspace-live'):null;channel?.addEventListener('message',e=>e.data?.message&&push(e.data.message,e.data.type||'success'));
     window.GDSLive={push,broadcast:(message,type='success')=>{push(message,type);channel?.postMessage({message,type})}};
+    async function checkProductRelease(){
+      try{
+        const d=await api('/api/saas/releases/latest'),release=d.release;if(!release)return;
+        const key='superpro_release_seen:'+release.version;if(localStorage.getItem(key)==='1')return;
+        push(`Super Pro ${release.version}: ${release.title}`);
+        let dialog=$('#superpro-release-dialog');
+        if(!dialog){dialog=document.createElement('dialog');dialog.id='superpro-release-dialog';dialog.className='modal release-dialog';document.body.append(dialog)}
+        const details=(release.details||[]).map(x=>`<article class="release-change"><b>${esc(x.area)}</b><small><strong>Before:</strong> ${esc(x.before)}</small><small><strong>Now:</strong> ${esc(x.now)}</small></article>`).join('');
+        dialog.innerHTML=`<div class="release-card"><p class="kicker">PRODUCT UPDATE</p><h2>${esc(release.title)}</h2><p>${esc(release.summary)}</p><div class="release-changes">${details}</div><div class="dialog-actions"><button class="primary-button compact" type="button" data-release-ok>Got it</button></div></div>`;
+        dialog.querySelector('[data-release-ok]').onclick=()=>{localStorage.setItem(key,'1');dialog.close()};
+        dialog.addEventListener('cancel',()=>localStorage.setItem(key,'1'),{once:true});
+        dialog.showModal();
+      }catch{}
+    }
+    setTimeout(checkProductRelease,2200);
+
     let baseline=new Set();async function poll(){try{const d=await api('/api/saas/live-activity');const rows=d.events||[];if(!baseline.size){rows.forEach(x=>baseline.add(x.id));return}for(const e of rows.slice().reverse()){if(!baseline.has(e.id)){baseline.add(e.id);push(`${String(e.event_type||'workspace update').replaceAll('_',' ')} completed.`)}}if(baseline.size>100)baseline=new Set(rows.map(x=>x.id))}catch{}}
     setTimeout(poll,1500);setInterval(poll,7000);
   }

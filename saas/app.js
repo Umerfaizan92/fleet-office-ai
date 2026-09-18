@@ -190,28 +190,49 @@ function maybeStartTour(me){
   const panel=shell.querySelector('.copilot-panel'),launch=shell.querySelector('.copilot-launch'),log=shell.querySelector('.copilot-log'),text=shell.querySelector('textarea'),voiceStatus=shell.querySelector('.copilot-voice-status');
   const speaker=shell.querySelector('[data-copilot-speaker]'),voiceTest=shell.querySelector('[data-copilot-voice-test]');
   launch.onclick=()=>{panel.hidden=false;launch.hidden=true;text.focus()};shell.querySelector('[data-copilot-close]').onclick=()=>{panel.hidden=true;launch.hidden=false;stopVoice()};
-  let lastCopilotTopic='',voiceOn=localStorage.getItem('superpro_copilot_voice')!=='off',speechRun=0;
+  let lastCopilotTopic='',voiceOn=localStorage.getItem('superpro_copilot_voice')!=='off',speechRun=0,activeVoiceAudio=null,activeVoiceUrl='';
   const localeMap={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',es:'es-ES',fr:'fr-FR'};
   const speechSupported='speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
   function languageOf(value){return window.GDSProductGuide?.detectLanguage?.(value)||'en'}
   function cleanSpeech(value){return (window.GDSProductGuide?.cleanSpeech?.(value)||String(value||'')).replace(/https?:\/\/\S+/gi,'').replace(/\s+/g,' ').trim()}
-  function stopVoice(){speechRun++;if(speechSupported){speechSynthesis.cancel();speechSynthesis.resume?.()}}
+  function stopVoice(){
+    speechRun++;
+    if(activeVoiceAudio){try{activeVoiceAudio.pause();activeVoiceAudio.src=''}catch{}activeVoiceAudio=null}
+    if(activeVoiceUrl){try{URL.revokeObjectURL(activeVoiceUrl)}catch{}activeVoiceUrl=''}
+    if(speechSupported){speechSynthesis.cancel();speechSynthesis.resume?.()}
+  }
   function matchingVoice(locale){
     if(!speechSupported)return null;const list=speechSynthesis.getVoices()||[],family=locale.split('-')[0].toLowerCase();
     return list.find(v=>String(v.lang||'').toLowerCase()===locale.toLowerCase())||list.find(v=>String(v.lang||'').toLowerCase().split('-')[0]===family)||null;
   }
-  function speakReply(value,lang='en'){
-    if(!voiceOn||!speechSupported)return;
-    const spoken=cleanSpeech(value);if(!spoken)return;
-    stopVoice();const run=++speechRun,locale=localeMap[lang]||'en-AU',voice=matchingVoice(locale);
-    const chunks=spoken.match(/.{1,220}(?:\s|$)/g)||[spoken];let i=0;
+  function browserSpeak(spoken,lang,run){
+    if(!speechSupported||run!==speechRun||!voiceOn){voiceStatus.textContent='Voice playback is unavailable on this device.';return}
+    const locale=localeMap[lang]||'en-AU',voice=matchingVoice(locale),chunks=spoken.match(/.{1,220}(?:\s|$)/g)||[spoken];let i=0;
     const next=()=>{if(run!==speechRun||!voiceOn)return;if(i>=chunks.length){voiceStatus.textContent='Voice reply finished.';return}
       const u=new SpeechSynthesisUtterance(chunks[i++].trim());u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.rate=.96;u.pitch=1;
-      u.onstart=()=>voiceStatus.textContent=`Speaking · ${u.lang}`;
+      u.onstart=()=>voiceStatus.textContent=`Speaking with device voice · ${u.lang}`;
       u.onend=next;
-      u.onerror=e=>{const type=String(e?.error||'');if(!/canceled|interrupted/i.test(type))voiceStatus.textContent='Voice playback could not continue. Tap ▶ to test your device voice.'};
-      try{speechSynthesis.resume?.();speechSynthesis.speak(u)}catch{voiceStatus.textContent='Voice playback could not start. Tap ▶ to test your device voice.'}
+      u.onerror=e=>{const type=String(e?.error||'');if(!/canceled|interrupted/i.test(type))voiceStatus.textContent='Voice playback could not continue. Tap ▶ to test voice.'};
+      try{speechSynthesis.resume?.();speechSynthesis.speak(u)}catch{voiceStatus.textContent='Voice playback could not start. Tap ▶ to test voice.'}
     };next()
+  }
+  async function speakReply(value,lang='en'){
+    if(!voiceOn)return;
+    const spoken=cleanSpeech(value);if(!spoken)return;
+    stopVoice();const run=++speechRun;
+    voiceStatus.textContent='Preparing spoken reply…';
+    try{
+      const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:spoken,language:lang,voice:'auto'})});
+      if(response.ok&&run===speechRun&&voiceOn){
+        const blob=await response.blob();if(!blob.size)throw new Error('empty audio');
+        activeVoiceUrl=URL.createObjectURL(blob);activeVoiceAudio=new Audio(activeVoiceUrl);activeVoiceAudio.preload='auto';activeVoiceAudio.playsInline=true;
+        activeVoiceAudio.onplay=()=>voiceStatus.textContent='Speaking with Super Pro voice…';
+        activeVoiceAudio.onended=()=>{if(run===speechRun)voiceStatus.textContent='Voice reply finished.';if(activeVoiceUrl){URL.revokeObjectURL(activeVoiceUrl);activeVoiceUrl=''}activeVoiceAudio=null};
+        activeVoiceAudio.onerror=()=>browserSpeak(spoken,lang,run);
+        try{await activeVoiceAudio.play();return}catch{}
+      }
+    }catch{}
+    browserSpeak(spoken,lang,run);
   }
   async function reply(q){
     const actions=window.GDSProductGuide?.findActions(q)||[],best=actions[0];

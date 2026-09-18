@@ -17,7 +17,7 @@
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.id=id;s.src=src;s.defer=true;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});
   }
   if(location.pathname.startsWith('/saas/')){
-    loadScript('/saas/guide-v17-hotfix.js?v=17.0','superpro-guide-v17-hotfix')
+    loadScript('/saas/guide-v17-hotfix.js?v=17.1','superpro-guide-v17-hotfix')
       .catch(()=>{})
       .finally(()=>loadScript('/saas/guide-v16.js?v=16.2','superpro-guide-v16').catch(()=>{}))
       .finally(()=>{if(location.pathname.includes('/saas/workspace'))loadScript('/saas/ai-operations-v16.js?v=16.2','superpro-ai-ops-v16').catch(()=>{})});

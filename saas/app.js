@@ -49,32 +49,69 @@ $('#register-form').onsubmit=e=>{e.preventDefault();location.href='create-accoun
 const registerPassword=$('#register-form')?.elements.password,registerConfirm=$('#register-form')?.elements.confirm_password;function updatePasswordMatch(){const hint=$('#password-match');if(!hint||!registerConfirm)return;if(!registerConfirm.value){hint.textContent='Both passwords must match.';hint.classList.remove('error-text','success-text');return}const ok=registerPassword.value===registerConfirm.value;hint.textContent=ok?'Passwords match.':'Passwords do not match.';hint.classList.toggle('success-text',ok);hint.classList.toggle('error-text',!ok)}registerPassword?.addEventListener('input',updatePasswordMatch);registerConfirm?.addEventListener('input',updatePasswordMatch);
 $('#login-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);if(!b.mfa_code)delete b.mfa_code;try{await api('/api/saas/login',{method:'POST',body:JSON.stringify(b)});location.href='workspace.html#dashboard'}catch(x){if(x.payload?.mfa_required){e.target.querySelector('.mfa-details')?.setAttribute('open','');e.target.elements.mfa_code?.focus()}note(x.message,true)}};$('#logout').onclick=async()=>{try{await api('/api/saas/logout',{method:'POST'})}finally{location.href='/saas/'}};
 async function loadDashboard(){const d=await api('/api/saas/dashboard'),m=d.metrics;$('#m-workers').textContent=m.workers;$('#m-ready').textContent=m.ready;$('#m-attention').textContent=m.attention;$('#m-jobs').textContent=m.jobs;$('#m-expiring').textContent=m.expiring;$('#nav-jobs').textContent=m.jobs;$('#briefing').textContent=m.attention||m.jobs||m.expiring?`${m.attention} worker${m.attention===1?'':'s'} need compliance attention, ${m.jobs} job${m.jobs===1?'':'s'} await allocation, and ${m.expiring} document${m.expiring===1?'':'s'} expire within 30 days.`:'No immediate workforce or allocation risks detected. Your operational foundation is clear.'}
+
 let industryRegistryCache=[];
+let selectedIndustryCode='custom';
 function applyIndustryModules(modules=[]){
   if(!Array.isArray(modules)||!modules.length)return;
   const allowed=new Set(modules);
   document.querySelectorAll('.workspace-nav [data-view]').forEach(button=>{
     const view=button.dataset.view;
-    const always=['dashboard','onboarding','manual','billing','governance'].includes(view);
+    const always=['dashboard','onboarding','manual','billing','governance','support'].includes(view);
     button.hidden=!always&&!allowed.has(view);
   });
 }
+function industrySearchText(row){return [row.label,row.group,row.anzsic,...(row.keywords||[]),...(row.specialties||[])].join(' ').toLowerCase()}
+function renderIndustryBrowser(query=''){
+  const grid=$('#industry-browser-grid'),count=$('#industry-result-count');if(!grid)return;
+  const q=String(query||'').trim().toLowerCase();
+  let rows=industryRegistryCache.filter(row=>row.code!=='custom');
+  if(q)rows=rows.filter(row=>industrySearchText(row).includes(q));
+  rows=rows.slice(0,q?40:18);
+  if(count)count.textContent=q?(rows.length+' matching business profile'+(rows.length===1?'':'s')):((industryRegistryCache.length-1)+' Australian business profiles available — search for more');
+  if(!rows.length){
+    grid.innerHTML='<div class="industry-empty"><b>No exact profile found.</b><span>Use Custom setup, describe your activity, and Super Pro will create a reviewable starting workspace.</span><button type="button" class="secondary-button compact" data-industry-code="custom">Use custom setup</button></div>';
+  }else{
+    grid.innerHTML=rows.map(row=>'<button type="button" class="industry-browser-card '+(row.code===selectedIndustryCode?'selected':'')+'" data-industry-code="'+esc(row.code)+'"><span class="industry-code">'+esc(row.anzsic||'SP')+'</span><div><b>'+esc(row.label)+'</b><small>'+esc(row.group)+(row.specialties&&row.specialties.length?' · '+esc(row.specialties.slice(0,3).join(' · ')):'')+'</small></div><i>'+(row.code===selectedIndustryCode?'Selected':'Choose')+' →</i></button>').join('');
+  }
+  grid.querySelectorAll('[data-industry-code]').forEach(btn=>btn.onclick=()=>selectIndustryProfile(btn.dataset.industryCode,{applySuggestions:true,announce:true}));
+}
 function renderRegulatoryProfile(industry){
   const host=$('#regulatory-profile-preview'),list=$('#regulatory-source-list');if(!host||!list||!industry)return;
-  const docs=(industry.documents||[]).map(x=>`<li>${esc(x)}</li>`).join('');
-  const sources=(industry.sources||[]).map(x=>`<a class="reg-source-row" href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b><small>${esc(x.authority)} · ${esc(x.jurisdiction||'AU')}</small><span>${esc(x.note||'Official source')}</span></a>`).join('');
-  host.querySelector('span').textContent=industry.summary||'Industry-aware workspace profile.';
-  list.innerHTML=`<div class="reg-docs"><b>Recommended evidence / records to review</b><ul>${docs||'<li>Confirm activity-specific obligations with the relevant authority.</li>'}</ul></div><div class="reg-sources"><b>Official sources</b>${sources||'<small>No sector-specific source is configured yet; general Australian sources still apply.</small>'}</div>`;
+  const docs=(industry.documents||[]).map(x=>'<li>'+esc(x)+'</li>').join('');
+  const sources=(industry.sources||[]).map(x=>'<article class="reg-source-row"><div><b>'+esc(x.name)+'</b><small>'+esc(x.authority)+' · '+esc(x.jurisdiction||'AU')+'</small><span>'+esc(x.note||'Official source')+'</span></div><a href="'+esc(x.url)+'" target="_blank" rel="noopener">Open official source ↗</a>'+(x.last_check?'<em class="reg-check '+(x.last_check.changed?'changed':'ok')+'">'+(x.last_check.changed?'Changed — review required':'Last checked')+' · '+esc(new Date(x.last_check.checked_at).toLocaleDateString())+'</em>':'')+'</article>').join('');
+  const summary=host.querySelector('span');if(summary)summary.textContent=industry.summary||'Industry-aware workspace profile.';
+  list.innerHTML='<div class="reg-docs"><b>Recommended evidence / records to review</b><ul>'+(docs||'<li>Confirm activity-specific obligations with the relevant authority.</li>')+'</ul></div><div class="reg-sources"><b>Official sources</b>'+(sources||'<small>No sector-specific source is configured yet; general Australian sources still apply.</small>')+'</div><p class="regulatory-human-control">AI may identify and summarise source changes, but legal, employment, clinical, financial and publishing decisions remain subject to authorised human review.</p>';
+}
+function renderSelectedIndustry(row){
+  const card=$('#selected-industry-card');if(!card||!row)return;
+  card.hidden=false;
+  card.innerHTML='<div><span class="panel-kicker">SELECTED BUSINESS PROFILE</span><h3>'+esc(row.label)+'</h3><p>'+esc(row.summary)+'</p></div><div class="selected-industry-meta"><span>'+esc(row.group)+'</span>'+(row.anzsic?'<span>ANZSIC '+esc(row.anzsic)+'</span>':'')+'<span>'+(row.services||[]).length+' starter workflows</span></div>'+(row.specialties&&row.specialties.length?'<div class="selected-specialties">'+row.specialties.slice(0,8).map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>':'');
+}
+function selectIndustryProfile(code,{applySuggestions=false,announce=false}={}){
+  const row=industryRegistryCache.find(x=>x.code===code)||industryRegistryCache.find(x=>x.code==='custom');if(!row)return;
+  selectedIndustryCode=row.code;
+  const select=$('#industry-code'),f=$('#onboarding-form');if(select)select.value=row.code;
+  if(f&&applySuggestions){
+    f.elements.business_type.value=row.label;
+    f.elements.services.value=(row.services||[]).join('\n');
+    if(f.elements.custom_sections&&!f.elements.custom_sections.value.trim())f.elements.custom_sections.value=(row.specialties||[]).slice(0,6).join('\n');
+    if(!f.elements.brand_voice.value.trim())f.elements.brand_voice.value='Professional, clear, trustworthy and appropriate to the selected industry.';
+    if(!f.elements.ai_instructions.value.trim())f.elements.ai_instructions.value='Use the selected industry profile and saved business settings as context. Keep consequential actions under authorised human approval. Flag uncertainty and do not invent licences, legal obligations, prices or professional advice.';
+  }
+  renderSelectedIndustry(row);renderRegulatoryProfile(row);applyIndustryModules(row.modules||[]);renderIndustryBrowser($('#industry-search')?.value||'');
+  if(announce)note(row.label+' profile selected. Review the AI suggestions, official-source guidance and workspace modules before saving.');
 }
 async function loadIndustryRegistry(selected='custom'){
   try{
     const d=await api('/api/saas/industry-registry');industryRegistryCache=d.industries||[];
     const select=$('#industry-code');if(!select)return;
-    select.innerHTML=industryRegistryCache.map(x=>`<option value="${esc(x.code)}">${esc(x.label)} · ${esc(x.group)}</option>`).join('');
-    if(industryRegistryCache.some(x=>x.code===selected))select.value=selected;else select.value='custom';
-    const active=industryRegistryCache.find(x=>x.code===select.value)||industryRegistryCache.at(-1);if(active)renderRegulatoryProfile(active);
-    select.onchange=()=>{const row=industryRegistryCache.find(x=>x.code===select.value);if(!row)return;$('#business-type').value=row.label;if(!$('#onboarding-form').elements.services.value.trim())$('#onboarding-form').elements.services.value=(row.services||[]).join('\n');renderRegulatoryProfile(row);applyIndustryModules(row.modules||[])};
-  }catch(err){console.warn('Industry registry could not load:',err.message)}
+    select.innerHTML=industryRegistryCache.map(x=>'<option value="'+esc(x.code)+'">'+esc(x.label)+' · '+esc(x.group)+'</option>').join('');
+    selectedIndustryCode=industryRegistryCache.some(x=>x.code===selected)?selected:'custom';select.value=selectedIndustryCode;
+    const search=$('#industry-search');if(search&&!search.dataset.bound){search.dataset.bound='1';search.addEventListener('input',()=>renderIndustryBrowser(search.value))}
+    const custom=$('#choose-custom-industry');if(custom&&!custom.dataset.bound){custom.dataset.bound='1';custom.addEventListener('click',()=>selectIndustryProfile('custom',{applySuggestions:true,announce:true}))}
+    renderIndustryBrowser(search?.value||'');selectIndustryProfile(selectedIndustryCode,{applySuggestions:false});
+  }catch(err){console.warn('Industry registry could not load:',err.message);if($('#industry-result-count'))$('#industry-result-count').textContent='Business catalogue is temporarily unavailable. Custom setup remains available.'}
 }
 async function loadRegulatorySources(){
   try{
@@ -94,9 +131,7 @@ async function loadOnboarding(){
   await loadIndustryRegistry(p.industry_code||'custom');
   for(const k of ['business_type','industry_code','business_structure','team_mode','ai_setup_mode','phone','website','service_area','address_unit','address_street_number','address_street_name','address_suburb','address_state','address_postcode','address_formatted','address_source','brand_voice','approval_mode','ai_instructions'])if(f.elements[k])f.elements[k].value=p[k]||'';
   f.elements.services.value=(p.services||[]).join('\n');if(f.elements.custom_sections)f.elements.custom_sections.value=(p.custom_sections||[]).join('\n');if(f.elements.complete)f.elements.complete.checked=!!p.complete;
-  $('[data-industry]').forEach(x=>x.classList.toggle('active',x.dataset.industry===p.business_type));
-  const t=industryTemplates[p.business_type];if(t&&$('#industry-template-preview'))$('#industry-template-preview').innerHTML=`<b>${esc(p.business_type)} profile</b><span>${esc(t.summary)} Your saved values remain editable.</span>`;
-  applyIndustryModules(p.workspace_modules||d.industry?.modules||[]);
+    applyIndustryModules(p.workspace_modules||d.industry?.modules||[]);
   await loadRegulatorySources();
 }
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
@@ -149,16 +184,6 @@ $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashb
 
 
 // v8 premium onboarding, guided tour and persistent AI co-pilot.
-const industryTemplates={
-  'Trades & field services':{services:['Quoting & estimates','Bookings & dispatch','On-site jobs','Recurring maintenance','Customer follow-up'],voice:'Professional, practical, fast and trustworthy',ai:'Prioritise urgent customer enquiries, protect travel and labour margin, confirm scope before promising dates, and keep job allocation approval-controlled.',summary:'Recommended: quote → book → allocate crew → field evidence → invoice → review.'},
-  'Accounting & professional services':{services:['Client onboarding','Appointments & consultations','Document requests','Recurring client tasks','Deadline follow-up'],voice:'Professional, precise, calm and confidential',ai:'Keep client information scoped to the organisation, surface deadlines early, draft clear follow-ups and require human review for financial, legal or consequential advice.',summary:'Recommended: enquiry → client onboarding → task/deadline → review → follow-up.'},
-  'Salon & hairdressing':{services:['Appointments','Consultations','Client follow-up','Repeat booking reminders','Reviews & social content'],voice:'Warm, polished, friendly and premium',ai:'Optimise appointment communication, reduce no-shows, suggest rebooking and review opportunities without over-messaging clients.',summary:'Recommended: enquiry → appointment → service → rebook → review/content.'},
-  'Real estate & property services':{services:['Lead qualification','Inspections & appointments','Vendor/landlord communication','Buyer/tenant follow-up','Property task coordination'],voice:'Responsive, clear, professional and confident',ai:'Respond quickly to leads, keep property/customer context separated, prepare follow-up and surface inspections or unanswered enquiries that need attention.',summary:'Recommended: lead → qualify → appointment/inspection → follow-up → outcome.'},
-  'Mobile & appointment services':{services:['Enquiries & quoting','Appointments','Service-area scheduling','Mobile jobs','Repeat-customer follow-up'],voice:'Helpful, direct, organised and reassuring',ai:'Consider service area and travel when suggesting schedules, collect enough job detail before pricing, and prioritise confirmed appointments and urgent customer issues.',summary:'Recommended: enquiry → qualify → book → travel/job → completion → follow-up.'},
-  'Custom service business':{services:[],voice:'Professional, direct, premium and helpful',ai:'Use the business services, approval rules and owner instructions as the primary operating policy. Ask for clarification rather than inventing prices, promises or capabilities.',summary:'Start clean. Add your services, approval rules and permanent AI instructions below.'}
-};
-$$('[data-industry]').forEach(button=>button.addEventListener('click',()=>{const name=button.dataset.industry,t=industryTemplates[name],f=$('#onboarding-form');if(!f||!t)return;$$('[data-industry]').forEach(x=>x.classList.toggle('active',x===button));f.elements.business_type.value=name;if(!f.elements.services.value.trim()&&t.services.length)f.elements.services.value=t.services.join('\n');if(!f.elements.brand_voice.value.trim())f.elements.brand_voice.value=t.voice;if(!f.elements.ai_instructions.value.trim())f.elements.ai_instructions.value=t.ai;const preview=$('#industry-template-preview');if(preview)preview.innerHTML=`<b>${esc(name)} template ready</b><span>${esc(t.summary)} You can edit every suggestion before saving.</span>`;note(`${name} smart setup applied. Review and customise the suggestions before saving.`)}));
-
 function maybeStartTour(me){
   const key=`gds-tour-${me?.organisation?.slug||'workspace'}`;
   const forced=sessionStorage.getItem('gds-run-tour')==='1';

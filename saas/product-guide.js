@@ -77,7 +77,28 @@
     {view:'billing',label:'Plans & billing',keys:['billing','plan','subscription','trial','price','pricing']}
   ];
   function findActions(query){const q=clean(query);return navigation.map(n=>({...n,score:n.keys.reduce((s,k)=>s+(q.includes(clean(k))?10:0),0)+(q.includes(clean(n.label))?15:0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)}
-  function detectLanguage(text){const t=String(text||''),low=` ${t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ')} `;if(/[ےںٹڈڑھچپگژکگیہ]/.test(t)||/(?:^|\s)(?:ہے|ہیں|میں|آپ|کیا|کیسے|نہیں|اور|یہ|وہ|جو|کو|سے|کا|کی)(?:\s|$)/.test(t))return 'ur';if(/[\u0600-\u06FF]/.test(t))return 'ar';if(/[\u0900-\u097F]/.test(t))return 'hi';if(/[\u0A00-\u0A7F]/.test(t))return 'pa';if(/[\u4E00-\u9FFF]/.test(t))return 'zh';if(/[\u3040-\u30FF]/.test(t))return 'ja';if(/[\uAC00-\uD7AF]/.test(t))return 'ko';if(/[\u0980-\u09FF]/.test(t))return 'bn';if(/[\u0B80-\u0BFF]/.test(t))return 'ta';const has=w=>low.includes(` ${w} `),score=ws=>ws.reduce((n,w)=>n+(has(w)?1:0),0);if(score(['tusi','tuhanu','mainu','kiven','naal','assi','sanu','veere','paaji'])>=2)return 'pa';if(score(['mujhe','mera','meri','aap','apko','kaise','kyun','nahi','nahin','chahiye','batao','samjhao','karna','karo','hai','hain','mein','acha','theek'])>=3)return 'ur';if(/[áéíóúñ¿¡]/i.test(t))return 'es';if(/[àâçéèêëîïôûùüÿœ]/i.test(t))return 'fr';return 'en'}
+  function detectLanguage(text){
+    const t=String(text||''),normalized=t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ').trim(),words=normalized.split(/\s+/).filter(Boolean),set=new Set(words);
+    if(/[ےںٹڈڑھچپگژکگیہ]/.test(t)||/(?:^|\s)(?:ہے|ہیں|میں|آپ|کیا|کیسے|نہیں|اور|یہ|وہ|جو|کو|سے|کا|کی)(?:\s|$)/.test(t))return 'ur';
+    if(/[\u0600-\u06FF]/.test(t))return 'ar';
+    if(/[\u0900-\u097F]/.test(t))return 'hi';
+    if(/[\u0A00-\u0A7F]/.test(t))return 'pa';
+    if(/[\u4E00-\u9FFF]/.test(t))return 'zh';
+    if(/[\u3040-\u30FF]/.test(t))return 'ja';
+    if(/[\uAC00-\uD7AF]/.test(t))return 'ko';
+    if(/[\u0980-\u09FF]/.test(t))return 'bn';
+    if(/[\u0B80-\u0BFF]/.test(t))return 'ta';
+    const count=list=>list.reduce((n,w)=>n+(set.has(w)?1:0),0);
+    const punjabiStrong=['tusi','tuhanu','mainu','sanu','kiven','kiwen','kivein','naal','assi','asi','veere','paaji'];
+    if(count(punjabiStrong)>=1)return 'pa';
+    const urduStrong=['mujhe','mera','meri','mere','aap','apko','aapko','kaise','kyun','nahi','nahin','chahiye','batao','bataye','samjhao','karna','karo','krna','yeh','yahan','wala','wali','acha','theek','kya'];
+    const urduCommon=['hai','hain','mein','main','aur','se','ko','ka','ki','ke'];
+    const strong=count(urduStrong),common=count(urduCommon);
+    if(strong>=1||(strong+common)>=2)return 'ur';
+    if(/[áéíóúñ¿¡]/i.test(t))return 'es';
+    if(/[àâçéèêëîïôûùüÿœ]/i.test(t))return 'fr';
+    return 'en'
+  }
   const emergencyLanguageReply={
     ur:'جی ہاں، میں آپ سے اردو میں بات کر سکتا ہوں۔ آپ اپنا سوال اردو یا رومن اردو میں پوچھیں، میں اسی زبان میں جواب دوں گا۔ آپ Super Pro AI Office Manager کے سیٹ اپ، AI Operations، کالز، WhatsApp، ملازمین، جابز، سیکیورٹی یا کسی بھی فیچر کے بارے میں پوچھ سکتے ہیں۔',
     hi:'हाँ, मैं आपसे हिंदी में बात कर सकता हूँ। आप अपना सवाल हिंदी या Roman Hindi में पूछें और मैं उसी भाषा में जवाब दूँगा। आप Super Pro AI Office Manager के setup, AI Operations, calls, WhatsApp, employees, jobs, security या किसी भी feature के बारे में पूछ सकते हैं।',
@@ -91,20 +112,63 @@
     ja:'はい、日本語でお話しできます。日本語で質問してください。同じ言語で回答します。設定、AI Operations、通話、WhatsApp、スタッフ、仕事、セキュリティ、その他の機能について質問できます。',
     ko:'네, 한국어로 대화할 수 있습니다. 한국어로 질문하면 같은 언어로 답변하겠습니다. 설정, AI Operations, 통화, WhatsApp, 직원, 작업, 보안 또는 다른 기능에 대해 물어보세요.'
   };
+  function plainText(value){
+    return String(value??'')
+      .replace(/\r\n?/g,'\n')
+      .replace(/\*\*([^*]+)\*\*/g,'$1')
+      .replace(/__([^_]+)__/g,'$1')
+      .replace(/~~([^~]+)~~/g,'$1')
+      .replace(/`{1,3}([^`]+)`{1,3}/g,'$1')
+      .replace(/^\s{0,3}#{1,6}\s+/gm,'')
+      .replace(/^\s*[\-*]\s+/gm,'')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'$1')
+      .replace(/[\*_~]+/g,'')
+      .replace(/[ \t]+\n/g,'\n')
+      .replace(/\n{3,}/g,'\n\n')
+      .trim();
+  }
+  function speechText(value){return plainText(value).replace(/https?:\/\/\S+/gi,'').replace(/\s+/g,' ').trim()}
+  function memoryKey(context='public'){
+    const scope=String(context||'public').startsWith('workspace')?'workspace':'public';
+    return 'superpro_ai_memory_current:'+scope;
+  }
+  function loadMemory(context='public'){try{const v=JSON.parse(localStorage.getItem(memoryKey(context))||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+  function saveMemory(context,rows){
+    let out=rows.slice(-120),chars=out.reduce((n,x)=>n+String(x.q||'').length+String(x.a||'').length,0);
+    while(out.length>8&&chars>120000){const first=out.shift();chars-=String(first.q||'').length+String(first.a||'').length}
+    try{localStorage.setItem(memoryKey(context),JSON.stringify(out))}catch{}
+  }
+  function remember(context,q,a,meta={}){
+    const rows=loadMemory(context);rows.push({q:plainText(q).slice(0,3000),a:plainText(a).slice(0,7000),topic:meta.topic||'',language:meta.language||'',at:Date.now()});saveMemory(context,rows)
+  }
+  function relevantMemory(context,query,maxChars=650){
+    const qWords=new Set(clean(query).split(/\s+/).filter(x=>x.length>2));
+    const rows=loadMemory(context),scored=rows.slice(0,-4).map(x=>({x,score:[...qWords].reduce((n,w)=>n+(clean(x.q+' '+x.a).includes(w)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2).map(x=>x.x);
+    const chosen=[...scored,...rows.slice(-4)].filter((x,i,a)=>a.indexOf(x)===i);
+    return chosen.map(x=>`Q: ${x.q}\nA: ${x.a}`).join('\n').slice(-maxChars);
+  }
+  function clearMemory(context='public'){try{localStorage.removeItem(memoryKey(context))}catch{}}
+  function conversationId(context='public'){
+    const scope=String(context||'public').startsWith('workspace')?'workspace':'public',key='superpro_conversation_current:'+scope;
+    try{let id=localStorage.getItem(key)||'';if(!id){id=crypto?.randomUUID?.()||`sp-${Date.now()}-${Math.random().toString(36).slice(2)}`;localStorage.setItem(key,id)}return id}catch{return `sp-${Date.now()}`}
+  }
   async function answerAsync(query,context='public',previousTopic='',language='auto'){
-    const local=answer(query,context,previousTopic);
-    const detected=language&&language!=='auto'?language:detectLanguage(query);
+    const q=String(query||'').trim(),local=answer(q,context,previousTopic);
+    const detected=language&&language!=='auto'?language:detectLanguage(q);
+    const memory=relevantMemory(context,q);
+    const providerQuestion=memory?`${q}\n\nRelevant recent conversation context:\n${memory}`:q;
     try{
-      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:String(query||''),context,language:detected})});
+      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion,context,language:detected,conversation_id:conversationId(context)})});
       const d=await r.json().catch(()=>({}));
       if(r.ok&&d.text){
-        return {...local,text:String(d.text).trim(),language:detected,source:d.source||'server-guidance'};
+        const result={...local,text:plainText(d.text),language:detected,source:d.source||'server-guidance'};
+        remember(context,q,result.text,result);return result;
       }
     }catch{}
-    if(detected!=='en'&&emergencyLanguageReply[detected]){
-      return {...local,text:emergencyLanguageReply[detected],language:detected,source:'localized-browser-fallback'};
-    }
-    return {...local,language:detected,source:'browser-product-knowledge'};
+    let result;
+    if(detected!=='en'&&emergencyLanguageReply[detected])result={...local,text:emergencyLanguageReply[detected],language:detected,source:'localized-browser-fallback'};
+    else result={...local,text:plainText(local.text),language:detected,source:'browser-product-knowledge'};
+    remember(context,q,result.text,result);return result;
   }
-  window.GDSProductGuide={topics,answer,answerAsync,findActions,clean,detectLanguage};
+  window.GDSProductGuide={version:'current-2026-09-19',topics,answer,answerAsync,findActions,clean,detectLanguage,cleanOutput:plainText,cleanSpeech:speechText,memory:{load:loadMemory,clear:clearMemory,remember,relevant:relevantMemory}};
 })();

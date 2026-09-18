@@ -3897,6 +3897,39 @@ app.get('/api/saas/platform-capabilities',requireSaasUser,(req,res)=>{
   res.json({ok:true,credential_scope:'platform_managed',customer_secret_entry:false,secrets_exposed:false,capabilities,note:'This endpoint reports readiness only. It never returns credential values.'});
 });
 
+app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,(req,res)=>{
+  const provider=req.params.provider;
+  const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
+  if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
+  const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
+  const state=Buffer.from(JSON.stringify({o:req.saas.organisation_id,u:req.saas.user_id,p:provider,t:Date.now()})).toString('base64url');
+  const redirect=(path)=>encodeURIComponent(env[path]||`${base}/api/saas/integrations/oauth/${provider}/callback`);
+  let authorizeUrl='';
+  if(provider==='tiktok'&&env.TIKTOK_CLIENT_KEY&&env.TIKTOK_CLIENT_SECRET){
+    const uri=encodeURIComponent(env.TIKTOK_REDIRECT_URI||`${base}/api/saas/integrations/oauth/tiktok/callback`);
+    authorizeUrl=`https://www.tiktok.com/v2/auth/authorize/?client_key=${encodeURIComponent(env.TIKTOK_CLIENT_KEY)}&scope=user.info.basic,video.list&response_type=code&redirect_uri=${uri}&state=${encodeURIComponent(state)}`;
+  }else if((provider==='youtube'||provider==='google_business')&&env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET){
+    const scope=provider==='youtube'?'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.readonly':'https://www.googleapis.com/auth/business.manage';
+    authorizeUrl=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(env.GOOGLE_CLIENT_ID)}&redirect_uri=${redirect('GOOGLE_REDIRECT_URI')}&response_type=code&access_type=offline&prompt=consent&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
+  }else if((provider==='meta'||provider==='whatsapp')&&env.META_APP_ID&&env.META_APP_SECRET){
+    const scope=provider==='whatsapp'?'business_management,whatsapp_business_management,whatsapp_business_messaging':'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish';
+    authorizeUrl=`https://www.facebook.com/v23.0/dialog/oauth?client_id=${encodeURIComponent(env.META_APP_ID)}&redirect_uri=${redirect('META_REDIRECT_URI')}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(scope)}`;
+  }else if(provider==='x'&&env.X_CLIENT_ID&&env.X_CLIENT_SECRET){
+    return res.json({ok:true,status:'provider_ready',message:'X app credentials are configured. PKCE authorisation requires the deployment callback/verifier service before this account can be marked connected.'});
+  }else if(provider==='snapchat'&&env.SNAPCHAT_CLIENT_ID&&env.SNAPCHAT_CLIENT_SECRET){
+    return res.json({ok:true,status:'provider_ready',message:'Snapchat app credentials are configured. Complete the approved Snapchat OAuth callback configuration before this account can be marked connected.'});
+  }else if(provider==='website'){
+    return res.json({ok:true,status:'provider_ready',message:'Website connection is ready for a signed webhook/form endpoint. Configure the site endpoint and run a successful test before marking it connected.'});
+  }else if(provider==='email_sms'&&(env.RESEND_API_KEY||env.TELNYX_API_KEY||env.SMTP_HOST)){
+    return res.json({ok:true,status:'provider_ready',message:'Email/SMS provider configuration is present. Configure and verify the sender identity and consent rules, then run a connection test.'});
+  }
+  if(!authorizeUrl)return res.status(409).json({ok:false,error:'Provider app credentials or the required production callback are not configured yet. No customer password is required.'});
+  const now=new Date().toISOString();
+  db.prepare(`UPDATE organisation_integrations SET status='authorisation_pending',updated_at=? WHERE organisation_id=? AND provider=?`).run(now,req.saas.organisation_id,provider);
+  saasAudit(req,'integration.authorisation_started','integration',provider,{credential_scope:'platform_managed'});
+  res.json({ok:true,status:'authorisation_pending',authorize_url:authorizeUrl});
+});
+
 app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,(req,res)=>{
   const parsed=z.object({account_label:z.string().trim().max(150).optional().or(z.literal('')),capabilities:z.array(z.string().max(80)).max(20).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the connection details.'});

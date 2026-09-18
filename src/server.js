@@ -2538,8 +2538,12 @@ app.get('/api/saas/regulatory/sources',requireSaasUser,(req,res)=>{
 });
 
 app.post('/api/saas/regulatory/check',requireSaasUser,async(req,res)=>{
+  const parsed=z.object({industry_code:z.string().trim().max(80).optional()}).safeParse(req.body||{});
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid industry profile.'});
   const profile=db.prepare(`SELECT industry_code FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
-  const sources=industrySources(profile.industry_code||'custom',req.saas.address_state||'').slice(0,12);
+  const industryCode=parsed.data.industry_code||profile.industry_code||'custom';
+  const selectedIndustry=industryByCode(industryCode);
+  const sources=industrySources(selectedIndustry,req.saas.address_state||'').slice(0,12);
   const now=new Date().toISOString(),results=[];
   for(const source of sources){
     const previous=db.prepare(`SELECT * FROM regulatory_source_snapshots WHERE organisation_id=? AND source_id=?`).get(req.saas.organisation_id,source.id);
@@ -2549,7 +2553,7 @@ app.post('/api/saas/regulatory/check',requireSaasUser,async(req,res)=>{
     results.push({...source,...check,changed});
   }
   if(results.some(x=>x.changed))saasAudit(req,'regulatory.source_change_detected','organisation',req.saas.organisation_id,{source_ids:results.filter(x=>x.changed).map(x=>x.id)});
-  res.json({ok:true,checked_at:now,results,message:results.some(x=>x.changed)?'One or more official source pages changed. Review the source before treating the change as a new requirement.':'No page changes were detected among the sources successfully checked.'});
+  res.json({ok:true,checked_at:now,industry:selectedIndustry,results,message:results.some(x=>x.changed)?'One or more official source pages changed. Review the source before treating the change as a new requirement.':'No page changes were detected among the sources successfully checked.'});
 });
 
 app.get('/api/saas/onboarding',requireSaasUser,(req,res)=>{const profile=db.prepare(`SELECT * FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id);const org=db.prepare(`SELECT address_unit,address_street_number,address_street_name,address_suburb,address_state,address_postcode,address_formatted,address_source FROM organisations WHERE id=?`).get(req.saas.organisation_id)||{};const industry=industryByCode(profile?.industry_code||'custom');res.json({ok:true,profile:{...profile,...org,services:safeJson(profile?.services,[]),custom_sections:safeJson(profile?.custom_sections_json,[]),workspace_modules:safeJson(profile?.workspace_modules_json,industry.modules||[])},industry})});

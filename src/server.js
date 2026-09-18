@@ -2142,10 +2142,17 @@ async function verifyAustralianBusiness(abn,businessName=''){return verifyAustra
 async function sendSmsVerification(to,code,businessName){
   const from=env.TELNYX_FROM_NUMBER||env.TELNYX_PHONE_NUMBER;
   if(!configuredValue(env.TELNYX_API_KEY)||!configuredValue(from))return {sent:false,reason:'telnyx_sms_not_configured'};
-  const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({from,to,text:`Super Pro AI Office Manager verification code: ${code}. Expires in 10 minutes. Do not share this code. Business: ${businessName}`})});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(`SMS verification failed: ${data?.errors?.[0]?.detail||data?.message||'provider error'}`);
-  return {sent:true,message_id:data?.data?.id||null};
+  const body={from,to,text:`Super Pro AI Office Manager verification code: ${code}. Expires in 10 minutes. Do not share this code. Business: ${businessName}`};
+  let lastError='provider error';
+  for(let attempt=1;attempt<=2;attempt++){
+    const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json'},body:JSON.stringify(body)});
+    const data=await response.json().catch(()=>({}));
+    if(response.ok)return {sent:true,message_id:data?.data?.id||null};
+    lastError=data?.errors?.[0]?.detail||data?.errors?.[0]?.title||data?.message||`HTTP ${response.status}`;
+    if(!(response.status===429||response.status>=500)||attempt===2)break;
+    await new Promise(resolve=>setTimeout(resolve,350));
+  }
+  throw new Error(`SMS verification failed: ${lastError}`);
 }
 async function deliverRegistrationCodes(row,emailCode,smsCode){
   const emailResult=await sendSaasVerificationEmail(env,{to:row.email,code:emailCode,businessName:row.business_name}).catch(err=>({sent:false,reason:err.message}));
@@ -2229,8 +2236,22 @@ app.post('/api/saas/registration/start',verificationLimiter,async(req,res)=>{
 app.post('/api/saas/registration/resend',verificationLimiter,async(req,res)=>{
   const parsed=z.object({pending_id:z.string().uuid(),channel:z.enum(['email','sms'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid verification request.'});
   const row=db.prepare(`SELECT * FROM pending_registrations WHERE id=? AND expires_at>?`).get(parsed.data.pending_id,new Date().toISOString());if(!row)return res.status(410).json({ok:false,error:'This verification request expired. Start registration again.'});
-  const code=otpCode(),hash=otpHash(row.id,code),now=new Date(),expires=new Date(now.getTime()+10*60*1000);db.prepare(`UPDATE pending_registrations SET ${parsed.data.channel==='email'?'email_code_hash':'sms_code_hash'}=?,expires_at=?,updated_at=? WHERE id=?`).run(hash,expires.toISOString(),now.toISOString(),row.id);
-  try{const delivery=parsed.data.channel==='email'?await sendSaasVerificationEmail(env,{to:row.email,code,businessName:row.business_name}):await sendSmsVerification(row.phone,code,row.business_name);logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',messageId:delivery.email_id||delivery.message_id,status:delivery.sent?'sent':'failed',reason:delivery.reason});if(!delivery.sent&&!verificationTestMode)return res.status(503).json({ok:false,error:`${parsed.data.channel==='email'?'Email':'SMS'} verification is not configured or the provider rejected delivery.`});res.json({ok:true,channel:parsed.data.channel,expires_at:expires.toISOString(),...(verificationTestMode?{test_code:code}:{}),message:'A new verification code has been issued.',delivery:{sent:Boolean(delivery.sent),provider:parsed.data.channel==='email'?'resend':'telnyx'}});}catch(err){logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',status:'failed',reason:err.message});res.status(503).json({ok:false,error:err.message});}
+  const code=otpCode(),hash=otpHash(row.id,code),now=new Date(),expires=new Date(now.getTime()+10*60*1000);
+  try{
+    const delivery=parsed.data.channel==='email'
+      ?await sendSaasVerificationEmail(env,{to:row.email,code,businessName:row.business_name})
+      :await sendSmsVerification(row.phone,code,row.business_name);
+    if(!delivery.sent&&!verificationTestMode){
+      logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',status:'failed',reason:delivery.reason});
+      return res.status(503).json({ok:false,error:`${parsed.data.channel==='email'?'Email':'SMS'} verification is not configured or the provider rejected delivery.`});
+    }
+    db.prepare(`UPDATE pending_registrations SET ${parsed.data.channel==='email'?'email_code_hash':'sms_code_hash'}=?,expires_at=?,updated_at=? WHERE id=?`).run(hash,expires.toISOString(),now.toISOString(),row.id);
+    logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',messageId:delivery.email_id||delivery.message_id,status:'sent'});
+    res.json({ok:true,channel:parsed.data.channel,expires_at:expires.toISOString(),...(verificationTestMode?{test_code:code}:{}),message:`New ${parsed.data.channel==='email'?'email':'SMS'} verification code sent successfully.`,delivery:{sent:true,provider:parsed.data.channel==='email'?'resend':'telnyx'}});
+  }catch(err){
+    logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',status:'failed',reason:err.message});
+    res.status(503).json({ok:false,error:err.message});
+  }
 });
 
 app.post('/api/saas/registration/verify',verificationLimiter,(req,res)=>{

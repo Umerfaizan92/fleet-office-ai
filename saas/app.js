@@ -170,13 +170,62 @@ if(location.pathname.endsWith('workspace.html'))boot();else{$('#welcome').hidden
 
 if(location.pathname.endsWith('sign-in.html'))$('.auth-heading .kicker').textContent='WELCOME BACK';
 $('.sidebar-trial-card')?.addEventListener('click',()=>showView('billing'));
-// Intelligent workspace finder — typed or spoken navigation plus product guidance.
-const finder=document.createElement('dialog');finder.className='modal smart-finder';finder.innerHTML='<form method="dialog" class="finder-close"><button class="secondary-button" aria-label="Close search">Close</button></form><div class="finder-heading"><span class="panel-kicker">GLOBAL AI SEARCH</span><h2>What do you want to do?</h2><p>Type or speak naturally: “add a worker”, “open jobs”, “connect WhatsApp”, “show billing” or ask how a feature works.</p></div><div class="finder-input-row"><input id="page-search" type="search" placeholder="Ask or search the workspace…"><button class="secondary-button finder-mic" id="finder-mic" type="button">◉ Speak</button></div><div id="page-results" class="smart-results"></div>';
+// Intelligent workspace finder — live AI guidance, navigation, voice input and spoken answers.
+const finder=document.createElement('dialog');
+finder.className='modal smart-finder';
+finder.innerHTML='<form method="dialog" class="finder-close"><button class="secondary-button" aria-label="Close search">Close</button></form><div class="finder-heading"><span class="panel-kicker">GLOBAL AI SEARCH</span><h2>What do you want to do?</h2><p>Ask naturally about Super Pro, your workspace, setup, security, connections or where to go next.</p></div><div class="finder-input-row"><input id="page-search" type="search" placeholder="Ask or search the workspace…"><button class="secondary-button finder-mic" id="finder-mic" type="button">🎙 Talk</button></div><div class="finder-status" id="finder-status" aria-live="polite"></div><div id="page-results" class="smart-results"></div>';
 document.body.append(finder);
-function searchPages(){const input=finder.querySelector('input'),term=input.value.trim();const lower=term.toLowerCase();const navMatches=viewSequence.filter(v=>!term||pageMeta[v][1].toLowerCase().includes(lower)||pageMeta[v][0].toLowerCase().includes(lower));const actions=window.GDSProductGuide?.findActions(term)||[];const guide=term?window.GDSProductGuide?.answer(term,'workspace'):null;const ordered=[...new Set([...actions.map(a=>a.view),...navMatches])].slice(0,6);let html=ordered.map(v=>`<button class="finder-result" type="button" data-result="${v}"><span>${String(viewSequence.indexOf(v)+1).padStart(2,'0')}</span><div><b>${esc(pageMeta[v][1])}</b><small>${esc(pageMeta[v][0])} · open workspace area</small></div><i>→</i></button>`).join('');if(guide&&term)html+=`<article class="finder-answer"><span>AI</span><div><b>Super Pro guidance</b><p>${esc(guide.text)}</p></div></article>`;finder.querySelector('#page-results').innerHTML=html||'<p class="muted">No direct page match. Try describing what you want to accomplish.</p>'}
+let finderRequest=0,finderAnswerText='',finderAnswerLang='en',finderTimer=null,finderAudio=null,finderAudioUrl='';
+function stopFinderVoice(){if(finderAudio){try{finderAudio.pause();finderAudio.src=''}catch{}finderAudio=null}if(finderAudioUrl){try{URL.revokeObjectURL(finderAudioUrl)}catch{}finderAudioUrl=''}try{speechSynthesis.cancel()}catch{}}
+function finderBrowserSpeak(text,lang='en'){
+  if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window))return false;
+  const locale={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',bn:'bn-BD',ta:'ta-IN',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',es:'es-ES',fr:'fr-FR'}[lang]||'en-AU';
+  const voices=speechSynthesis.getVoices()||[],family=locale.split('-')[0].toLowerCase(),voice=voices.find(v=>String(v.lang||'').toLowerCase()===locale.toLowerCase())||voices.find(v=>String(v.lang||'').toLowerCase().split('-')[0]===family);
+  const utterance=new SpeechSynthesisUtterance(String(text||'').replace(/[*_#]/g,' ').replace(/\s+/g,' ').trim());utterance.lang=voice?.lang||locale;if(voice)utterance.voice=voice;utterance.rate=.96;
+  utterance.onstart=()=>{$('#finder-status').textContent='Speaking…'};utterance.onend=()=>{$('#finder-status').textContent='Voice reply finished.'};utterance.onerror=()=>{$('#finder-status').textContent='Device voice could not play this reply.'};
+  try{speechSynthesis.cancel();speechSynthesis.resume?.();speechSynthesis.speak(utterance);return true}catch{return false}
+}
+async function speakFinderAnswer(){
+  if(!finderAnswerText){$('#finder-status').textContent='Ask a question first.';return}
+  stopFinderVoice();$('#finder-status').textContent='Preparing voice reply…';
+  try{
+    const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:finderAnswerText,language:finderAnswerLang,voice:'auto'})});
+    if(response.ok){
+      const blob=await response.blob();if(blob.size){finderAudioUrl=URL.createObjectURL(blob);finderAudio=new Audio(finderAudioUrl);finderAudio.onplay=()=>{$('#finder-status').textContent='Speaking with Super Pro voice…'};finderAudio.onended=()=>{$('#finder-status').textContent='Voice reply finished.';URL.revokeObjectURL(finderAudioUrl);finderAudioUrl='';finderAudio=null};await finderAudio.play();return}
+    }
+  }catch{}
+  if(!finderBrowserSpeak(finderAnswerText,finderAnswerLang))$('#finder-status').textContent='Voice playback is unavailable on this browser/device.';
+}
+async function searchPages(){
+  const input=finder.querySelector('input'),term=input.value.trim(),request=++finderRequest,lower=term.toLowerCase();
+  const navMatches=viewSequence.filter(v=>!term||pageMeta[v][1].toLowerCase().includes(lower)||pageMeta[v][0].toLowerCase().includes(lower));
+  const actions=window.GDSProductGuide?.findActions(term)||[];
+  const ordered=[...new Set([...actions.map(a=>a.view),...navMatches])].slice(0,6);
+  let html=ordered.map(v=>'<button class="finder-result" type="button" data-result="'+v+'"><span>'+String(viewSequence.indexOf(v)+1).padStart(2,'0')+'</span><div><b>'+esc(pageMeta[v][1])+'</b><small>'+esc(pageMeta[v][0])+' · open workspace area</small></div><i>→</i></button>').join('');
+  if(term){html+='<article class="finder-answer waiting"><span>AI</span><div><b>Super Pro AI</b><p>Thinking about your question…</p></div></article>'}
+  finder.querySelector('#page-results').innerHTML=html||'<p class="muted">Start typing what you want to accomplish.</p>';
+  finder.querySelectorAll('[data-result]').forEach(b=>b.onclick=()=>{finder.close();showView(b.dataset.result)});
+  if(!term){finderAnswerText='';return}
+  try{
+    const guide=await (window.GDSProductGuide?.answerAsync?.(term,'workspace',currentView,'auto')||Promise.resolve(window.GDSProductGuide?.answer?.(term,'workspace',currentView)));
+    if(request!==finderRequest)return;
+    finderAnswerText=guide?.text||'Tell me the outcome you want and I will guide you to the closest workspace area.';
+    finderAnswerLang=guide?.language||window.GDSProductGuide?.detectLanguage?.(term)||'en';
+    const waiting=finder.querySelector('.finder-answer.waiting');
+    if(waiting)waiting.outerHTML='<article class="finder-answer"><span>AI</span><div><b>Super Pro AI</b><p>'+esc(finderAnswerText)+'</p><div class="finder-answer-actions"><button type="button" class="secondary-button compact" id="finder-hear-answer">🔊 Hear answer</button></div></div></article>';
+    finder.querySelector('#finder-hear-answer')?.addEventListener('click',speakFinderAnswer);
+  }catch(err){
+    if(request!==finderRequest)return;
+    const waiting=finder.querySelector('.finder-answer.waiting');if(waiting)waiting.innerHTML='<span>!</span><div><b>AI answer unavailable</b><p>'+esc(err.message||'Please try again.')+'</p></div>';
+  }
+}
+function scheduleFinderSearch(){clearTimeout(finderTimer);finderTimer=setTimeout(searchPages,220)}
 function openFinder(seed=''){finder.showModal();const input=finder.querySelector('input');input.value=seed;searchPages();input.focus()}
-$('.search-button')?.addEventListener('click',()=>openFinder());finder.querySelector('input').addEventListener('input',searchPages);finder.addEventListener('click',e=>{const b=e.target.closest('[data-result]');if(b){finder.close();showView(b.dataset.result)}});document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#workspace').hidden){e.preventDefault();openFinder()}});
-(()=>{const mic=finder.querySelector('#finder-mic'),R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){mic.title='Voice search is not supported in this browser.';return}const r=new R();r.lang=navigator.language||'en-AU';r.interimResults=true;r.onstart=()=>{mic.classList.add('listening');mic.textContent='Listening…'};r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;finder.querySelector('input').value=text;searchPages()};r.onend=()=>{mic.classList.remove('listening');mic.textContent='◉ Speak'};r.onerror=()=>{mic.classList.remove('listening');mic.textContent='◉ Speak'};mic.onclick=()=>r.start()})();
+$('.search-button')?.addEventListener('click',()=>openFinder());
+finder.querySelector('input').addEventListener('input',scheduleFinderSearch);
+finder.addEventListener('close',stopFinderVoice);
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#workspace').hidden){e.preventDefault();openFinder()}});
+(()=>{const mic=finder.querySelector('#finder-mic'),R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){mic.title='Voice input is not supported in this browser.';return}const recognition=new R();recognition.lang=navigator.language||'en-AU';recognition.interimResults=true;recognition.onstart=()=>{mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening…'};recognition.onresult=e=>{let spoken='';for(let i=e.resultIndex;i<e.results.length;i++)spoken+=e.results[i][0].transcript;finder.querySelector('input').value=spoken;scheduleFinderSearch()};recognition.onend=()=>{mic.classList.remove('listening');mic.textContent='🎙 Talk'};recognition.onerror=e=>{mic.classList.remove('listening');mic.textContent='🎙 Talk';$('#finder-status').textContent=e.error==='not-allowed'?'Microphone permission is blocked.':'Voice input could not start.'};mic.onclick=()=>recognition.start()})();
 $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashboard');note('Review the command centre for current activity and attention items.');});
 
 // Content Studio source library — local workspace organisation layer

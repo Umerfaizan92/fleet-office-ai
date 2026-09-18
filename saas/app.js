@@ -88,6 +88,27 @@ function renderSelectedIndustry(row){
   card.hidden=false;
   card.innerHTML='<div><span class="panel-kicker">SELECTED BUSINESS PROFILE</span><h3>'+esc(row.label)+'</h3><p>'+esc(row.summary)+'</p></div><div class="selected-industry-meta"><span>'+esc(row.group)+'</span>'+(row.anzsic?'<span>ANZSIC '+esc(row.anzsic)+'</span>':'')+'<span>'+(row.services||[]).length+' starter workflows</span></div>'+(row.specialties&&row.specialties.length?'<div class="selected-specialties">'+row.specialties.slice(0,8).map(x=>'<span>'+esc(x)+'</span>').join('')+'</div>':'');
 }
+
+function setWorkspaceNavLabel(view,label){
+  const button=document.querySelector('.workspace-nav [data-view="'+view+'"]');if(button){const spans=button.querySelectorAll('span');if(spans[1])spans[1].textContent=label}
+  if(pageMeta[view])pageMeta[view][1]=label;
+}
+function applyIndustryWorkspaceLanguage(row){
+  document.documentElement.dataset.industry=row?.code||'custom';
+  let workforce='People & workforce',jobs='Jobs & allocation',finance='Expenses & profit';
+  let workforceHero='Build a compliant, job-ready team',jobsHero='Create work, then allocate the right people';
+  const code=row?.code||'';
+  if(/healthcare|nursing|allied_health|dental|pharmacy|veterinary/.test(code)){workforce='People & credentials';jobs='Appointments & service delivery';workforceHero='Manage credentialed practitioners and staff';jobsHero='Coordinate appointments, services and accountable delivery'}
+  else if(/ndis|aged_care|childcare/.test(code)){workforce='People & credentials';jobs='Care & service delivery';workforceHero='Manage a screened, credentialed service team';jobsHero='Coordinate supports, care and service delivery'}
+  else if(code==='real_estate'){workforce='People & team';jobs='Properties & inspections';workforceHero='Build a licensed, accountable property team';jobsHero='Coordinate inspections, property tasks and follow-up'}
+  else if(code==='manufacturing'){workforce='People & production team';jobs='Production & work orders';workforceHero='Build a safe, production-ready team';jobsHero='Plan production work, quality steps and allocation'}
+  else if(code==='transport_logistics'){workforce='People & drivers';jobs='Dispatch & allocation';workforceHero='Manage a ready, credentialed transport workforce';jobsHero='Dispatch work and allocate people or fleet resources'}
+  else if(/education_training/.test(code)){workforce='People & educators';jobs='Classes & delivery';workforceHero='Manage qualified educators, trainers and staff';jobsHero='Coordinate classes, sessions and service delivery'}
+  else if(/retail_ecommerce|wholesale_trade/.test(code)){workforce='People & team';jobs='Orders & operations';workforceHero='Build an operationally ready team';jobsHero='Coordinate orders, tasks and customer operations'}
+  else if(/construction_trades|repair_automotive|cleaning_facilities/.test(code)){workforce='People & workforce';jobs='Jobs & allocation';workforceHero='Build a compliant, job-ready team';jobsHero='Create work, then allocate the right people'}
+  setWorkspaceNavLabel('workforce',workforce);setWorkspaceNavLabel('jobs',jobs);setWorkspaceNavLabel('finance',finance);
+  const wh=$('#workforce-view .page-heading h1'),jh=$('#jobs-view .page-heading h1');if(wh)wh.textContent=workforceHero;if(jh)jh.textContent=jobsHero;
+}
 function selectIndustryProfile(code,{applySuggestions=false,announce=false}={}){
   const row=industryRegistryCache.find(x=>x.code===code)||industryRegistryCache.find(x=>x.code==='custom');if(!row)return;
   selectedIndustryCode=row.code;
@@ -99,7 +120,7 @@ function selectIndustryProfile(code,{applySuggestions=false,announce=false}={}){
     if(!f.elements.brand_voice.value.trim())f.elements.brand_voice.value='Professional, clear, trustworthy and appropriate to the selected industry.';
     if(!f.elements.ai_instructions.value.trim())f.elements.ai_instructions.value='Use the selected industry profile and saved business settings as context. Keep consequential actions under authorised human approval. Flag uncertainty and do not invent licences, legal obligations, prices or professional advice.';
   }
-  renderSelectedIndustry(row);renderRegulatoryProfile(row);applyIndustryModules(row.modules||[]);renderIndustryBrowser($('#industry-search')?.value||'');
+  renderSelectedIndustry(row);renderRegulatoryProfile(row);applyIndustryModules(row.modules||[]);applyIndustryWorkspaceLanguage(row);renderIndustryBrowser($('#industry-search')?.value||'');
   if(announce)note(row.label+' profile selected. Review the AI suggestions, official-source guidance and workspace modules before saving.');
 }
 async function loadIndustryRegistry(selected='custom'){

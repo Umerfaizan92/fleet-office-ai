@@ -312,13 +312,25 @@ function maybeStartTour(me){
 
 (function installCopilot(){
   if($('#gds-copilot'))return;
-  const shell=document.createElement('div');shell.id='gds-copilot';shell.className='copilot';shell.innerHTML=`<button class="copilot-launch" type="button" aria-label="Open Super Pro AI co-pilot"><span>AI</span><b>Ask Super Pro</b><i>Voice + typing</i></button><section class="copilot-panel" hidden><header><div><span class="ai-orb">AI</span><div><b>Super Pro Co-pilot</b><small>Workspace guidance · no silent external actions</small></div></div><div style="display:flex;gap:6px"><button class="icon-button active" data-copilot-speaker type="button" aria-pressed="true" title="Toggle spoken replies">🔊</button><button class="icon-button" data-copilot-voice-test type="button" title="Test voice">▶</button><button class="icon-button" data-copilot-close type="button">×</button></div></header><div class="copilot-log"><div class="copilot-message ai"><b>How can I help?</b><p>Ask a specific question about Super Pro, your workspace, setup, security, connections, jobs, staff, Content Studio or where to go next.</p></div></div><div class="copilot-suggestions"><button type="button">How do I add an employee?</button><button type="button">Open Content Studio</button><button type="button">What should I set up next?</button></div><form><button class="copilot-mic" type="button">◉</button><textarea rows="1" placeholder="Ask Super Pro…"></textarea><button class="copilot-send" type="submit">➜</button></form><div class="copilot-voice-status" aria-live="polite" style="padding:0 14px 12px;color:var(--muted);font-size:9px">Spoken replies are on.</div></section>`;
+  const shell=document.createElement('div');shell.id='gds-copilot';shell.className='copilot';shell.innerHTML=`<button class="copilot-launch" type="button" aria-label="Open Super Pro AI co-pilot"><span>AI</span><b>Ask Super Pro</b><i>Voice + typing</i></button><section class="copilot-panel" hidden><header><div><span class="ai-orb">AI</span><div><b>Super Pro Co-pilot</b><small>Workspace guidance · no silent external actions</small></div></div><div style="display:flex;gap:6px"><select data-copilot-voice-style aria-label="Voice preference" title="Voice preference" style="max-width:92px"><option value="auto">Auto voice</option><option value="female">Female</option><option value="male">Male</option></select><button class="icon-button active" data-copilot-speaker type="button" aria-pressed="true" title="Toggle spoken replies">🔊</button><button class="icon-button" data-copilot-voice-test type="button" title="Test voice">▶</button><button class="icon-button" data-copilot-close type="button">×</button></div></header><div class="copilot-log"><div class="copilot-message ai"><b>How can I help?</b><p>Ask a specific question about Super Pro, your workspace, setup, security, connections, jobs, staff, Content Studio or where to go next.</p></div></div><div class="copilot-suggestions"><button type="button">How do I add an employee?</button><button type="button">Open Content Studio</button><button type="button">What should I set up next?</button></div><form><button class="copilot-mic" type="button">◉</button><textarea rows="1" placeholder="Ask Super Pro…"></textarea><button class="copilot-send" type="submit">➜</button></form><div class="copilot-voice-status" aria-live="polite" style="padding:0 14px 12px;color:var(--muted);font-size:9px">Spoken replies are on.</div></section>`;
   document.body.append(shell);
   const panel=shell.querySelector('.copilot-panel'),launch=shell.querySelector('.copilot-launch'),log=shell.querySelector('.copilot-log'),text=shell.querySelector('textarea'),voiceStatus=shell.querySelector('.copilot-voice-status');
-  const speaker=shell.querySelector('[data-copilot-speaker]'),voiceTest=shell.querySelector('[data-copilot-voice-test]');
-  launch.onclick=()=>{panel.hidden=false;launch.hidden=true;text.focus()};shell.querySelector('[data-copilot-close]').onclick=()=>{panel.hidden=true;launch.hidden=false;stopVoice()};
+  const speaker=shell.querySelector('[data-copilot-speaker]'),voiceTest=shell.querySelector('[data-copilot-voice-test]'),voiceStyle=shell.querySelector('[data-copilot-voice-style]'); if(voiceStyle){voiceStyle.value=voicePreference;voiceStyle.onchange=()=>{voicePreference=voiceStyle.value;localStorage.setItem('superpro_copilot_voice_style',voicePreference);voiceStatus.textContent=`Voice preference: ${voicePreference}. Language matching takes priority.`}};
+  function syncFloatingChats(active=''){
+    const staff=document.querySelector('#gds-staff-chat'),staffLaunch=staff?.querySelector('.staff-chat-launch'),staffPanel=staff?.querySelector('.staff-chat-panel');
+    if(active==='copilot'){if(staffPanel)staffPanel.hidden=true;if(staffLaunch)staffLaunch.hidden=true}
+    else if(!panel.hidden){if(staffLaunch)staffLaunch.hidden=true}
+    else if(staffLaunch)staffLaunch.hidden=false;
+    window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active}}));
+  }
+  launch.onclick=()=>{panel.hidden=false;launch.hidden=true;syncFloatingChats('copilot');text.focus()};
+  shell.querySelector('[data-copilot-close]').onclick=()=>{panel.hidden=true;launch.hidden=false;stopVoice();syncFloatingChats('')};
+  window.addEventListener('superpro:floating-chat',e=>{if(e.detail?.active==='staff'){panel.hidden=true;launch.hidden=true;stopVoice()}else if(!e.detail?.active&&panel.hidden)launch.hidden=false});
   let lastCopilotTopic='',voiceOn=localStorage.getItem('superpro_copilot_voice')!=='off',speechRun=0,activeVoiceAudio=null,activeVoiceUrl='';
   const localeMap={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',es:'es-ES',fr:'fr-FR'};
+  let voicePreference=localStorage.getItem('superpro_copilot_voice_style')||'auto';
+  const femaleVoiceHints=/female|heera|sana|samantha|victoria|aria|jenny|zira|hazel|karen|tessa|susan|sonia|natasha|veena|ava|emma|olivia|neerja|shimmer|nova|marin/i;
+  const maleVoiceHints=/male|asad|david|mark|guy|ryan|george|daniel|james|ravi|hemant|imran|liam|aaron|onyx|cedar/i;
   const speechSupported='speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
   function languageOf(value){return window.GDSProductGuide?.detectLanguage?.(value)||'en'}
   function cleanSpeech(value){return (window.GDSProductGuide?.cleanSpeech?.(value)||String(value||'')).replace(/https?:\/\/\S+/gi,'').replace(/\s+/g,' ').trim()}
@@ -330,7 +342,10 @@ function maybeStartTour(me){
   }
   function matchingVoice(locale){
     if(!speechSupported)return null;const list=speechSynthesis.getVoices()||[],family=locale.split('-')[0].toLowerCase();
-    return list.find(v=>String(v.lang||'').toLowerCase()===locale.toLowerCase())||list.find(v=>String(v.lang||'').toLowerCase().split('-')[0]===family)||null;
+    const exact=list.filter(v=>String(v.lang||'').toLowerCase()===locale.toLowerCase()),same=list.filter(v=>String(v.lang||'').toLowerCase().split('-')[0]===family),pool=exact.length?exact:same;
+    if(voicePreference==='female'){const v=pool.find(x=>femaleVoiceHints.test(x.name));if(v)return v}
+    if(voicePreference==='male'){const v=pool.find(x=>maleVoiceHints.test(x.name));if(v)return v}
+    return pool.find(v=>v.default)||pool[0]||null;
   }
   function browserSpeak(spoken,lang,run){
     if(!speechSupported||run!==speechRun||!voiceOn){voiceStatus.textContent='Voice playback is unavailable on this device.';return}

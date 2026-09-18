@@ -13,3 +13,9 @@ Thumbs.db
 coverage/
 dist/
 .tmp/
+
+# SQLite runtime sidecars — never commit live process state
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm

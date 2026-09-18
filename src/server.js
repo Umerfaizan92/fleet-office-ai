@@ -2529,9 +2529,12 @@ async function makeOpenAiSpeechAudio({text,language='en',voice='auto'}){
 }
 async function makeSpeechAudio(input){
   const free=freeAiModeEnabled(),gkey=geminiApiKey();
-  if(free&&gkey){try{return await makeGeminiSpeechAudio(input)}catch(err){console.warn('[VOICE TTS] Gemini free fallback failed:',err.message)}}
+  if(free){
+    if(gkey)return makeGeminiSpeechAudio(input);
+    throw Object.assign(new Error('Free AI voice needs a Gemini API key; browser voice fallback will be used.'),{status:503});
+  }
   const openai=openAiSpeechConfig();if(openai){try{return await makeOpenAiSpeechAudio(input)}catch(err){console.warn('[VOICE TTS] OpenAI fallback failed:',err.message)}}
-  if(gkey&&!free)return makeGeminiSpeechAudio(input);
+  if(gkey)return makeGeminiSpeechAudio(input);
   throw Object.assign(new Error('Server voice is unavailable; browser voice fallback will be used.'),{status:503});
 }
 async function speechEndpoint(req,res,max=3500){
@@ -2565,9 +2568,13 @@ async function transcribeVoice(req,res){
   const requested=String(req.body?.language||'auto').trim().toLowerCase();
   try{
     let result=null;
-    if(freeAiModeEnabled()&&geminiApiKey()){try{result=await transcribeWithGemini(req.file,requested)}catch(err){console.warn('[VOICE STT] Gemini free fallback failed:',err.message)}}
-    if(!result&&openAiSpeechConfig()){try{result=await transcribeWithOpenAi(req.file,requested)}catch(err){console.warn('[VOICE STT] OpenAI fallback failed:',err.message)}}
-    if(!result&&geminiApiKey())result=await transcribeWithGemini(req.file,requested);
+    if(freeAiModeEnabled()){
+      if(geminiApiKey())result=await transcribeWithGemini(req.file,requested);
+      else return res.status(503).json({ok:false,error:'Free automatic transcription needs a Gemini API key. Choose a language for browser recognition or type your question.',fallback:'browser'});
+    }else{
+      if(openAiSpeechConfig()){try{result=await transcribeWithOpenAi(req.file,requested)}catch(err){console.warn('[VOICE STT] OpenAI fallback failed:',err.message)}}
+      if(!result&&geminiApiKey())result=await transcribeWithGemini(req.file,requested);
+    }
     if(!result)return res.status(503).json({ok:false,error:'Server speech recognition is unavailable; browser recognition can be used.',fallback:'browser'});
     return res.json({ok:true,...result});
   }catch(err){console.warn('[VOICE STT] failed:',err.message);return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}

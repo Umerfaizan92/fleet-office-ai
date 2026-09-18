@@ -364,7 +364,7 @@ function maybeStartTour(me){
     stopVoice();const run=++speechRun;
     voiceStatus.textContent='Preparing spoken reply…';
     try{
-      const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:spoken,language:lang,voice:'auto'})});
+      const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:spoken,language:lang,voice:voicePreference})});
       if(response.ok&&run===speechRun&&voiceOn){
         const blob=await response.blob();if(!blob.size)throw new Error('empty audio');
         activeVoiceUrl=URL.createObjectURL(blob);activeVoiceAudio=new Audio(activeVoiceUrl);activeVoiceAudio.preload='auto';activeVoiceAudio.playsInline=true;

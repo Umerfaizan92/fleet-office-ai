@@ -2605,37 +2605,25 @@ app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
   };
   if((parsed.data.team_mode||'solo')==='team'&&!profile.custom_sections.some(x=>/people|workforce/i.test(x)))profile.custom_sections.unshift('People & workforce');
 
-  const base=String(env.AI_PROVIDER_BASE_URL||'').replace(/\/$/,'');
-  const key=String(env.AI_PROVIDER_API_KEY||'').trim();
-  const model=String(env.AI_PROVIDER_MODEL||'').trim();
   let source='industry-registry-safe-fallback';
 
-  if(base&&key&&model){
+  if(resolveAiProviderConfig()){
     try{
       const regulatory=industrySources(industry,req.saas.address_state||'').map(x=>({name:x.name,authority:x.authority,jurisdiction:x.jurisdiction,note:x.note}));
-      const response=await fetch(base+'/chat/completions',{
-        method:'POST',
-        headers:{authorization:'Bearer '+key,'content-type':'application/json'},
-        body:JSON.stringify({
-          model,temperature:.15,response_format:{type:'json_object'},
-          messages:[
-            {role:'system',content:'You design a professional Australian business workspace. Return JSON only with business_type, services (max 12 strings), custom_sections (max 12 strings), brand_voice, ai_instructions. Use the supplied industry profile and official-source names as context. Do not state that the business is compliant, do not invent licences or legal duties, and do not give clinical/legal/financial advice. Consequential actions must stay under authorised human review.'},
-            {role:'user',content:'Selected industry: '+industry.label+'\nANZSIC division: '+(industry.anzsic||'custom')+'\nSpecialties: '+(industry.specialties||[]).join(', ')+'\nOfficial source context: '+JSON.stringify(regulatory)+'\nBusiness description: '+parsed.data.business_description+'\nStructure: '+(parsed.data.business_structure||'sole_trader')+'\nTeam mode: '+(parsed.data.team_mode||'solo')}
-          ]
-        })
+      const ai=await generateAiText({
+        remember_conversation:false,
+        system:'You design a professional Australian business workspace. Return JSON only with business_type, services (max 12 strings), custom_sections (max 12 strings), brand_voice, ai_instructions. Use the supplied industry profile and official-source names as context. Do not state that the business is compliant, do not invent licences or legal duties, and do not give clinical/legal/financial advice. Consequential actions must stay under authorised human review.',
+        messages:[{role:'user',content:'Selected industry: '+industry.label+'\nANZSIC division: '+(industry.anzsic||'custom')+'\nSpecialties: '+(industry.specialties||[]).join(', ')+'\nOfficial source context: '+JSON.stringify(regulatory)+'\nBusiness description: '+parsed.data.business_description+'\nStructure: '+(parsed.data.business_structure||'sole_trader')+'\nTeam mode: '+(parsed.data.team_mode||'solo')}]
       });
-      const data=await response.json().catch(()=>({}));
-      const raw=data?.choices?.[0]?.message?.content;
-      if(response.ok&&raw){
-        const candidate=z.object({
-          business_type:z.string().min(2).max(150),
-          services:z.array(z.string().min(1).max(200)).min(1).max(12),
-          custom_sections:z.array(z.string().min(1).max(100)).max(12),
-          brand_voice:z.string().max(1000),
-          ai_instructions:z.string().max(3000)
-        }).safeParse(JSON.parse(raw));
-        if(candidate.success){profile={...profile,...candidate.data};source='configured-ai-provider'}
-      }
+      const raw=String(ai.text||'').trim().replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,'');
+      const candidate=z.object({
+        business_type:z.string().min(2).max(150),
+        services:z.array(z.string().min(1).max(200)).min(1).max(12),
+        custom_sections:z.array(z.string().min(1).max(100)).max(12),
+        brand_voice:z.string().max(1000),
+        ai_instructions:z.string().max(3000)
+      }).safeParse(JSON.parse(raw));
+      if(candidate.success){profile={...profile,...candidate.data};source='configured-ai-provider'}
     }catch(err){console.warn('[ONBOARDING AI DESIGN] Provider fallback:',err.message)}
   }
 

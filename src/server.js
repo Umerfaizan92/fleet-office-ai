@@ -4035,8 +4035,23 @@ app.post('/api/admin/ai-quality/check',requireAdmin,async(req,res)=>{
   const parsed=z.object({task_type:z.string().trim().min(2).max(100),hypothesis:z.string().max(2000).optional(),maker_output:z.string().trim().min(2).max(50000),threshold:z.coerce.number().min(0.5).max(1).default(0.8)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Provide a maker output and quality threshold.'});
   const text=parsed.data.maker_output;const checks=[['non_empty',text.length>=20],['no_secret_claim',!/api[_ -]?key\s*[:=]\s*\S+/i.test(text)],['no_success_fabrication',!/successfully (sent|published|paid|transferred)/i.test(text)],['approval_boundary',!/automatically (pay|fire|hire|publish|send|transfer)/i.test(text)||/approval|authoris|human/i.test(text)],['clear_structure',text.split(/\n|\.|\?|!/).filter(Boolean).length>=2]];
   const passed=checks.filter(x=>x[1]).length;let score=passed/checks.length;let status=score>=parsed.data.threshold?'pass':'review';let providerReview=null;
-  const checkerBase=String(env.AI_CHECKER_PROVIDER_BASE_URL||'').replace(/\/$/,'');const checkerKey=String(env.AI_CHECKER_API_KEY||'').trim();const checkerModel=String(env.AI_CHECKER_MODEL||'').trim();
-  if(checkerBase&&checkerKey&&checkerModel){try{const r=await fetch(`${checkerBase}/chat/completions`,{method:'POST',headers:{authorization:`Bearer ${checkerKey}`,'content-type':'application/json'},body:JSON.stringify({model:checkerModel,temperature:0,messages:[{role:'system',content:'You are an independent read-only verifier. You did not create the maker output. Evaluate factual restraint, security/privacy, approval boundaries, clarity and whether the output invents completed external actions. Return JSON only with fields score (0..1), status (pass or review), lesson (short string). Do not execute tools or modify anything.'},{role:'user',content:`Task: ${parsed.data.task_type}\nGoal: ${parsed.data.hypothesis||'not supplied'}\nMaker output:\n${text}`}],response_format:{type:'json_object'}})});const d=await r.json().catch(()=>({}));const raw=d?.choices?.[0]?.message?.content;if(r.ok&&raw){const j=JSON.parse(raw);const externalScore=Math.max(0,Math.min(1,Number(j.score)));if(Number.isFinite(externalScore)){score=Math.min(score,externalScore);status=score>=parsed.data.threshold&&String(j.status||'pass').toLowerCase()==='pass'?'pass':'review';providerReview={score:externalScore,status:String(j.status||''),lesson:String(j.lesson||'').slice(0,1000),provider:'independent-configured-checker'}}}}catch(err){console.warn('[AI CHECKER] Independent provider fallback:',err.message)}}
+  let providerReview=null;
+  if(resolveAiProviderConfig()){
+    try{
+      const ai=await generateAiText({
+        remember_conversation:false,
+        system:'You are an independent read-only verifier. You did not create the maker output. Evaluate factual restraint, security/privacy, approval boundaries, clarity and whether the output invents completed external actions. Return JSON only with fields score (0..1), status (pass or review), lesson (short string). Do not execute tools or modify anything.',
+        messages:[{role:'user',content:`Task: ${parsed.data.task_type}\nGoal: ${parsed.data.hypothesis||'not supplied'}\nMaker output:\n${text}`}]
+      });
+      const raw=String(ai.text||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+      const j=JSON.parse(raw),externalScore=Math.max(0,Math.min(1,Number(j.score)));
+      if(Number.isFinite(externalScore)){
+        score=Math.min(score,externalScore);
+        status=score>=parsed.data.threshold&&String(j.status||'pass').toLowerCase()==='pass'?'pass':'review';
+        providerReview={score:externalScore,status:String(j.status||''),lesson:String(j.lesson||'').slice(0,1000),provider:ai.provider||'central-ai-provider',model:ai.model||null};
+      }
+    }catch(err){console.warn('[AI CHECKER] Central provider fallback:',err.message)}
+  }
   const checker={checks:checks.map(([name,ok])=>({name,ok})),passed,total:checks.length,independent_checker:true,read_only:true,provider_review:providerReview};
   const id=crypto.randomUUID(),now=new Date().toISOString(),lesson=providerReview?.lesson||(status==='pass'?'Passed the independent policy/quality gate. Human approval may still be required for consequential actions.':'Maker output needs revision before promotion.');
   db.prepare(`INSERT INTO ai_verification_runs (id,task_type,hypothesis,maker_output,checker_output,score,threshold,status,lesson,created_at,decided_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(id,parsed.data.task_type,parsed.data.hypothesis||null,text,JSON.stringify(checker),score,parsed.data.threshold,status,lesson,now,now);

@@ -3902,7 +3902,11 @@ app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUs
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
   if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  const state=Buffer.from(JSON.stringify({o:req.saas.organisation_id,u:req.saas.user_id,p:provider,t:Date.now()})).toString('base64url');
+  const statePayload=Buffer.from(JSON.stringify({o:req.saas.organisation_id,u:req.saas.user_id,p:provider,t:Date.now()})).toString('base64url');
+  const stateSecret=env.SESSION_SECRET||env.SAAS_SESSION_SECRET||env.ADMIN_SESSION_SECRET;
+  if(!stateSecret)return res.status(503).json({ok:false,error:'Secure OAuth state signing is not configured on this deployment.'});
+  const stateSig=crypto.createHmac('sha256',stateSecret).update(statePayload).digest('base64url');
+  const state=`${statePayload}.${stateSig}`;
   const redirect=(path)=>encodeURIComponent(env[path]||`${base}/api/saas/integrations/oauth/${provider}/callback`);
   let authorizeUrl='';
   if(provider==='tiktok'&&env.TIKTOK_CLIENT_KEY&&env.TIKTOK_CLIENT_SECRET){

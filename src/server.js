@@ -2139,15 +2139,57 @@ async function verifyAustralianBusinessIdentifier(identifierType,identifier,busi
   return {verified:true,source:'abr',identifier_type:kind,identifier:value,abn:kind==='ABN'?value:returnedAbn,status:status||'Active',legal_name:legalName||businessName,state:String(raw?.AddressState||'').trim(),postcode:String(raw?.AddressPostcode||'').trim(),business_names:businessNames,raw};
 }
 async function verifyAustralianBusiness(abn,businessName=''){return verifyAustralianBusinessIdentifier('ABN',abn,businessName)}
+let telnyxVerifyProfileCache={at:0,data:null};
+async function getTelnyxVerifyProfile(){
+  if(!configuredValue(env.TELNYX_API_KEY)||!configuredValue(env.TELNYX_VERIFY_PROFILE_ID))return {configured:false};
+  if(telnyxVerifyProfileCache.data&&Date.now()-telnyxVerifyProfileCache.at<5*60*1000)return telnyxVerifyProfileCache.data;
+  const response=await fetch(`https://api.telnyx.com/v2/verify_profiles/${encodeURIComponent(env.TELNYX_VERIFY_PROFILE_ID)}`,{
+    headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'accept':'application/json'}
+  });
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const detail=payload?.errors?.[0]?.detail||payload?.errors?.[0]?.title||payload?.message||`HTTP ${response.status}`;
+    throw new Error(`Telnyx Verify profile check failed: ${detail}`);
+  }
+  const profile=payload?.data||{};
+  const sms=profile?.sms||{};
+  const destinations=Array.isArray(sms.whitelisted_destinations)?sms.whitelisted_destinations.map(v=>String(v).toUpperCase()):[];
+  const data={
+    configured:true,
+    profile_id:profile.id||env.TELNYX_VERIFY_PROFILE_ID,
+    profile_name:profile.name||'',
+    language:profile.language||'',
+    sms_enabled:Boolean(profile.sms),
+    australia_allowed:destinations.includes('AU'),
+    app_name_configured:Boolean(String(sms.app_name||'').trim()),
+    template_configured:Boolean(String(sms.messaging_template_id||'').trim()),
+    sender_configured:Boolean(String(sms.alpha_sender||sms.sender_phone_number||'').trim()),
+    alpha_sender:sms.alpha_sender||'',
+    timeout_seconds:Number(sms.default_verification_timeout_secs||300)
+  };
+  telnyxVerifyProfileCache={at:Date.now(),data};
+  return data;
+}
+async function assertTelnyxVerifyReady(){
+  const profile=await getTelnyxVerifyProfile();
+  if(!profile.configured)throw new Error('Telnyx Verify is not configured.');
+  if(!profile.sms_enabled)throw new Error('Telnyx Verify profile has no SMS channel configured.');
+  if(!profile.australia_allowed)throw new Error('Telnyx Verify profile does not allow Australia. In Telnyx Verify Profile, add Australia (AU) under International Destinations.');
+  if(!profile.app_name_configured)throw new Error('Telnyx Verify SMS App Name is missing. Edit the Verify Profile and add an SMS App Name such as Super Pro AI.');
+  if(!profile.template_configured)throw new Error('Telnyx Verify SMS template is missing. Edit the Verify Profile and select the Default SMS verification template.');
+  return profile;
+}
+
 async function sendSmsVerification(to,code,businessName){
   if(configuredValue(env.TELNYX_API_KEY)&&configuredValue(env.TELNYX_VERIFY_PROFILE_ID)){
+    const profile=await assertTelnyxVerifyReady();
     const response=await fetch('https://api.telnyx.com/v2/verifications/sms',{
       method:'POST',
       headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json','accept':'application/json'},
       body:JSON.stringify({phone_number:to,verify_profile_id:env.TELNYX_VERIFY_PROFILE_ID})
     });
     const data=await response.json().catch(()=>({}));
-    if(response.ok)return {sent:true,message_id:data?.data?.id||null,provider:'telnyx_verify'};
+    if(response.ok)return {sent:true,message_id:data?.data?.id||null,provider:'telnyx_verify',accepted:true,timeout_seconds:profile.timeout_seconds||300,profile_name:profile.profile_name||''};
     const detail=data?.errors?.[0]?.detail||data?.errors?.[0]?.title||data?.message||`HTTP ${response.status}`;
     throw new Error(`SMS verification failed: ${detail}`);
   }
@@ -2193,6 +2235,25 @@ async function deliverRegistrationCodes(row,emailCode,smsCode){
 }
 
 app.use('/api/saas',(req,res,next)=>{res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('Pragma','no-cache');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.get('origin');if(origin){try{const u=new URL(origin);const expectedHost=req.get('host');if(u.host!==expectedHost)return res.status(403).json({ok:false,error:'Cross-origin request blocked.'});}catch{return res.status(403).json({ok:false,error:'Invalid request origin.'});}}}next();});
+
+app.get('/api/saas/verification-provider/status',verificationLimiter,async(req,res)=>{
+  try{
+    const profile=await getTelnyxVerifyProfile();
+    res.json({ok:true,sms:{
+      configured:Boolean(profile.configured),
+      profile_reachable:Boolean(profile.configured),
+      profile_name:profile.profile_name||'',
+      sms_enabled:Boolean(profile.sms_enabled),
+      australia_allowed:Boolean(profile.australia_allowed),
+      app_name_configured:Boolean(profile.app_name_configured),
+      template_configured:Boolean(profile.template_configured),
+      sender_configured:Boolean(profile.sender_configured),
+      timeout_seconds:profile.timeout_seconds||300
+    }});
+  }catch(err){
+    res.status(503).json({ok:false,error:err.message,sms:{configured:Boolean(configuredValue(env.TELNYX_VERIFY_PROFILE_ID))}});
+  }
+});
 
 app.get('/api/saas/address/search',verificationLimiter,async(req,res)=>{
   const q=String(req.query.q||'').trim();
@@ -2272,7 +2333,7 @@ app.post('/api/saas/registration/resend',verificationLimiter,async(req,res)=>{
     }
     db.prepare(`UPDATE pending_registrations SET ${parsed.data.channel==='email'?'email_code_hash':'sms_code_hash'}=?,expires_at=?,updated_at=? WHERE id=?`).run(hash,expires.toISOString(),now.toISOString(),row.id);
     logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',messageId:delivery.email_id||delivery.message_id,status:'sent'});
-    res.json({ok:true,channel:parsed.data.channel,expires_at:expires.toISOString(),...(verificationTestMode?{test_code:code}:{}),message:`New ${parsed.data.channel==='email'?'email':'SMS'} verification code sent successfully.`,delivery:{sent:true,provider:parsed.data.channel==='email'?'resend':'telnyx'}});
+    res.json({ok:true,channel:parsed.data.channel,expires_at:expires.toISOString(),...(verificationTestMode?{test_code:code}:{}),message:parsed.data.channel==='email'?'New email verification code sent successfully.':'Telnyx accepted a new SMS verification request. Check your mobile; delivery can take a short time.',delivery:{sent:true,accepted:true,provider:delivery.provider||(parsed.data.channel==='email'?'resend':'telnyx_verify'),message_id:delivery.email_id||delivery.message_id||null,timeout_seconds:delivery.timeout_seconds||300}});
   }catch(err){
     logVerificationDelivery({purpose:'registration_resend',subjectId:row.id,channel:parsed.data.channel,destination:parsed.data.channel==='email'?row.email:row.phone,provider:parsed.data.channel==='email'?'resend':'telnyx',status:'failed',reason:err.message});
     res.status(503).json({ok:false,error:err.message});

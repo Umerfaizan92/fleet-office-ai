@@ -2510,18 +2510,70 @@ app.get('/api/saas/onboarding',requireSaasUser,(req,res)=>{const profile=db.prep
 app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
-  const parsed=z.object({business_description:z.string().trim().min(3).max(3000),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).optional(),team_mode:z.enum(['solo','team']).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Describe the business and choose the operating structure.'});
-  const text=parsed.data.business_description.toLowerCase();let profile={business_type:'Custom service business',services:['Customer enquiries','Quotes & proposals','Bookings & scheduling','Job/service delivery','Follow-up & reviews'],custom_sections:['Customers','Operations','Marketing','Finance'],brand_voice:'Professional, clear, helpful and trustworthy',ai_instructions:'Protect customer data, verify important facts, keep consequential actions under human approval and surface exceptions early.'};
-  if(/truck|polish|trade|electric|plumb|construction|mobile service|field/.test(text))profile={...profile,business_type:'Trades & field services',services:['Enquiries & quoting','Bookings & dispatch','On-site jobs','Recurring maintenance','Customer follow-up'],custom_sections:['Jobs & allocation','Site evidence','Vehicles & equipment','Expenses & profit','Safety & compliance']};
-  else if(/real estate|property|tenant|vendor|inspection/.test(text))profile={...profile,business_type:'Real estate & property services',services:['Lead intake','Property enquiries','Inspections & appointments','Vendor/client follow-up','Campaign reporting'],custom_sections:['Properties','Leads & clients','Inspections','Campaigns','Documents & governance']};
-  else if(/salon|hair|beauty|barber/.test(text))profile={...profile,business_type:'Salon & hairdressing',services:['Bookings','Client profiles','Service history','Reminders','Reviews & offers'],custom_sections:['Appointments','Clients','Services','Retail/stock','Reviews & campaigns']};
-  else if(/account|bookkeep|professional|consult/.test(text))profile={...profile,business_type:'Accounting & professional services',services:['Client onboarding','Appointments','Document requests','Recurring tasks','Deadline follow-up'],custom_sections:['Clients','Documents','Deadlines','Tasks','Billing & profitability']};
-  if((parsed.data.team_mode||'solo')==='solo')profile.custom_sections=profile.custom_sections.filter(x=>!/^staff|people/i.test(x));else profile.custom_sections.unshift('People & performance');
-  const base=String(env.AI_PROVIDER_BASE_URL||'').replace(/\/$/,'');const key=String(env.AI_PROVIDER_API_KEY||'').trim(),model=String(env.AI_PROVIDER_MODEL||'').trim();let source='rules-based-safe-fallback';
-  if(base&&key&&model){try{const r=await fetch(`${base}/chat/completions`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({model,temperature:.2,response_format:{type:'json_object'},messages:[{role:'system',content:'You design a professional service-business workspace configuration. Return JSON only with business_type, services (max 12 strings), custom_sections (max 12 strings), brand_voice, ai_instructions. Adapt to the described business, structure and whether it is solo or a team. Do not claim legal compliance, do not invent licences, and keep employment/legal/financial decisions under human review.'},{role:'user',content:`Business description: ${parsed.data.business_description}\nStructure: ${parsed.data.business_structure||'sole_trader'}\nTeam mode: ${parsed.data.team_mode||'solo'}`} ]})});const d=await r.json().catch(()=>({}));const raw=d?.choices?.[0]?.message?.content;if(r.ok&&raw){const j=JSON.parse(raw);const candidate=z.object({business_type:z.string().min(2).max(150),services:z.array(z.string().min(1).max(200)).min(1).max(12),custom_sections:z.array(z.string().min(1).max(100)).max(12),brand_voice:z.string().max(1000),ai_instructions:z.string().max(3000)}).safeParse(j);if(candidate.success){profile=candidate.data;source='configured-ai-provider'}}}catch(err){console.warn('[ONBOARDING AI DESIGN] Provider fallback:',err.message)}}
-  res.json({ok:true,design:profile,source,legal_note:'This AI setup is a starting configuration, not legal or professional advice. The owner must review industry, employment, privacy, tax and licensing settings before relying on them. Live external research is not claimed unless a separately authorised research source is connected.'});
-});
+  const parsed=z.object({
+    business_description:z.string().trim().min(3).max(3000),
+    industry_code:z.string().trim().max(80).optional(),
+    business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).optional(),
+    team_mode:z.enum(['solo','team']).optional()
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Describe the business and choose the operating structure.'});
 
+  const industry=industryByCode(parsed.data.industry_code||'custom');
+  let profile={
+    business_type:industry.code==='custom'?'Custom / other Australian business':industry.label,
+    industry_code:industry.code,
+    services:(industry.services||[]).slice(0,12),
+    custom_sections:(industry.specialties||[]).slice(0,8),
+    workspace_modules:industry.modules||[],
+    documents:(industry.documents||[]).slice(0,12),
+    brand_voice:'Professional, clear, trustworthy and appropriate to the selected industry.',
+    ai_instructions:'Use the selected industry profile and saved business context. Keep consequential actions under authorised human approval. Flag uncertainty and do not invent licences, legal obligations, clinical advice, financial advice, prices or promises.'
+  };
+  if((parsed.data.team_mode||'solo')==='team'&&!profile.custom_sections.some(x=>/people|workforce/i.test(x)))profile.custom_sections.unshift('People & workforce');
+
+  const base=String(env.AI_PROVIDER_BASE_URL||'').replace(/\/$/,'');
+  const key=String(env.AI_PROVIDER_API_KEY||'').trim();
+  const model=String(env.AI_PROVIDER_MODEL||'').trim();
+  let source='industry-registry-safe-fallback';
+
+  if(base&&key&&model){
+    try{
+      const regulatory=industrySources(industry,req.saas.address_state||'').map(x=>({name:x.name,authority:x.authority,jurisdiction:x.jurisdiction,note:x.note}));
+      const response=await fetch(base+'/chat/completions',{
+        method:'POST',
+        headers:{authorization:'Bearer '+key,'content-type':'application/json'},
+        body:JSON.stringify({
+          model,temperature:.15,response_format:{type:'json_object'},
+          messages:[
+            {role:'system',content:'You design a professional Australian business workspace. Return JSON only with business_type, services (max 12 strings), custom_sections (max 12 strings), brand_voice, ai_instructions. Use the supplied industry profile and official-source names as context. Do not state that the business is compliant, do not invent licences or legal duties, and do not give clinical/legal/financial advice. Consequential actions must stay under authorised human review.'},
+            {role:'user',content:'Selected industry: '+industry.label+'\nANZSIC division: '+(industry.anzsic||'custom')+'\nSpecialties: '+(industry.specialties||[]).join(', ')+'\nOfficial source context: '+JSON.stringify(regulatory)+'\nBusiness description: '+parsed.data.business_description+'\nStructure: '+(parsed.data.business_structure||'sole_trader')+'\nTeam mode: '+(parsed.data.team_mode||'solo')}
+          ]
+        })
+      });
+      const data=await response.json().catch(()=>({}));
+      const raw=data?.choices?.[0]?.message?.content;
+      if(response.ok&&raw){
+        const candidate=z.object({
+          business_type:z.string().min(2).max(150),
+          services:z.array(z.string().min(1).max(200)).min(1).max(12),
+          custom_sections:z.array(z.string().min(1).max(100)).max(12),
+          brand_voice:z.string().max(1000),
+          ai_instructions:z.string().max(3000)
+        }).safeParse(JSON.parse(raw));
+        if(candidate.success){profile={...profile,...candidate.data};source='configured-ai-provider'}
+      }
+    }catch(err){console.warn('[ONBOARDING AI DESIGN] Provider fallback:',err.message)}
+  }
+
+  res.json({
+    ok:true,
+    design:profile,
+    industry,
+    official_sources:industrySources(industry,req.saas.address_state||''),
+    source,
+    legal_note:'This is a reviewable workspace configuration, not a legal-compliance determination. Official-source changes and consequential decisions require authorised human review.'
+  });
+});
 function appendGovernanceLedger(organisationId,eventType,entityType=null,entityId=null,actorUserId=null,payload={}){
   const now=new Date().toISOString();
   const payloadJson=JSON.stringify(payload ?? {});

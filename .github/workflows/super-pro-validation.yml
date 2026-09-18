@@ -2,10 +2,10 @@ name: Super Pro validation
 on:
   pull_request:
     branches:
-      - super-pro-v15-live-test
+      - main
   push:
     branches:
-      - super-pro-v15-live-test
+      - main
 permissions:
   contents: read
 jobs:

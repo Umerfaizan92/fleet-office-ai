@@ -13,7 +13,7 @@ import { createDb } from './db.js';
 import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
-import './ai-provider-shim.js';
+import { aiProviderStatus, generateAiText, meaningfulConfigValue, resolveAiProviderConfig } from './ai-provider-shim.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -2446,9 +2446,18 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
 
 app.post('/api/saas/logout',requireSaasUser,(req,res)=>{const raw=cookieValue(req,sessionCookieName);db.prepare(`DELETE FROM user_sessions WHERE token_hash=?`).run(sha256(raw));res.setHeader('Set-Cookie',`${sessionCookieName}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`);res.json({ok:true})});
 const productGuideLimiter=rateLimit({windowMs:60*1000,limit:180,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'AI guide is receiving unusually high traffic. Please retry shortly.'}});
-function detectGuideLanguage(text){const t=String(text||'');if(/[ےںٹڈڑھچپگژکگیہ]/.test(t)||/(?:^|\s)(?:ہے|ہیں|میں|آپ|کیا|کیسے|نہیں|اور|یہ|وہ|جو|کو|سے|کا|کی)(?:\s|$)/.test(t))return 'ur';if(/[\u0600-\u06FF]/.test(t))return 'ar';if(/[\u0900-\u097F]/.test(t))return 'hi';if(/[\u0A00-\u0A7F]/.test(t))return 'pa';if(/[\u4E00-\u9FFF]/.test(t))return 'zh';if(/[\u3040-\u30FF]/.test(t))return 'ja';if(/[\uAC00-\uD7AF]/.test(t))return 'ko';if(/[\u0980-\u09FF]/.test(t))return 'bn';if(/[\u0B80-\u0BFF]/.test(t))return 'ta';if(/[áéíóúñ¿¡]/i.test(t))return 'es';if(/[àâçéèêëîïôûùüÿœ]/i.test(t))return 'fr';return 'en'}
+function detectGuideLanguage(text){const t=String(text||''),low=` ${t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ')} `;if(/[ےںٹڈڑھچپگژکگیہ]/.test(t)||/(?:^|\s)(?:ہے|ہیں|میں|آپ|کیا|کیسے|نہیں|اور|یہ|وہ|جو|کو|سے|کا|کی)(?:\s|$)/.test(t))return 'ur';if(/[\u0600-\u06FF]/.test(t))return 'ar';if(/[\u0900-\u097F]/.test(t))return 'hi';if(/[\u0A00-\u0A7F]/.test(t))return 'pa';if(/[\u4E00-\u9FFF]/.test(t))return 'zh';if(/[\u3040-\u30FF]/.test(t))return 'ja';if(/[\uAC00-\uD7AF]/.test(t))return 'ko';if(/[\u0980-\u09FF]/.test(t))return 'bn';if(/[\u0B80-\u0BFF]/.test(t))return 'ta';const has=w=>low.includes(` ${w} `),score=ws=>ws.reduce((n,w)=>n+(has(w)?1:0),0),pa=score(['tusi','tuhanu','mainu','kiven','naal','assi','sanu','veere','paaji']),ur=score(['mujhe','mera','meri','aap','apko','kaise','kyun','nahi','nahin','chahiye','batao','samjhao','karna','karo','hai','hain','mein','acha','theek']);if(pa>=2)return 'pa';if(ur>=3)return 'ur';if(/[áéíóúñ¿¡]/i.test(t))return 'es';if(/[àâçéèêëîïôûùüÿœ]/i.test(t))return 'fr';return 'en'}
 const localGuideText={en:'Super Pro AI Office Manager is an AI-assisted office operating system for service businesses. It connects customers, enquiries, jobs, staff, content, communications, integrations, governance and approval-controlled AI. Tell me which part you want to understand and I can point you to the right workspace area.',ur:'سپر پرو اے آئی آفس مینیجر سروس بزنسز کے لیے اے آئی کی مدد سے چلنے والا آفس آپریٹنگ سسٹم ہے۔ یہ کسٹمرز، انکوائریز، جابز، اسٹاف، کانٹینٹ، کمیونیکیشنز، انٹیگریشنز اور گورننس کو ایک ورک اسپیس میں منظم کرتا ہے، جبکہ اہم اقدامات انسانی منظوری کے تحت رہتے ہیں۔ آپ جس حصے کے بارے میں جاننا چاہیں، اسی زبان میں سوال کریں۔',hi:'Super Pro AI Office Manager सर्विस बिज़नेस के लिए AI-assisted office operating system है। यह customers, enquiries, jobs, staff, content, communications, integrations, governance और approval-controlled AI को एक workspace में जोड़ता है। आप जिस हिस्से को समझना चाहते हैं बताइए, मैं उसी भाषा में मार्गदर्शन करूँगा।',ar:'Super Pro AI Office Manager هو نظام مكتب مدعوم بالذكاء الاصطناعي للشركات الخدمية، يجمع العملاء والاستفسارات والوظائف والموظفين والمحتوى والاتصالات والتكاملات والحوكمة في مساحة عمل واحدة مع بقاء الإجراءات المهمة تحت موافقة بشرية.',es:'Super Pro AI Office Manager es un sistema operativo de oficina asistido por IA para empresas de servicios. Reúne clientes, consultas, trabajos, personal, contenido, comunicaciones, integraciones y gobierno con acciones importantes sujetas a aprobación humana.',fr:'Super Pro AI Office Manager est un système d’exploitation de bureau assisté par IA pour les entreprises de services. Il réunit clients, demandes, tâches, personnel, contenu, communications, intégrations et gouvernance, avec validation humaine pour les actions importantes.',zh:'Super Pro AI Office Manager 是面向服务型企业的 AI 辅助办公操作系统，将客户、咨询、工作、员工、内容、沟通、集成和治理整合到一个工作区，并对重要操作保留人工审批。',pa:'Super Pro AI Office Manager ਸਰਵਿਸ ਬਿਜ਼ਨਸ ਲਈ AI-assisted office operating system ਹੈ। ਇਹ customers, enquiries, jobs, staff, content, communications, integrations ਅਤੇ governance ਨੂੰ ਇਕ workspace ਵਿੱਚ ਜੋੜਦਾ ਹੈ ਅਤੇ ਮਹੱਤਵਪੂਰਨ actions ਲਈ human approval ਰੱਖਦਾ ਹੈ।',bn:'Super Pro AI Office Manager সেবা-ভিত্তিক ব্যবসার জন্য AI-সহায়িত অফিস অপারেটিং সিস্টেম। এটি গ্রাহক, অনুসন্ধান, কাজ, কর্মী, কনটেন্ট, যোগাযোগ, ইন্টিগ্রেশন ও গভর্ন্যান্সকে এক কর্মক্ষেত্রে সংগঠিত করে এবং গুরুত্বপূর্ণ কাজ মানব অনুমোদনের অধীনে রাখে।',ta:'Super Pro AI Office Manager சேவை வணிகங்களுக்கான AI உதவியுடன் இயங்கும் அலுவலக செயல்பாட்டு அமைப்பு. இது வாடிக்கையாளர்கள், விசாரணைகள், வேலைகள், பணியாளர்கள், உள்ளடக்கம், தொடர்புகள், இணைப்புகள் மற்றும் நிர்வாகத்தை ஒரே பணியிடத்தில் ஒருங்கிணைக்கிறது; முக்கிய நடவடிக்கைகள் மனித அனுமதியுடன் இருக்கும்.',ja:'Super Pro AI Office Manager はサービス事業向けの AI 支援型オフィス運用システムです。顧客、問い合わせ、仕事、スタッフ、コンテンツ、コミュニケーション、連携、ガバナンスを一つのワークスペースにまとめ、重要な操作には人の承認を残します。',ko:'Super Pro AI Office Manager는 서비스 비즈니스를 위한 AI 지원 사무 운영 시스템입니다. 고객, 문의, 작업, 직원, 콘텐츠, 커뮤니케이션, 연동 및 거버넌스를 하나의 워크스페이스에서 관리하며 중요한 작업은 사람의 승인을 거치도록 합니다.'};
-app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{const parsed=z.object({question:z.string().trim().min(1).max(2000),context:z.string().max(120).optional(),language:z.string().max(20).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Please enter a question.'});const language=parsed.data.language&&parsed.data.language!=='auto'?parsed.data.language:detectGuideLanguage(parsed.data.question);const base=String(env.AI_PROVIDER_BASE_URL||'').replace(/\/$/,'');const key=String(env.AI_PROVIDER_API_KEY||'').trim(),model=String(env.AI_PROVIDER_MODEL||'').trim();if(base&&key&&model){try{const r=await fetch(`${base}/chat/completions`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({model,temperature:.25,messages:[{role:'system',content:'You are the Super Pro AI Office Manager product and workspace guide. Detect the user language from both native script and common Roman/transliterated writing, and answer naturally in the same language and writing style unless the user asks otherwise. For Urdu, understand both Urdu script and Roman Urdu; for Hindi and Punjabi also understand common Roman transliteration. Use fluent native phrasing rather than literal translation. Be concise, professional and helpful. Explain Super Pro AI Office Manager features, navigation, setup, plans, security, integrations, AI Office Manager, staff collaboration and governance. Never expose secrets, invent connected providers or claim an external action happened. If unrelated to Super Pro AI Office Manager, politely redirect.'},{role:'user',content:`Context: ${parsed.data.context||'public product guide'}\nQuestion: ${parsed.data.question}`} ]})});const d=await r.json().catch(()=>({}));const text=d?.choices?.[0]?.message?.content;if(r.ok&&text)return res.json({ok:true,text:String(text).trim(),language,source:'configured-ai-provider'})}catch(err){console.warn('[PRODUCT GUIDE] Provider fallback:',err.message)}}return res.json({ok:true,text:localGuideText[language]||localGuideText.en,language,source:'local-multilingual-fallback'})});
+app.get('/api/product-guide/status',productGuideLimiter,(req,res)=>{const status=aiProviderStatus();res.json({ok:true,ai:{configured:status.configured,provider:status.provider,model:status.model},voice_server_ready:Boolean(openAiSpeechConfig()),transcription_server_ready:Boolean(openAiSpeechConfig())})});
+app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{
+  const parsed=z.object({question:z.string().trim().min(1).max(2000),context:z.string().max(120).optional(),language:z.string().max(20).optional(),conversation_id:z.string().max(120).optional()}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Please enter a question.'});
+  const language=parsed.data.language&&parsed.data.language!=='auto'?parsed.data.language:detectGuideLanguage(parsed.data.question);
+  try{
+    const result=await generateAiText({conversation_id:parsed.data.conversation_id||null,system:'You are the Super Pro AI Office Manager product and workspace guide. Detect native script and common Roman/transliterated Urdu, Hindi and Punjabi. Answer naturally in the requested language and writing style. Be concise, professional and useful. Explain product features, navigation, setup, plans, security, integrations, AI Operations, staff collaboration and governance. Never expose secrets, invent provider status or claim an external action completed unless confirmed.',messages:[{role:'user',content:`Reply language: ${language}. Context: ${parsed.data.context||'public product guide'}\nQuestion: ${parsed.data.question}`}]});
+    return res.json({ok:true,text:String(result.text).trim(),language,source:'configured-ai-provider',provider:result.provider,model:result.model});
+  }catch(err){console.warn('[PRODUCT GUIDE] AI unavailable:',err.message);return res.json({ok:true,text:localGuideText[language]||localGuideText.en,language,source:'local-multilingual-fallback',configuration_required:true});}
+});
 
 app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const messages=db.prepare(`SELECT id,sender_name,sender_role,message,created_at FROM staff_chat_messages WHERE organisation_id=? ORDER BY created_at DESC LIMIT 80`).all(req.saas.organisation_id).reverse();res.json({ok:true,messages})});
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name,sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:row})});
@@ -2464,104 +2473,49 @@ app.post('/api/saas/mfa/verify',requireSaasUser,(req,res)=>{const parsed=z.objec
 
 app.get('/api/health/storage',(req,res)=>res.json({ok:true,persistent_storage_detected:persistentStorageDetected,production:env.NODE_ENV==='production',recommendation:env.NODE_ENV==='production'&&!persistentStorageDetected?'Configure a Render persistent disk at /var/data (paid service) or migrate the relational datastore to a managed database before relying on customer accounts.':null}));
 
-app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,async(req,res)=>{
-  const parsed=z.object({text:z.string().trim().min(1).max(3500),language:z.string().trim().max(20).default('en'),voice:z.enum(['auto','female','male']).default('auto')}).safeParse(req.body);
-  if(!parsed.success)return res.status(400).json({ok:false,error:'Voice text is invalid.'});
-
-  const explicitBase=String(env.AI_TTS_PROVIDER_BASE_URL||'').trim().replace(/\/$/,'');
-  const aiBase=String(env.AI_PROVIDER_BASE_URL||'').trim().replace(/\/$/,'');
-  const base=explicitBase||(/api\.openai\.com/i.test(aiBase)?aiBase:'');
-  const explicitKey=String(env.AI_TTS_API_KEY||env.OPENAI_API_KEY||'').trim();
-  const inheritedKey=/api\.openai\.com/i.test(base)?String(env.AI_PROVIDER_API_KEY||'').trim():'';
-  const key=explicitKey||inheritedKey;
-  if(!base||!key||!/api\.openai\.com/i.test(base)){
-    return res.status(503).json({ok:false,error:'Server speech is not configured for this AI provider.',fallback:'browser'});
-  }
-
-  const languageNames={en:'English',ur:'Urdu',hi:'Hindi',pa:'Punjabi',ar:'Arabic',bn:'Bengali',ta:'Tamil',zh:'Mandarin Chinese',ja:'Japanese',ko:'Korean',es:'Spanish',fr:'French'};
-  const voiceChoice=parsed.data.voice==='male'?String(env.AI_TTS_MALE_VOICE||'onyx'):parsed.data.voice==='female'?String(env.AI_TTS_FEMALE_VOICE||'coral'):String(env.AI_TTS_VOICE||'coral');
-  try{
-    const response=await fetch(base+'/audio/speech',{
-      method:'POST',
-      headers:{authorization:'Bearer '+key,'content-type':'application/json','accept':'audio/mpeg'},
-      body:JSON.stringify({
-        model:String(env.AI_TTS_MODEL||'gpt-4o-mini-tts'),
-        voice:voiceChoice,
-        input:parsed.data.text,
-        response_format:'mp3',
-        instructions:'Speak fluently and naturally in '+(languageNames[parsed.data.language]||parsed.data.language||'English')+' using native pronunciation, natural rhythm, pauses and conversational intonation. Never pronounce Urdu, Arabic, Hindi, Punjabi, Bengali, Tamil, Chinese, Japanese or Korean text with an English accent when the requested language is known. Sound like a professional native speaker having a real conversation, not a robotic reader. Preserve names and numbers accurately. Do not read markdown symbols aloud.'
-      })
-    });
-    if(!response.ok){
-      const detail=await response.text().catch(()=> '');
-      console.warn('[VOICE TTS] provider error',response.status,detail.slice(0,400));
-      return res.status(502).json({ok:false,error:'Server voice generation is temporarily unavailable.',fallback:'browser'});
-    }
-    const audio=Buffer.from(await response.arrayBuffer());
-    if(!audio.length)return res.status(502).json({ok:false,error:'Voice provider returned empty audio.',fallback:'browser'});
-    res.setHeader('Content-Type','audio/mpeg');
-    res.setHeader('Cache-Control','no-store');
-    res.setHeader('Content-Length',String(audio.length));
-    return res.send(audio);
-  }catch(err){
-    console.warn('[VOICE TTS] failed:',err.message);
-    return res.status(502).json({ok:false,error:'Server voice generation could not complete.',fallback:'browser'});
-  }
-});
-
-app.get('/api/saas/industry-registry',requireSaasUser,(req,res)=>{
-  const state=String(req.saas.address_state||'').toUpperCase();
-  res.json({ok:true,industries:INDUSTRY_REGISTRY.map(row=>({...row,sources:industrySources(row,state)})),general_sources:GENERAL_REGULATORY_SOURCES});
-});
-
-app.get('/api/saas/releases/latest',requireSaasUser,(req,res)=>{
-  const row=db.prepare(`SELECT * FROM product_release_events ORDER BY released_at DESC LIMIT 1`).get();
-  res.json({ok:true,release:row?{...row,details:safeJson(row.details_json,[])}:null});
-});
-
-app.get('/api/saas/storage/status',requireSaasUser,(req,res)=>{
-  const persistentPath=/^\/var\/data(?:\/|$)/.test(databasePath)||/^\/opt\/render\/project\/src\/storage(?:\/|$)/.test(databasePath);
-  res.json({ok:true,database_path:databasePath,persistent_path_detected:persistentPath,production:env.NODE_ENV==='production',warning:env.NODE_ENV==='production'&&!persistentPath?'Production database appears to be on the service filesystem. On Render this can be lost on restart or deploy unless DATABASE_PATH points to a persistent disk or a managed database is used.':null});
-});
-
-async function fetchRegulatorySnapshot(source){
-  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-  try{
-    const response=await fetch(source.url,{signal:controller.signal,headers:{'user-agent':'SuperProAIOfficeManager/1.0 regulatory-source-monitor'}});
-    const body=await response.text();const normalized=body.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,500000);
-    return {http_status:response.status,check_status:response.ok?'checked':'http_error',content_hash:response.ok?sha256(normalized):null,note:response.ok?'Official source page checked. A page change is not automatically treated as a legal change.':'Official source could not be read successfully.'};
-  }catch(err){return {http_status:null,check_status:'unavailable',content_hash:null,note:err.name==='AbortError'?'Official source check timed out.':'Official source check failed.'}}
-  finally{clearTimeout(timer)}
+function openAiSpeechConfig(){
+  const explicitBase=meaningfulConfigValue(env.AI_TTS_PROVIDER_BASE_URL)?String(env.AI_TTS_PROVIDER_BASE_URL).trim().replace(/\/$/,''):'';
+  const primary=resolveAiProviderConfig();
+  const primaryBase=primary&&/api\.openai\.com/i.test(primary.base)?String(primary.base).trim().replace(/\/$/,''):'';
+  const base=explicitBase||primaryBase||(meaningfulConfigValue(env.OPENAI_API_KEY)?'https://api.openai.com/v1':'');
+  const key=meaningfulConfigValue(env.AI_TTS_API_KEY)?String(env.AI_TTS_API_KEY).trim():(primaryBase&&meaningfulConfigValue(primary?.key)?String(primary.key).trim():(meaningfulConfigValue(env.OPENAI_API_KEY)?String(env.OPENAI_API_KEY).trim():''));
+  return base&&key&&/api\.openai\.com/i.test(base)?{base,key}:null;
 }
+function speechVoiceChoice(preference='auto'){
+  if(preference==='male')return meaningfulConfigValue(env.AI_TTS_MALE_VOICE)?String(env.AI_TTS_MALE_VOICE).trim():'cedar';
+  if(preference==='female')return meaningfulConfigValue(env.AI_TTS_FEMALE_VOICE)?String(env.AI_TTS_FEMALE_VOICE).trim():'coral';
+  return meaningfulConfigValue(env.AI_TTS_VOICE)?String(env.AI_TTS_VOICE).trim():'marin';
+}
+function speechInstructions(language='en',preference='auto'){
+  const styles={en:'natural Australian English unless the text clearly uses another English variety',ur:'natural Pakistani Urdu with native Urdu pronunciation; for Roman Urdu, speak the intended Urdu words rather than reading them as English',hi:'natural Indian Hindi with native Hindi pronunciation; understand common Roman Hindi spellings',pa:'natural Punjabi pronunciation matching the wording and script; for Roman Punjabi, speak the intended Punjabi words',ar:'natural fluent Arabic matching the wording and regional cues in the text',bn:'natural Bengali pronunciation',ta:'natural Tamil pronunciation',zh:'natural Mandarin Chinese pronunciation',ja:'natural Japanese pronunciation',ko:'natural Korean pronunciation',es:'natural Spanish pronunciation matching the wording',fr:'natural French pronunciation matching the wording'};
+  const voiceStyle=preference==='male'?'Use a warm, professional lower voice profile.':preference==='female'?'Use a warm, professional brighter voice profile.':'Use a natural professional conversational voice profile.';
+  return `Speak in ${styles[language]||'the language of the supplied text with native pronunciation'}. ${voiceStyle} Use natural rhythm, pauses, emphasis and conversational intonation. Do not sound robotic. Never apply an English accent to non-English text. Preserve names, business terms, dates and numbers accurately. Do not read markdown symbols, URLs or formatting punctuation aloud unless necessary for meaning.`;
+}
+async function makeSpeechAudio({text,language='en',voice='auto'}){
+  const cfg=openAiSpeechConfig();if(!cfg)throw Object.assign(new Error('Server speech is not configured.'),{status:503});
+  const response=await fetch(cfg.base+'/audio/speech',{method:'POST',headers:{authorization:'Bearer '+cfg.key,'content-type':'application/json','accept':'audio/mpeg'},body:JSON.stringify({model:meaningfulConfigValue(env.AI_TTS_MODEL)?String(env.AI_TTS_MODEL).trim():'gpt-4o-mini-tts',voice:speechVoiceChoice(voice),input:text,response_format:'mp3',instructions:speechInstructions(language,voice)})});
+  if(!response.ok){const detail=await response.text().catch(()=> '');console.warn('[VOICE TTS] provider error',response.status,detail.slice(0,400));throw Object.assign(new Error('Server voice generation is temporarily unavailable.'),{status:502});}
+  const audio=Buffer.from(await response.arrayBuffer());if(!audio.length)throw Object.assign(new Error('Voice provider returned empty audio.'),{status:502});return audio;
+}
+async function speechEndpoint(req,res,max=3500){
+  const parsed=z.object({text:z.string().trim().min(1).max(max),language:z.string().trim().max(20).default('en'),voice:z.enum(['auto','female','male']).default('auto')}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Voice text is invalid.'});
+  try{const audio=await makeSpeechAudio(parsed.data);res.setHeader('Content-Type','audio/mpeg');res.setHeader('Cache-Control','no-store');res.setHeader('Content-Length',String(audio.length));return res.send(audio)}catch(err){console.warn('[VOICE TTS] failed:',err.message);return res.status(err.status||502).json({ok:false,error:err.message||'Server voice generation could not complete.',fallback:'browser'})}
+}
+app.post('/api/product-guide/speech',productGuideLimiter,(req,res)=>speechEndpoint(req,res,1800));
+app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,(req,res)=>speechEndpoint(req,res,3500));
 
-app.get('/api/saas/regulatory/sources',requireSaasUser,(req,res)=>{
-  const profile=db.prepare(`SELECT industry_code FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
-  const sources=industrySources(profile.industry_code||'custom',req.saas.address_state||'');
-  const snapshots=db.prepare(`SELECT * FROM regulatory_source_snapshots WHERE organisation_id=?`).all(req.saas.organisation_id);
-  const byId=new Map(snapshots.map(x=>[x.source_id,x]));
-  res.json({ok:true,industry:industryByCode(profile.industry_code||'custom'),sources:sources.map(x=>({...x,last_check:byId.get(x.id)||null})),monitoring_note:'Super Pro can detect changes to listed official source pages. A detected page change requires human review and is not automatically asserted to be a new legal obligation.'});
-});
-
-app.post('/api/saas/regulatory/check',requireSaasUser,async(req,res)=>{
-  const parsed=z.object({industry_code:z.string().trim().max(80).optional()}).safeParse(req.body||{});
-  if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid industry profile.'});
-  const profile=db.prepare(`SELECT industry_code FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
-  const industryCode=parsed.data.industry_code||profile.industry_code||'custom';
-  const selectedIndustry=industryByCode(industryCode);
-  const sources=industrySources(selectedIndustry,req.saas.address_state||'').slice(0,12);
-  const now=new Date().toISOString(),results=[];
-  for(const source of sources){
-    const previous=db.prepare(`SELECT * FROM regulatory_source_snapshots WHERE organisation_id=? AND source_id=?`).get(req.saas.organisation_id,source.id);
-    const check=await fetchRegulatorySnapshot(source);
-    const changed=Boolean(previous?.content_hash&&check.content_hash&&previous.content_hash!==check.content_hash);
-    db.prepare(`INSERT INTO regulatory_source_snapshots (id,organisation_id,source_id,source_name,source_url,content_hash,http_status,check_status,changed,checked_at,note) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(organisation_id,source_id) DO UPDATE SET source_name=excluded.source_name,source_url=excluded.source_url,content_hash=COALESCE(excluded.content_hash,regulatory_source_snapshots.content_hash),http_status=excluded.http_status,check_status=excluded.check_status,changed=excluded.changed,checked_at=excluded.checked_at,note=excluded.note`).run(previous?.id||crypto.randomUUID(),req.saas.organisation_id,source.id,source.name,source.url,check.content_hash,check.http_status,check.check_status,changed?1:0,now,check.note);
-    results.push({...source,...check,changed});
-  }
-  if(results.some(x=>x.changed))saasAudit(req,'regulatory.source_change_detected','organisation',req.saas.organisation_id,{source_ids:results.filter(x=>x.changed).map(x=>x.id)});
-  res.json({ok:true,checked_at:now,industry:selectedIndustry,results,message:results.some(x=>x.changed)?'One or more official source pages changed. Review the source before treating the change as a new requirement.':'No page changes were detected among the sources successfully checked.'});
-});
-
-app.get('/api/saas/onboarding',requireSaasUser,(req,res)=>{const profile=db.prepare(`SELECT * FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id);const org=db.prepare(`SELECT address_unit,address_street_number,address_street_name,address_suburb,address_state,address_postcode,address_formatted,address_source FROM organisations WHERE id=?`).get(req.saas.organisation_id)||{};const industry=industryByCode(profile?.industry_code||'custom');res.json({ok:true,profile:{...profile,...org,services:safeJson(profile?.services,[]),custom_sections:safeJson(profile?.custom_sections_json,[]),workspace_modules:safeJson(profile?.workspace_modules_json,industry.modules||[])},industry})});
+const voiceInputUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ok=/^(audio\/|video\/webm)/i.test(String(file.mimetype||''));cb(ok?null:new Error('Unsupported microphone audio format.'),ok)}});
+async function transcribeVoice(req,res){
+  if(!req.file?.buffer?.length)return res.status(400).json({ok:false,error:'No microphone audio was received.'});
+  const cfg=openAiSpeechConfig();if(!cfg)return res.status(503).json({ok:false,error:'Server speech recognition is not configured.',fallback:'browser'});
+  const requested=String(req.body?.language||'auto').trim().toLowerCase();
+  try{
+    const form=new FormData();const mime=req.file.mimetype||'audio/webm';form.append('file',new Blob([req.file.buffer],{type:mime}),req.file.originalname||'microphone.webm');form.append('model',meaningfulConfigValue(env.AI_STT_MODEL)?String(env.AI_STT_MODEL).trim():'gpt-4o-mini-transcribe');if(requested&&requested!=='auto')form.append('language',requested);
+    const response=await fetch(cfg.base+'/audio/transcriptions',{method:'POST',headers:{authorization:'Bearer '+cfg.key},body:form});const data=await response.json().catch(()=>({}));if(!response.ok||!String(data.text||'').trim()){console.warn('[VOICE STT] provider error',response.status,JSON.stringify(data).slice(0,400));return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}const text=String(data.text).trim(),language=requested==='auto'?detectGuideLanguage(text):requested;return res.json({ok:true,text,language,source:'server-transcription'});
+  }catch(err){console.warn('[VOICE STT] failed:',err.message);return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}
+}
+app.post('/api/product-guide/transcribe',productGuideLimiter,voiceInputUpload.single('audio'),transcribeVoice);
+app.post('/api/saas/voice/transcribe',requireSaasUser,voiceReplyLimiter,voiceInputUpload.single('audio'),transcribeVoice);
 app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
@@ -2697,9 +2651,18 @@ app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{const parsed=z.obje
 app.post('/api/saas/work-orders/:id/offer',requireSaasUser,(req,res)=>{const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);if(!job)return res.status(404).json({ok:false,error:'Work order not found'});const skills=JSON.parse(job.required_skills),workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=?`).all(req.saas.organisation_id,job.required_level);const eligible=workers.filter(w=>skills.every(skill=>{const r=db.prepare(`SELECT competency FROM worker_skills WHERE worker_id=? AND lower(skill_name)=lower(?) AND competency IN ('competent','advanced','expert')`).get(w.id,skill);return Boolean(r)}));const now=new Date().toISOString(),ins=db.prepare(`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at) VALUES (?,?,?,?, 'offered',?)`);db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();saasAudit(req,'work_order.offered','work_order',job.id,{eligible_workers:eligible.length});res.json({ok:true,eligible_workers:eligible.map(w=>({id:w.id,full_name:w.full_name,level:w.worker_level})),offered:eligible.length})});
 app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});const offer=db.prepare(`SELECT o.*,w.required_workers FROM job_offers o JOIN work_orders w ON w.id=o.work_order_id WHERE o.id=? AND o.organisation_id=?`).get(req.params.id,req.saas.organisation_id);if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});const now=new Date().toISOString();db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=?`).run(parsed.data.status,now,offer.id);const accepted=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND status='accepted'`).get(offer.work_order_id).count;if(accepted>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=?`).run(now,offer.work_order_id);saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});res.json({ok:true,accepted_workers:accepted})});
 
-app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT * FROM ai_threads WHERE organisation_id=? ORDER BY updated_at DESC`).all(req.saas.organisation_id)}));
-app.post('/api/saas/ai/threads',requireSaasUser,(req,res)=>{const parsed=z.object({title:z.string().trim().min(1).max(200),message:z.string().trim().min(1).max(50000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Title and message required.'});const id=crypto.randomUUID(),messageId=crypto.randomUUID(),now=new Date().toISOString();db.transaction(()=>{db.prepare(`INSERT INTO ai_threads (id,organisation_id,created_by,title,created_at,updated_at) VALUES (?,?,?,?,?,?)`).run(id,req.saas.organisation_id,req.saas.user_id,parsed.data.title,now,now);db.prepare(`INSERT INTO ai_thread_messages (id,thread_id,role,content_type,content,created_at) VALUES (?,?,'user','text',?,?)`).run(messageId,id,parsed.data.message,now)})();res.status(201).json({ok:true,id,ai_response:null,configuration_required:true,note:'Message stored privately. Connect an approved AI provider or local model before generating responses.'})});
-
+app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? ORDER BY t.updated_at DESC`).all(req.saas.organisation_id)}));
+app.get('/api/saas/ai/status',requireSaasUser,(req,res)=>{const status=aiProviderStatus(),speech=openAiSpeechConfig();res.json({ok:true,ai:{configured:status.configured,provider:status.provider,model:status.model},voice:{server_tts:Boolean(speech),server_stt:Boolean(speech)},message:status.configured?'AI provider is operationally configured.':'AI provider credentials are not configured on this deployment.'})});
+app.post('/api/saas/ai/threads',requireSaasUser,async(req,res)=>{
+  const parsed=z.object({title:z.string().trim().min(1).max(200),message:z.string().trim().min(1).max(50000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Title and message required.'});
+  const id=crypto.randomUUID(),messageId=crypto.randomUUID(),now=new Date().toISOString();
+  db.transaction(()=>{db.prepare(`INSERT INTO ai_threads (id,organisation_id,created_by,title,created_at,updated_at) VALUES (?,?,?,?,?,?)`).run(id,req.saas.organisation_id,req.saas.user_id,parsed.data.title,now,now);db.prepare(`INSERT INTO ai_thread_messages (id,thread_id,role,content_type,content,created_at) VALUES (?,?,'user','text',?,?)`).run(messageId,id,parsed.data.message,now)})();
+  try{
+    const profile=db.prepare(`SELECT business_type,services,brand_voice,approval_mode,ai_instructions FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
+    const result=await generateAiText({conversation_id:`workspace:${req.saas.organisation_id}:${id}`,system:'You are Super Pro AI Operations. Turn the user instruction into a useful operational response for their service business. Be specific, action-oriented and professional. Respect approval controls: draft, analyse, organise and recommend, but never claim a consequential external action was sent, published, charged or completed unless the system confirms it. Use the same language as the user unless they explicitly request another.',messages:[{role:'user',content:`Workspace context: ${JSON.stringify({business_type:profile.business_type||'',services:profile.services||'',brand_voice:profile.brand_voice||'',approval_mode:profile.approval_mode||'',ai_instructions:profile.ai_instructions||''})}\nTask title: ${parsed.data.title}\nInstruction: ${parsed.data.message}`} ]});
+    const assistantId=crypto.randomUUID(),done=new Date().toISOString();db.prepare(`INSERT INTO ai_thread_messages (id,thread_id,role,content_type,content,created_at) VALUES (?,?,'assistant','text',?,?)`).run(assistantId,id,result.text,done);db.prepare(`UPDATE ai_threads SET updated_at=? WHERE id=?`).run(done,id);saasAudit(req,'ai.thread.completed','ai_thread',id,{provider:result.provider,model:result.model});return res.status(201).json({ok:true,id,ai_response:result.text,source:'configured-ai-provider',provider:result.provider,model:result.model,note:'AI Operations completed the instruction and saved the response to this workspace thread.'});
+  }catch(err){console.warn('[AI OPERATIONS] provider unavailable:',err.message);return res.status(503).json({ok:false,id,error:'AI Operations could not reach a configured AI provider. The instruction was saved safely; check AI provider configuration and retry.',configuration_required:!aiProviderStatus().configured});}
+});
 app.get('/api/saas/video-renders',requireSaasUser,(req,res)=>res.json({ok:true,jobs:db.prepare(`SELECT * FROM video_render_jobs WHERE organisation_id=? ORDER BY updated_at DESC`).all(req.saas.organisation_id).map(j=>({...j,edit_spec:JSON.parse(j.edit_spec)}))}));
 app.post('/api/saas/video-renders',requireSaasUser,(req,res)=>{const parsed=z.object({quality:z.enum(['720p','1080p','4k']),edit_spec:z.object({platform:z.string().max(80).default('Multi-platform'),goal:z.string().max(120).default('More views'),aspect_ratio:z.enum(['9:16','16:9','1:1','4:5']),clips:z.array(z.object({media_id:z.string(),start_seconds:z.coerce.number().min(0),end_seconds:z.coerce.number().positive(),transition:z.enum(['auto','cut','fade','zoom','wipe','match','speed']).default('auto')})).min(1).max(100),pacing:z.string().max(80).default('AI auto'),hook:z.string().max(120).default('AI choose strongest'),caption_style:z.string().max(120).default('AI platform-native'),captions:z.boolean().default(true),music:z.boolean().default(false),logo:z.boolean().default(true),auto_reframe:z.boolean().default(true),auto_highlights:z.boolean().default(true),cta:z.boolean().default(true),style_prompt:z.string().max(5000)}).strict()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the render specification and clips.'});const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO video_render_jobs (id,organisation_id,status,quality,edit_spec,created_at,updated_at) VALUES (?,?,'draft',?,?,?,?)`).run(id,req.saas.organisation_id,parsed.data.quality,JSON.stringify(parsed.data.edit_spec),now,now);res.status(201).json({ok:true,id,status:'draft',rendered:false,note:'Professional edit specification saved. FFmpeg worker and licensed media services must be configured before rendering.'})});
 
@@ -3865,78 +3828,63 @@ app.post('/api/saas/governance/notifications/:id/read',requireSaasUser,requireSa
   res.json({ok:true});
 });
 
+function configuredEnv(...names){return names.every(name=>meaningfulConfigValue(env[name]))}
+function integrationReadiness(provider){
+  const emailReady=meaningfulConfigValue(env.RESEND_API_KEY)||(configuredEnv('SMTP_HOST','SMTP_USER','SMTP_PASS'));
+  const smsReady=meaningfulConfigValue(env.TELNYX_API_KEY)&&meaningfulConfigValue(env.TELNYX_FROM_NUMBER||env.TELNYX_PHONE_NUMBER);
+  return {
+    meta:configuredEnv('META_APP_ID','META_APP_SECRET'),
+    whatsapp:configuredEnv('META_APP_ID','META_APP_SECRET')||configuredEnv('WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID'),
+    tiktok:configuredEnv('TIKTOK_CLIENT_KEY','TIKTOK_CLIENT_SECRET'),
+    youtube:configuredEnv('GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET'),
+    google_business:configuredEnv('GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET'),
+    x:configuredEnv('X_CLIENT_ID','X_CLIENT_SECRET'),
+    snapchat:configuredEnv('SNAPCHAT_CLIENT_ID','SNAPCHAT_CLIENT_SECRET')&&configuredEnv('SNAPCHAT_AUTHORIZE_URL','SNAPCHAT_TOKEN_URL'),
+    website:meaningfulConfigValue(env.WEBSITE_API_BASE_URL||env.WEBSITE_PUBLIC_URL)&&meaningfulConfigValue(env.WEBSITE_WEBHOOK_SECRET||env.WEBSITE_API_KEY),
+    email_sms:Boolean(emailReady||smsReady)
+  }[provider]||false;
+}
+function oauthStateSecret(){const value=[env.SESSION_SECRET,env.SAAS_SESSION_SECRET,env.ADMIN_SESSION_SECRET].find(meaningfulConfigValue);return value?String(value):''}
+function makeOauthState({organisation_id,user_id,provider}){const secret=oauthStateSecret();if(!secret)return null;const payload=Buffer.from(JSON.stringify({o:organisation_id,u:user_id,p:provider,t:Date.now()})).toString('base64url');const sig=crypto.createHmac('sha256',secret).update(payload).digest('base64url');return `${payload}.${sig}`}
+function readOauthState(raw,pathProvider=''){try{const secret=oauthStateSecret();if(!secret)return null;const [payload,sig]=String(raw||'').split('.');if(!payload||!sig)return null;const expected=crypto.createHmac('sha256',secret).update(payload).digest('base64url');const a=Buffer.from(sig),b=Buffer.from(expected);if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;const data=JSON.parse(Buffer.from(payload,'base64url').toString('utf8'));if(!data?.o||!data?.u||!data?.p||!data?.t||Date.now()-Number(data.t)>15*60*1000)return null;const groups={google:['youtube','google_business'],meta:['meta','whatsapp']};if(pathProvider&&pathProvider!==data.p&&!(groups[pathProvider]||[]).includes(data.p))return null;return {...data,payload}}catch{return null}}
+function oauthRedirectUri(provider,req){const base=(meaningfulConfigValue(env.PUBLIC_BASE_URL)?String(env.PUBLIC_BASE_URL):`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');if(provider==='tiktok'&&meaningfulConfigValue(env.TIKTOK_REDIRECT_URI))return String(env.TIKTOK_REDIRECT_URI);if((provider==='youtube'||provider==='google_business')&&meaningfulConfigValue(env.GOOGLE_REDIRECT_URI))return String(env.GOOGLE_REDIRECT_URI);if((provider==='meta'||provider==='whatsapp')&&meaningfulConfigValue(env.META_REDIRECT_URI))return String(env.META_REDIRECT_URI);if(provider==='x'&&meaningfulConfigValue(env.X_REDIRECT_URI))return String(env.X_REDIRECT_URI);if(provider==='snapchat'&&meaningfulConfigValue(env.SNAPCHAT_REDIRECT_URI))return String(env.SNAPCHAT_REDIRECT_URI);return `${base}/api/saas/integrations/oauth/${provider}/callback`}
+function oauthPkceVerifier(stateData){const secret=oauthStateSecret();return crypto.createHmac('sha256',secret).update('superpro-pkce:'+stateData.payload).digest('base64url')}
+function encryptIntegrationBundle(bundle){const secret=oauthStateSecret();if(!secret)throw new Error('Integration encryption secret is not configured.');const key=crypto.createHash('sha256').update('superpro-integrations:'+secret).digest(),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);const data=Buffer.concat([cipher.update(JSON.stringify(bundle),'utf8'),cipher.final()]),tag=cipher.getAuthTag();return {v:1,alg:'aes-256-gcm',iv:iv.toString('base64url'),tag:tag.toString('base64url'),data:data.toString('base64url')}}
+function saveIntegrationConnection({organisation_id,provider,account_label,capabilities,tokenBundle}){const now=new Date().toISOString(),settings={token_bundle:encryptIntegrationBundle(tokenBundle),token_type:tokenBundle.token_type||'Bearer',scope:tokenBundle.scope||'',expires_at:tokenBundle.expires_in?new Date(Date.now()+Number(tokenBundle.expires_in)*1000).toISOString():null};db.prepare(`UPDATE organisation_integrations SET status='connected',account_label=?,capabilities_json=?,settings_json=?,connected_at=?,updated_at=? WHERE organisation_id=? AND provider=?`).run(account_label||'Authorised account',JSON.stringify(capabilities||[]),JSON.stringify(settings),now,now,organisation_id,provider)}
+async function postForm(url,values,headers={}){const body=new URLSearchParams();for(const [k,v] of Object.entries(values))if(v!==undefined&&v!==null&&v!=='')body.set(k,String(v));const r=await fetch(url,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',...headers},body});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.error_description||d?.error?.message||d?.message||`Provider token exchange failed (${r.status}).`);return d}
+
 app.get('/api/saas/integrations/self-service',requireSaasUser,(req,res)=>{
-  const providers=[
-    ['meta','Meta / Facebook & Instagram',['messages','publishing','ads','insights']],
-    ['whatsapp','WhatsApp Business',['messages','templates','notifications']],
-    ['tiktok','TikTok',['publishing','analytics','comments']],
-    ['youtube','YouTube',['publishing','analytics','comments']],
-    ['snapchat','Snapchat',['publishing','ads','analytics']],
-    ['x','X / Twitter',['publishing','messages','analytics']],
-    ['google_business','Google Business Profile',['reviews','posts','profile']],
-    ['website','Website',['forms','webhooks','analytics']],
-    ['email_sms','Email & SMS',['inbox','campaigns','notifications']]
-  ];
-  const existing=new Map(db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=?`).all(req.saas.organisation_id).map(x=>[x.provider,x]));
-  const now=new Date().toISOString();
-  const insert=db.prepare(`INSERT OR IGNORE INTO organisation_integrations (organisation_id,provider,display_name,status,capabilities_json,settings_json,updated_at) VALUES (?,?,?,'not_connected',?,'{}',?)`);
-  for(const [provider,name,caps] of providers)insert.run(req.saas.organisation_id,provider,name,JSON.stringify(caps),now);
-  const integrations=providers.map(([provider,name,caps])=>{const row=existing.get(provider)||db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);return {...row,display_name:name,capabilities:caps,provider_ready:Boolean({meta:env.META_APP_ID,whatsapp:env.META_APP_ID,tiktok:env.TIKTOK_CLIENT_KEY,youtube:env.GOOGLE_CLIENT_ID,snapchat:env.SNAPCHAT_CLIENT_ID,x:env.X_CLIENT_ID,google_business:env.GOOGLE_CLIENT_ID,website:true,email_sms:Boolean(env.RESEND_API_KEY||env.TELNYX_API_KEY)}[provider])}});
-  res.json({ok:true,integrations,credential_scope:'platform_managed',operator_control:true,customer_secret_entry:false,secrets_exposed:false,note:'Super Pro platform credentials are configured once by the platform operator and remain server-side. Customer workspaces never receive raw developer secrets; each business only authorises its own provider account when the connector OAuth/consent flow is configured.'});
+  const providers=[['meta','Meta / Facebook & Instagram',['messages','publishing','ads','insights']],['whatsapp','WhatsApp Business',['messages','templates','notifications']],['tiktok','TikTok',['publishing','analytics','comments']],['youtube','YouTube',['publishing','analytics','comments']],['snapchat','Snapchat',['publishing','ads','analytics']],['x','X / Twitter',['publishing','messages','analytics']],['google_business','Google Business Profile',['reviews','posts','profile']],['website','Website',['forms','webhooks','analytics']],['email_sms','Email & SMS',['inbox','campaigns','notifications']]];
+  const existing=new Map(db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=?`).all(req.saas.organisation_id).map(x=>[x.provider,x])),now=new Date().toISOString();const insert=db.prepare(`INSERT OR IGNORE INTO organisation_integrations (organisation_id,provider,display_name,status,capabilities_json,settings_json,updated_at) VALUES (?,?,?,'not_connected',?,'{}',?)`);for(const [provider,name,caps] of providers)insert.run(req.saas.organisation_id,provider,name,JSON.stringify(caps),now);
+  const integrations=providers.map(([provider,name,caps])=>{const row=existing.get(provider)||db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);return {provider,row_status:row?.status,status:row?.status||'not_connected',display_name:name,account_label:row?.account_label||null,capabilities:caps,connected_at:row?.connected_at||null,provider_ready:integrationReadiness(provider),oauth_supported:['meta','whatsapp','tiktok','youtube','google_business','x','snapchat'].includes(provider),operational:(row?.status==='connected')||(['website','email_sms'].includes(provider)&&integrationReadiness(provider))}});
+  res.json({ok:true,integrations,credential_scope:'platform_managed',operator_control:true,customer_secret_entry:false,secrets_exposed:false,note:'Provider tokens are encrypted server-side. Workspace responses expose status and account labels only, never raw credentials or token bundles.'});
 });
 
-app.get('/api/saas/platform-capabilities',requireSaasUser,(req,res)=>{
-  const capabilities={
-    meta:Boolean(env.META_APP_ID&&env.META_APP_SECRET),
-    whatsapp:Boolean((env.META_APP_ID&&env.META_APP_SECRET)||(env.WHATSAPP_ACCESS_TOKEN&&env.WHATSAPP_PHONE_NUMBER_ID)),
-    tiktok:Boolean(env.TIKTOK_CLIENT_KEY&&env.TIKTOK_CLIENT_SECRET),
-    google_youtube:Boolean(env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET),
-    snapchat:Boolean(env.SNAPCHAT_CLIENT_ID&&env.SNAPCHAT_CLIENT_SECRET),
-    x:Boolean(env.X_CLIENT_ID&&env.X_CLIENT_SECRET),
-    email:Boolean(env.RESEND_API_KEY||(env.SMTP_HOST&&env.SMTP_USER&&env.SMTP_PASS)),
-    sms_voice:Boolean(env.TELNYX_API_KEY),
-    abn_lookup:Boolean(env.ABR_GUID),
-    object_storage:Boolean(env.OBJECT_STORAGE_BUCKET),
-    kms:Boolean(env.KMS_KEY_ID)
-  };
-  res.json({ok:true,credential_scope:'platform_managed',customer_secret_entry:false,secrets_exposed:false,capabilities,note:'This endpoint reports readiness only. It never returns credential values.'});
-});
+app.get('/api/saas/platform-capabilities',requireSaasUser,(req,res)=>{const providers=['meta','whatsapp','tiktok','youtube','google_business','snapchat','x','website','email_sms'];res.json({ok:true,credential_scope:'platform_managed',customer_secret_entry:false,secrets_exposed:false,capabilities:Object.fromEntries(providers.map(p=>[p,integrationReadiness(p)])),ai:aiProviderStatus(),voice_server_ready:Boolean(openAiSpeechConfig()),note:'This endpoint reports readiness only and rejects placeholder deployment values. It never returns credential values.'})});
 
 app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,(req,res)=>{
-  const provider=req.params.provider;
-  const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
-  if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
-  const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  const statePayload=Buffer.from(JSON.stringify({o:req.saas.organisation_id,u:req.saas.user_id,p:provider,t:Date.now()})).toString('base64url');
-  const stateSecret=env.SESSION_SECRET||env.SAAS_SESSION_SECRET||env.ADMIN_SESSION_SECRET;
-  if(!stateSecret)return res.status(503).json({ok:false,error:'Secure OAuth state signing is not configured on this deployment.'});
-  const stateSig=crypto.createHmac('sha256',stateSecret).update(statePayload).digest('base64url');
-  const state=`${statePayload}.${stateSig}`;
-  const redirect=(path)=>encodeURIComponent(env[path]||`${base}/api/saas/integrations/oauth/${provider}/callback`);
-  let authorizeUrl='';
-  if(provider==='tiktok'&&env.TIKTOK_CLIENT_KEY&&env.TIKTOK_CLIENT_SECRET){
-    const uri=encodeURIComponent(env.TIKTOK_REDIRECT_URI||`${base}/api/saas/integrations/oauth/tiktok/callback`);
-    authorizeUrl=`https://www.tiktok.com/v2/auth/authorize/?client_key=${encodeURIComponent(env.TIKTOK_CLIENT_KEY)}&scope=user.info.basic,video.list&response_type=code&redirect_uri=${uri}&state=${encodeURIComponent(state)}`;
-  }else if((provider==='youtube'||provider==='google_business')&&env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET){
-    const scope=provider==='youtube'?'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.readonly':'https://www.googleapis.com/auth/business.manage';
-    authorizeUrl=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(env.GOOGLE_CLIENT_ID)}&redirect_uri=${redirect('GOOGLE_REDIRECT_URI')}&response_type=code&access_type=offline&prompt=consent&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
-  }else if((provider==='meta'||provider==='whatsapp')&&env.META_APP_ID&&env.META_APP_SECRET){
-    const scope=provider==='whatsapp'?'business_management,whatsapp_business_management,whatsapp_business_messaging':'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish';
-    authorizeUrl=`https://www.facebook.com/v23.0/dialog/oauth?client_id=${encodeURIComponent(env.META_APP_ID)}&redirect_uri=${redirect('META_REDIRECT_URI')}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(scope)}`;
-  }else if(provider==='x'&&env.X_CLIENT_ID&&env.X_CLIENT_SECRET){
-    return res.json({ok:true,status:'provider_ready',message:'X app credentials are configured. PKCE authorisation requires the deployment callback/verifier service before this account can be marked connected.'});
-  }else if(provider==='snapchat'&&env.SNAPCHAT_CLIENT_ID&&env.SNAPCHAT_CLIENT_SECRET){
-    return res.json({ok:true,status:'provider_ready',message:'Snapchat app credentials are configured. Complete the approved Snapchat OAuth callback configuration before this account can be marked connected.'});
-  }else if(provider==='website'){
-    return res.json({ok:true,status:'provider_ready',message:'Website connection is ready for a signed webhook/form endpoint. Configure the site endpoint and run a successful test before marking it connected.'});
-  }else if(provider==='email_sms'&&(env.RESEND_API_KEY||env.TELNYX_API_KEY||env.SMTP_HOST)){
-    return res.json({ok:true,status:'provider_ready',message:'Email/SMS provider configuration is present. Configure and verify the sender identity and consent rules, then run a connection test.'});
-  }
-  if(!authorizeUrl)return res.status(409).json({ok:false,error:'Provider app credentials or the required production callback are not configured yet. No customer password is required.'});
-  const now=new Date().toISOString();
-  db.prepare(`UPDATE organisation_integrations SET status='authorisation_pending',updated_at=? WHERE organisation_id=? AND provider=?`).run(now,req.saas.organisation_id,provider);
-  saasAudit(req,'integration.authorisation_started','integration',provider,{credential_scope:'platform_managed'});
-  res.json({ok:true,status:'authorisation_pending',authorize_url:authorizeUrl});
+  const provider=req.params.provider,row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});if(!integrationReadiness(provider))return res.status(409).json({ok:false,error:'This provider is not fully configured on the platform deployment yet. Complete the required server-side credentials/callback settings first.'});
+  if(provider==='website'||provider==='email_sms'){const now=new Date().toISOString(),label=provider==='website'?'Platform website endpoint configured':'Platform email/SMS provider configured';db.prepare(`UPDATE organisation_integrations SET status='connected',account_label=?,connected_at=COALESCE(connected_at,?),updated_at=? WHERE organisation_id=? AND provider=?`).run(label,now,now,req.saas.organisation_id,provider);return res.json({ok:true,status:'connected',message:`${label}. Connection is available to this workspace.`})}
+  const state=makeOauthState({organisation_id:req.saas.organisation_id,user_id:req.saas.user_id,provider});if(!state)return res.status(503).json({ok:false,error:'Secure OAuth state signing is not configured on this deployment.'});const uri=oauthRedirectUri(provider,req);let authorizeUrl='';
+  if(provider==='tiktok'){authorizeUrl=`https://www.tiktok.com/v2/auth/authorize/?client_key=${encodeURIComponent(env.TIKTOK_CLIENT_KEY)}&scope=${encodeURIComponent('user.info.basic,video.list')}&response_type=code&redirect_uri=${encodeURIComponent(uri)}&state=${encodeURIComponent(state)}`}
+  else if(provider==='youtube'||provider==='google_business'){const scope=provider==='youtube'?'openid email profile https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.readonly':'openid email profile https://www.googleapis.com/auth/business.manage';authorizeUrl=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(env.GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(uri)}&response_type=code&access_type=offline&prompt=consent&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`}
+  else if(provider==='meta'||provider==='whatsapp'){const scope=provider==='whatsapp'?'business_management,whatsapp_business_management,whatsapp_business_messaging':'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish';authorizeUrl=`https://www.facebook.com/v23.0/dialog/oauth?client_id=${encodeURIComponent(env.META_APP_ID)}&redirect_uri=${encodeURIComponent(uri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(scope)}`}
+  else if(provider==='x'){const data=readOauthState(state,provider),verifier=oauthPkceVerifier(data),challenge=crypto.createHash('sha256').update(verifier).digest('base64url'),scope='tweet.read tweet.write users.read offline.access';authorizeUrl=`https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(env.X_CLIENT_ID)}&redirect_uri=${encodeURIComponent(uri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=S256`}
+  else if(provider==='snapchat'){const scope=String(env.SNAPCHAT_SCOPES||'snapchat-marketing-api');authorizeUrl=`${String(env.SNAPCHAT_AUTHORIZE_URL)}?response_type=code&client_id=${encodeURIComponent(env.SNAPCHAT_CLIENT_ID)}&redirect_uri=${encodeURIComponent(uri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`}
+  if(!authorizeUrl)return res.status(409).json({ok:false,error:'Provider authorisation is not available for this connector.'});const now=new Date().toISOString();db.prepare(`UPDATE organisation_integrations SET status='authorisation_pending',updated_at=? WHERE organisation_id=? AND provider=?`).run(now,req.saas.organisation_id,provider);saasAudit(req,'integration.authorisation_started','integration',provider,{credential_scope:'platform_managed'});res.json({ok:true,status:'authorisation_pending',authorize_url:authorizeUrl});
+});
+
+app.get('/api/saas/integrations/oauth/:provider/callback',async(req,res)=>{
+  const state=readOauthState(req.query.state,req.params.provider),fail=msg=>res.redirect(303,`/saas/workspace.html?integration_error=${encodeURIComponent(msg)}#integrations`);if(!state)return fail('OAuth session is invalid or expired. Start the connection again.');if(req.query.error)return fail(String(req.query.error_description||req.query.error));if(!req.query.code)return fail('Provider did not return an authorisation code.');
+  const provider=state.p,row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(state.o,provider);if(!row)return fail('Workspace integration record was not found.');const redirectUri=oauthRedirectUri(provider,req);try{let token={},label='Authorised account';
+    if(provider==='google_business'||provider==='youtube'){token=await postForm('https://oauth2.googleapis.com/token',{code:req.query.code,client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,redirect_uri:redirectUri,grant_type:'authorization_code'});try{const r=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{authorization:`Bearer ${token.access_token}`}});const d=await r.json();if(r.ok)label=d.name||d.email||label}catch{}}
+    else if(provider==='tiktok'){token=await postForm('https://open.tiktokapis.com/v2/oauth/token/',{client_key:env.TIKTOK_CLIENT_KEY,client_secret:env.TIKTOK_CLIENT_SECRET,code:req.query.code,grant_type:'authorization_code',redirect_uri:redirectUri});try{const r=await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name',{headers:{authorization:`Bearer ${token.access_token}`}});const d=await r.json();if(r.ok)label=d?.data?.user?.display_name||d?.data?.user?.open_id||label}catch{}}
+    else if(provider==='meta'||provider==='whatsapp'){token=await postForm('https://graph.facebook.com/v23.0/oauth/access_token',{client_id:env.META_APP_ID,client_secret:env.META_APP_SECRET,redirect_uri:redirectUri,code:req.query.code});try{const r=await fetch(`https://graph.facebook.com/v23.0/me?fields=id,name&access_token=${encodeURIComponent(token.access_token)}`);const d=await r.json();if(r.ok)label=d.name||d.id||label}catch{}}
+    else if(provider==='x'){const verifier=oauthPkceVerifier(state),basic=Buffer.from(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`).toString('base64');token=await postForm('https://api.x.com/2/oauth2/token',{code:req.query.code,grant_type:'authorization_code',redirect_uri:redirectUri,code_verifier:verifier,client_id:env.X_CLIENT_ID},{authorization:`Basic ${basic}`});try{const r=await fetch('https://api.x.com/2/users/me',{headers:{authorization:`Bearer ${token.access_token}`}});const d=await r.json();if(r.ok)label=d?.data?.name||d?.data?.username||label}catch{}}
+    else if(provider==='snapchat'){const basic=Buffer.from(`${env.SNAPCHAT_CLIENT_ID}:${env.SNAPCHAT_CLIENT_SECRET}`).toString('base64');token=await postForm(String(env.SNAPCHAT_TOKEN_URL),{code:req.query.code,grant_type:'authorization_code',redirect_uri:redirectUri},{authorization:`Basic ${basic}`})}
+    else return fail('This provider callback is not supported.');
+    if(!token?.access_token)throw new Error('Provider did not return an access token.');saveIntegrationConnection({organisation_id:state.o,provider,account_label:label,capabilities:JSON.parse(row.capabilities_json||'[]'),tokenBundle:token});return res.redirect(303,`/saas/workspace.html?integration_connected=${encodeURIComponent(provider)}#integrations`);
+  }catch(err){console.warn('[INTEGRATION OAUTH]',provider,err.message);db.prepare(`UPDATE organisation_integrations SET status='setup_ready',updated_at=? WHERE organisation_id=? AND provider=?`).run(new Date().toISOString(),state.o,provider);return fail(err.message||'Provider authorisation failed.');}
 });
 
 app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,(req,res)=>{

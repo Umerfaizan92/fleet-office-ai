@@ -7,24 +7,46 @@ dotenv.config({ path: path.resolve(here, '..', '.env') });
 
 const env = process.env;
 
-// Allow the application to use an already-configured independent provider when
-// the primary provider variables have not been filled yet. Values remain
-// server-side and are never returned to the browser.
-if ((!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY || !env.AI_PROVIDER_MODEL) &&
-    env.AI_CHECKER_PROVIDER_BASE_URL && env.AI_CHECKER_API_KEY && env.AI_CHECKER_MODEL) {
-  env.AI_PROVIDER_BASE_URL ||= env.AI_CHECKER_PROVIDER_BASE_URL;
-  env.AI_PROVIDER_API_KEY ||= env.AI_CHECKER_API_KEY;
-  env.AI_PROVIDER_MODEL ||= env.AI_CHECKER_MODEL;
+// Treat deployment placeholders as missing. A literal value such as
+// YOUR_REAL_AI_KEY used to make the UI look configured while every provider
+// call failed. Keep this check server-side and never expose credential values.
+const PLACEHOLDER_RE = /^(?:your[_-]|change[_-]?me|replace[_-]?me|todo$|example$|placeholder$|<.+>|\{\{.+\}\})/i;
+export function meaningfulConfigValue(value) {
+  const v = String(value ?? '').trim();
+  return Boolean(v) && !PLACEHOLDER_RE.test(v) && !/YOUR_REAL_|YOUR_[A-Z0-9_]+|INSERT[_ -]?HERE/i.test(v);
 }
-if ((!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY || !env.AI_PROVIDER_MODEL) && env.OPENAI_API_KEY) {
-  env.AI_PROVIDER_BASE_URL ||= 'https://api.openai.com/v1';
-  env.AI_PROVIDER_API_KEY ||= env.OPENAI_API_KEY;
-  env.AI_PROVIDER_MODEL ||= env.OPENAI_MODEL || 'gpt-5.6-luna';
+function validHttpBase(value) {
+  if (!meaningfulConfigValue(value)) return false;
+  try { const u = new URL(String(value)); return /^https?:$/.test(u.protocol); } catch { return false; }
 }
-if ((!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY || !env.AI_PROVIDER_MODEL) && (env.GEMINI_API_KEY || env.GOOGLE_AI_API_KEY)) {
-  env.AI_PROVIDER_BASE_URL ||= 'https://generativelanguage.googleapis.com/v1beta';
-  env.AI_PROVIDER_API_KEY ||= env.GEMINI_API_KEY || env.GOOGLE_AI_API_KEY;
-  env.AI_PROVIDER_MODEL ||= env.GEMINI_MODEL || 'gemini-3.6-flash';
+function completeProvider(base,key,model) {
+  return validHttpBase(base) && meaningfulConfigValue(key) && meaningfulConfigValue(model);
+}
+
+export function resolveAiProviderConfig() {
+  if (completeProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, env.AI_PROVIDER_MODEL)) {
+    return { base:String(env.AI_PROVIDER_BASE_URL).trim(), key:String(env.AI_PROVIDER_API_KEY).trim(), model:String(env.AI_PROVIDER_MODEL).trim(), source:'primary' };
+  }
+  if (completeProvider(env.AI_CHECKER_PROVIDER_BASE_URL, env.AI_CHECKER_API_KEY, env.AI_CHECKER_MODEL)) {
+    return { base:String(env.AI_CHECKER_PROVIDER_BASE_URL).trim(), key:String(env.AI_CHECKER_API_KEY).trim(), model:String(env.AI_CHECKER_MODEL).trim(), source:'checker-fallback' };
+  }
+  if (meaningfulConfigValue(env.OPENAI_API_KEY)) {
+    return { base:'https://api.openai.com/v1', key:String(env.OPENAI_API_KEY).trim(), model:meaningfulConfigValue(env.OPENAI_MODEL)?String(env.OPENAI_MODEL).trim():'gpt-5.6-luna', source:'openai-key' };
+  }
+  const geminiKey = meaningfulConfigValue(env.GEMINI_API_KEY) ? env.GEMINI_API_KEY : (meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? env.GOOGLE_AI_API_KEY : '');
+  if (geminiKey) {
+    return { base:'https://generativelanguage.googleapis.com/v1beta', key:String(geminiKey).trim(), model:meaningfulConfigValue(env.GEMINI_MODEL)?String(env.GEMINI_MODEL).trim():'gemini-3.6-flash', source:'gemini-key' };
+  }
+  return null;
+}
+
+// Normalize the resolved provider into the legacy environment names used by
+// older v14/v15 routes, so the whole application shares one provider decision.
+const resolvedProvider = resolveAiProviderConfig();
+if (resolvedProvider) {
+  env.AI_PROVIDER_BASE_URL = resolvedProvider.base;
+  env.AI_PROVIDER_API_KEY = resolvedProvider.key;
+  env.AI_PROVIDER_MODEL = resolvedProvider.model;
 }
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
@@ -209,11 +231,38 @@ async function callProvider(base,key,model,messages,id) {
 }
 function secondaryConfig(primary={}) {
   const candidates = [
-    { base:env.AI_CHECKER_PROVIDER_BASE_URL, key:env.AI_CHECKER_API_KEY, model:env.AI_CHECKER_MODEL },
-    env.GEMINI_API_KEY || env.GOOGLE_AI_API_KEY ? { base:'https://generativelanguage.googleapis.com/v1beta', key:env.GEMINI_API_KEY || env.GOOGLE_AI_API_KEY, model:env.GEMINI_MODEL || 'gemini-3.6-flash' } : null,
-    env.OPENAI_API_KEY ? { base:'https://api.openai.com/v1', key:env.OPENAI_API_KEY, model:env.OPENAI_MODEL || 'gpt-5.6-luna' } : null
-  ].filter(Boolean).filter(x=>x.base&&x.key&&x.model);
+    completeProvider(env.AI_CHECKER_PROVIDER_BASE_URL,env.AI_CHECKER_API_KEY,env.AI_CHECKER_MODEL) ? { base:env.AI_CHECKER_PROVIDER_BASE_URL, key:env.AI_CHECKER_API_KEY, model:env.AI_CHECKER_MODEL } : null,
+    meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-3.6-flash' } : null,
+    meaningfulConfigValue(env.OPENAI_API_KEY) ? { base:'https://api.openai.com/v1', key:env.OPENAI_API_KEY, model:meaningfulConfigValue(env.OPENAI_MODEL)?env.OPENAI_MODEL:'gpt-5.6-luna' } : null
+  ].filter(Boolean).filter(x=>completeProvider(x.base,x.key,x.model));
   return candidates.find(x => !(x.base === primary.base && x.key === primary.key && x.model === primary.model)) || null;
+}
+
+export function aiProviderStatus() {
+  const primary = resolveAiProviderConfig();
+  if (!primary) return { configured:false, provider:'none', model:null };
+  let provider='compatible';
+  try { const host=new URL(primary.base).hostname.toLowerCase(); if(host.includes('openai.com'))provider='openai'; else if(host.includes('googleapis.com'))provider='gemini'; } catch {}
+  return { configured:true, provider, model:primary.model, source:primary.source };
+}
+
+export async function generateAiText({ messages=[], system='', conversation_id=null, remember_conversation=true }={}) {
+  const primary = resolveAiProviderConfig();
+  if (!primary) throw new Error('AI provider is not configured. Add OPENAI_API_KEY or a complete AI provider configuration.');
+  const prepared = system ? [{role:'system',content:String(system)}, ...messages] : messages;
+  const id = conversation_id || conversationId(prepared);
+  const currentUser = [...prepared].reverse().find(m=>m?.role==='user')?.content || '';
+  try {
+    const text = await callProvider(primary.base,primary.key,primary.model,prepared,id);
+    if(remember_conversation)remember(id,String(currentUser),text);
+    return { text, provider:aiProviderStatus().provider, model:primary.model, source:primary.source };
+  } catch (primaryError) {
+    const secondary=secondaryConfig(primary);
+    if(!secondary)throw primaryError;
+    const text=await callProvider(secondary.base,secondary.key,secondary.model,prepared,id);
+    if(remember_conversation)remember(id,String(currentUser),text);
+    return { text, provider:'secondary', model:secondary.model, source:'secondary-fallback' };
+  }
 }
 
 // The existing v15 server calls an OpenAI-compatible /chat/completions shape.

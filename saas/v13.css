@@ -17,3 +17,27 @@
 @media(max-width:1100px){.guide-shell .proof-b{right:0!important;top:148px!important}.sp-global-trust-footer{grid-template-columns:1fr 1fr}.sp-global-trust-footer nav{grid-column:1/-1;justify-content:flex-start}}
 @media(max-width:760px){.guide-actions{max-width:220px}.guide-language{max-width:108px}.sp-global-trust-footer{grid-template-columns:1fr}.sp-global-trust-footer nav{grid-column:auto}.staff-chat-panel{width:calc(100vw - 20px)!important;height:min(72vh,560px)!important}.staff-chat-panel form{grid-template-columns:minmax(0,1fr) 72px!important}}
 @media(max-width:480px){.guide-actions{gap:4px}.guide-language{max-width:102px;font-size:7px}.staff-chat-panel form{grid-template-columns:1fr!important}.staff-chat-panel form button{min-height:44px!important;width:100%!important}}
+
+
+/* v15.6 floating-chat alignment: one baseline, equal visual height, no covered page copy. */
+:root{--sp-chat-dock-bottom:22px;--sp-chat-launch-height:56px}
+#gds-staff-chat,#gds-copilot{bottom:var(--sp-chat-dock-bottom)!important}
+#gds-staff-chat{left:22px!important;right:auto!important}
+#gds-copilot{right:22px!important;left:auto!important}
+.staff-chat-launch,.copilot-launch{box-sizing:border-box!important;min-height:var(--sp-chat-launch-height)!important;margin:0!important}
+.staff-chat-launch{padding-top:9px!important;padding-bottom:9px!important}
+.copilot-launch{padding-top:9px!important;padding-bottom:9px!important}
+.content-wrap{padding-bottom:max(112px,calc(92px + env(safe-area-inset-bottom)))!important}
+@media(max-width:760px){
+  :root{--sp-chat-dock-bottom:max(74px,calc(12px + env(safe-area-inset-bottom)));--sp-chat-launch-height:56px}
+  #gds-staff-chat{left:10px!important}
+  #gds-copilot{right:10px!important}
+  .staff-chat-launch,.copilot-launch{min-height:56px!important}
+  .content-wrap{padding-bottom:max(170px,calc(150px + env(safe-area-inset-bottom)))!important}
+  .floating-message{bottom:calc(var(--sp-chat-dock-bottom) + 70px)!important}
+}
+@media(max-width:420px){
+  .staff-chat-launch,.copilot-launch{width:calc(50vw - 16px)!important;min-width:0!important;max-width:none!important}
+  .staff-chat-launch b,.copilot-launch b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .staff-chat-launch small,.copilot-launch i{display:none!important}
+}

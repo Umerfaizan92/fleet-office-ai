@@ -43,7 +43,39 @@ function setAuthMode(mode,initial=false){const target=mode==='register'?'create-
 document.addEventListener('click',e=>{const b=e.target.closest('[data-auth-switch]');if(b)setAuthMode(b.dataset.authSwitch)});setAuthMode(location.pathname.endsWith('create-account.html')?'register':'login',true);
 $$('[data-prompt]').forEach(b=>b.onclick=()=>{const f=$('#assistant-form'),t=f?.querySelector('textarea[name="message"]'),title=f?.querySelector('input[name="title"]');if(t){t.value=b.dataset.prompt||'';t.dispatchEvent(new Event('input'));t.focus()}if(title&&b.dataset.title)title.value=b.dataset.title});const aiPrompt=$('#assistant-form textarea[name="message"]'),promptCount=$('#prompt-count');function updatePromptCount(){if(promptCount&&aiPrompt)promptCount.textContent=`${aiPrompt.value.length} characters`}aiPrompt?.addEventListener('input',updatePromptCount);aiPrompt?.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$('#assistant-form')?.requestSubmit()}});updatePromptCount();
 
-async function boot(){let d;try{d=await api('/api/saas/me')}catch(x){if(x.status===401){location.replace('sign-in.html');return;}$('#welcome').hidden=false;$('#workspace').hidden=true;if(x.status&&x.status!==401)note('The workspace service is temporarily unavailable. Please try again.',true);return}$('#welcome').hidden=true;$('#workspace').hidden=false;window.GDS_SESSION=d;document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view=\"finance\"]')?.remove();}$('#org-name-side').textContent=d.organisation.name;$('#user-line').textContent=`${d.user.full_name} · ${d.user.role} · ${d.user.email}`;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';const results=await Promise.allSettled([loadDashboard(),loadOnboarding(),loadWorkers(),loadJobs(),loadThreads(),loadRenders(),loadSubscription()]);const failed=results.filter(r=>r.status==='rejected');if(failed.length){console.warn('Workspace modules failed:',failed.map(r=>r.reason?.message||String(r.reason)));note(`Signed in successfully. ${failed.length} workspace module${failed.length===1?'':'s'} could not load yet; refresh to retry.`,true)}const requested=location.hash.replace('#','');showView(viewSequence.includes(requested)?requested:'dashboard',{instant:true});setTimeout(()=>maybeStartTour(d),350)}
+async function boot(){
+  let d;
+  try{d=await api('/api/saas/me')}
+  catch(x){
+    if(x.status===401){location.replace('sign-in.html');return}
+    $('#welcome').hidden=false;$('#workspace').hidden=true;
+    if(x.status&&x.status!==401)note('The workspace service is temporarily unavailable. Please try again.',true);
+    return;
+  }
+  $('#welcome').hidden=true;$('#workspace').hidden=false;window.GDS_SESSION=d;
+  document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();
+  const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];
+  if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
+  $('#org-name-side').textContent=d.organisation.name;$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
+
+  const loaders=[
+    ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription]
+  ];
+  let failed=[];
+  const first=await Promise.allSettled(loaders.map(([,fn])=>fn()));
+  first.forEach((result,index)=>{if(result.status==='rejected')failed.push({name:loaders[index][0],fn:loaders[index][1],error:result.reason})});
+  if(failed.length){
+    await new Promise(resolve=>setTimeout(resolve,650));
+    const retry=await Promise.allSettled(failed.map(x=>x.fn()));
+    failed=failed.filter((item,index)=>retry[index].status==='rejected').map((item,index)=>({...item,error:retry[index].reason}));
+  }
+  if(failed.length){
+    console.warn('Workspace modules failed after retry:',failed.map(x=>({module:x.name,error:x.error?.message||String(x.error)})));
+    note('Signed in successfully. '+failed.map(x=>x.name).join(', ')+' is temporarily unavailable; the rest of the workspace is ready.',true);
+  }
+  const requested=location.hash.replace('#','');showView(viewSequence.includes(requested)?requested:'dashboard',{instant:true});
+  setTimeout(()=>maybeStartTour(d),350);
+}
 
 $('#register-form').onsubmit=e=>{e.preventDefault();location.href='create-account.html'};
 const registerPassword=$('#register-form')?.elements.password,registerConfirm=$('#register-form')?.elements.confirm_password;function updatePasswordMatch(){const hint=$('#password-match');if(!hint||!registerConfirm)return;if(!registerConfirm.value){hint.textContent='Both passwords must match.';hint.classList.remove('error-text','success-text');return}const ok=registerPassword.value===registerConfirm.value;hint.textContent=ok?'Passwords match.':'Passwords do not match.';hint.classList.toggle('success-text',ok);hint.classList.toggle('error-text',!ok)}registerPassword?.addEventListener('input',updatePasswordMatch);registerConfirm?.addEventListener('input',updatePasswordMatch);

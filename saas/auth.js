@@ -59,11 +59,60 @@
     const raw=sessionStorage.getItem('gds-pending-registration');if(!raw){location.href='create-account.html';return}let state;try{state=JSON.parse(raw)}catch{location.href='create-account.html';return}
     $('#verification-destination').textContent=`Enter the 6-digit codes sent to ${state.email} and ${state.phone}.`;
     const paintDelivery=()=>{
-      for(const channel of ['email','sms']){const row=document.querySelector(`[data-delivery="${channel}"]`),delivery=state.delivery?.[channel]||{};if(!row)continue;row.classList.toggle('good',Boolean(delivery.sent));row.classList.toggle('error',delivery.sent===false);row.querySelector('span').textContent=delivery.sent?'Sent successfully':delivery.sent===false?'Not delivered yet — use Resend below':'Ready to send / resend'}
+      for(const channel of ['email','sms']){
+        const row=document.querySelector(`[data-delivery="${channel}"]`),delivery=state.delivery?.[channel]||{};
+        if(!row)continue;
+        row.classList.toggle('good',Boolean(delivery.sent));
+        row.classList.toggle('error',delivery.sent===false);
+        const status=row.querySelector('span');
+        if(channel==='sms'&&delivery.accepted&&delivery.sent)status.textContent='Telnyx accepted the SMS request — check your mobile';
+        else status.textContent=delivery.sent?'Sent successfully':delivery.sent===false?'Not delivered yet — use Resend below':'Ready to send / resend';
+      }
     };paintDelivery();
+    api('/api/saas/verification-provider/status',{method:'GET',headers:{}}).then(d=>{
+      const sms=d?.sms||{},row=document.querySelector('[data-delivery="sms"]');
+      if(!row)return;
+      if(sms.configured&&sms.sms_enabled&&sms.australia_allowed&&sms.app_name_configured&&sms.template_configured){
+        row.title='Telnyx Verify profile is configured for Australian SMS verification.';
+      }else if(sms.configured){
+        const missing=[];
+        if(!sms.sms_enabled)missing.push('SMS channel');
+        if(!sms.australia_allowed)missing.push('Australia destination');
+        if(!sms.app_name_configured)missing.push('SMS App Name');
+        if(!sms.template_configured)missing.push('SMS template');
+        row.querySelector('span').textContent='Telnyx Verify needs attention: '+missing.join(', ');
+        row.classList.add('error');
+      }
+    }).catch(()=>{});
     if(state.test_mode&&state.test_codes){const box=$('#test-codes');box.hidden=false;box.innerHTML=`<b>LOCAL TEST MODE</b><br>Email code: <strong>${state.test_codes.email}</strong> · SMS code: <strong>${state.test_codes.sms}</strong><br><small>Test codes are exposed only when SAAS_VERIFICATION_TEST_MODE=1 outside production.</small>`}
     const form=$('#verification-form'),button=$('#verification-submit');form.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(form);b.pending_id=state.pending_id;button.disabled=true;button.textContent='Verifying…';try{await api('/api/saas/registration/verify',{method:'POST',body:JSON.stringify(b)});sessionStorage.removeItem('gds-pending-registration');sessionStorage.setItem('gds-new-email',state.raw_email||'');sessionStorage.setItem('gds-first-login-tour','1');location.href='sign-in.html?created=1'}catch(err){show(err.message,true);button.disabled=false;button.textContent='Complete secure verification →'}};
-    document.querySelectorAll('[data-resend]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;const channel=btn.dataset.resend;try{const d=await api('/api/saas/registration/resend',{method:'POST',body:JSON.stringify({pending_id:state.pending_id,channel})});show(d.message||'A new code was issued.');state.delivery=state.delivery||{};state.delivery[channel]={sent:true};sessionStorage.setItem('gds-pending-registration',JSON.stringify(state));paintDelivery();if(d.test_code){const box=$('#test-codes');box.hidden=false;box.innerHTML+=`<br>New ${channel.toUpperCase()} code: <strong>${d.test_code}</strong>`}}catch(err){show(err.message,true);state.delivery=state.delivery||{};state.delivery[channel]={sent:false};paintDelivery()}finally{btn.disabled=false}});
+    document.querySelectorAll('[data-resend]').forEach(btn=>btn.onclick=async()=>{
+      if(btn.disabled)return;
+      const channel=btn.dataset.resend,original=btn.textContent;
+      btn.disabled=true;
+      btn.textContent=channel==='sms'?'Sending SMS…':'Sending email…';
+      show(channel==='sms'?'Requesting a fresh SMS verification code from Telnyx…':'Requesting a fresh email verification code…');
+      try{
+        const d=await api('/api/saas/registration/resend',{method:'POST',body:JSON.stringify({pending_id:state.pending_id,channel})});
+        state.delivery=state.delivery||{};
+        state.delivery[channel]={sent:true,accepted:Boolean(d.delivery?.accepted),provider:d.delivery?.provider||'',message_id:d.delivery?.message_id||null};
+        sessionStorage.setItem('gds-pending-registration',JSON.stringify(state));
+        paintDelivery();
+        btn.textContent=channel==='sms'?'SMS requested ✓':'Email sent ✓';
+        show(d.message||(channel==='sms'?'Telnyx accepted the SMS request. Check your mobile.':'A new email code was sent.'));
+        if(d.test_code){const box=$('#test-codes');box.hidden=false;box.innerHTML+=`<br>New ${channel.toUpperCase()} code: <strong>${d.test_code}</strong>`}
+        setTimeout(()=>{btn.textContent=original;btn.disabled=false},2200);
+        return;
+      }catch(err){
+        show(err.message,true);
+        state.delivery=state.delivery||{};
+        state.delivery[channel]={sent:false,error:err.message};
+        sessionStorage.setItem('gds-pending-registration',JSON.stringify(state));
+        paintDelivery();
+        btn.textContent=channel==='sms'?'SMS failed — retry':'Email failed — retry';
+      }
+      btn.disabled=false;
+    });
   }
 
   if(page==='login'){

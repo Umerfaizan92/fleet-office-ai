@@ -407,6 +407,11 @@ const databasePath = path.isAbsolute(env.DATABASE_PATH || '')
 
 const db = createDb(databasePath);
 const socialStats = createSocialStatsService(env, backendRoot);
+const persistentStorageDetected=/^\/var\/data(?:\/|$)/.test(databasePath)||/^\/opt\/render\/project\/src\/storage(?:\/|$)/.test(databasePath);
+if(env.NODE_ENV==='production'&&!persistentStorageDetected){
+  console.warn('[PERSISTENCE] Production database is not on a recognised persistent path. On Render, accounts and sessions can disappear after a deploy/restart unless a persistent disk or managed database is configured.');
+}
+
 
 const uploadRoot = path.isAbsolute(env.UPLOAD_DIR || '')
   ? env.UPLOAD_DIR
@@ -2450,6 +2455,8 @@ app.get('/api/saas/billing/providers',requireSaasUser,(req,res)=>res.json({ok:tr
 app.post('/api/saas/mfa/setup',requireSaasUser,(req,res)=>{const secret=base32Encode(crypto.randomBytes(20));db.prepare(`UPDATE users SET mfa_secret=?,mfa_enabled=0,updated_at=? WHERE id=?`).run(secret,new Date().toISOString(),req.saas.user_id);res.json({ok:true,secret,otpauth_uri:`otpauth://totp/${encodeURIComponent(`Super Pro AI Office Manager:${req.saas.email}`)}?secret=${secret}&issuer=${encodeURIComponent('Super Pro AI Office Manager')}`})});
 app.post('/api/saas/mfa/verify',requireSaasUser,(req,res)=>{const parsed=z.object({code:z.string().regex(/^\d{6}$/)}).safeParse(req.body),user=db.prepare(`SELECT mfa_secret FROM users WHERE id=?`).get(req.saas.user_id);if(!parsed.success||!user?.mfa_secret||!validTotp(user.mfa_secret,parsed.data.code))return res.status(400).json({ok:false,error:'Invalid authentication code.'});db.prepare(`UPDATE users SET mfa_enabled=1,updated_at=? WHERE id=?`).run(new Date().toISOString(),req.saas.user_id);res.json({ok:true,mfa_enabled:true})});
 
+
+app.get('/api/health/storage',(req,res)=>res.json({ok:true,persistent_storage_detected:persistentStorageDetected,production:env.NODE_ENV==='production',recommendation:env.NODE_ENV==='production'&&!persistentStorageDetected?'Configure a Render persistent disk at /var/data (paid service) or migrate the relational datastore to a managed database before relying on customer accounts.':null}));
 
 app.get('/api/saas/industry-registry',requireSaasUser,(req,res)=>{
   const state=String(req.saas.address_state||'').toUpperCase();

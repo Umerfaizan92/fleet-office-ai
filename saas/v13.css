@@ -41,3 +41,31 @@
   .staff-chat-launch b,.copilot-launch b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .staff-chat-launch small,.copilot-launch i{display:none!important}
 }
+
+
+/* v15.7 professional Australian business setup */
+.industry-browser-shell{display:grid;gap:14px;margin:18px 0 16px;padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(180deg,rgba(16,23,32,.98),rgba(11,17,24,.96))}
+.industry-browser-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.industry-browser-head h3{margin:4px 0 5px;font-size:20px}.industry-browser-head p{max-width:760px;margin:0;color:#8f99a8;font-size:11px;line-height:1.6}
+.industry-search-label{display:grid;gap:7px}.industry-search-label>span{font-size:10px;font-weight:800;color:#dce3ed}.industry-search-label input{min-height:50px;padding:0 15px;border-radius:13px;border:1px solid rgba(232,190,105,.2);background:#111823;color:#eef2f7;font-size:13px}
+.industry-search-label input:focus{outline:none;border-color:#e8be69;box-shadow:0 0 0 3px rgba(232,190,105,.08)}
+.industry-browser-status{display:flex;justify-content:space-between;gap:12px;color:#788494;font-size:9px}
+.industry-browser-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:510px;overflow:auto;padding-right:4px}
+.industry-browser-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:center;min-height:76px;padding:12px 13px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:#0f151e;color:#eef2f7;text-align:left;cursor:pointer;transition:.18s ease}
+.industry-browser-card:hover,.industry-browser-card.selected{border-color:rgba(232,190,105,.5);background:rgba(232,190,105,.07);transform:translateY(-1px)}.industry-browser-card.selected{box-shadow:inset 0 0 0 1px rgba(232,190,105,.2)}
+.industry-code{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:rgba(232,190,105,.11);color:#e8be69;font-weight:900;font-size:11px}
+.industry-browser-card b,.industry-browser-card small{display:block}.industry-browser-card b{font-size:11px}.industry-browser-card small{margin-top:4px;color:#7e8998;font-size:8px;line-height:1.45}.industry-browser-card i{color:#d8b465;font-size:8px;font-style:normal;font-weight:900;white-space:nowrap}
+.industry-empty{grid-column:1/-1;display:grid;gap:8px;justify-items:start;padding:20px;border:1px dashed rgba(232,190,105,.22);border-radius:14px;color:#8f99a8}.industry-empty b{color:#eef2f7}
+.selected-industry-card{display:grid;gap:12px;padding:16px;border:1px solid rgba(92,203,157,.2);border-radius:15px;background:rgba(92,203,157,.05)}.selected-industry-card h3{margin:4px 0 5px}.selected-industry-card p{margin:0;color:#909baa;font-size:10px;line-height:1.55}
+.selected-industry-meta,.selected-specialties{display:flex;flex-wrap:wrap;gap:6px}.selected-industry-meta span,.selected-specialties span{padding:5px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:#0b1118;color:#9ba6b4;font-size:8px}.selected-specialties span{border-color:rgba(232,190,105,.16);color:#d7bf87}
+.regulatory-disclosure{margin:0 0 16px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:#0c121a;overflow:hidden}.regulatory-disclosure>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 17px;cursor:pointer;list-style:none}.regulatory-disclosure>summary::-webkit-details-marker{display:none}.regulatory-disclosure>summary b,.regulatory-disclosure>summary small{display:block}.regulatory-disclosure>summary b{font-size:11px;color:#e7ebf1}.regulatory-disclosure>summary small{margin-top:3px;color:#778393;font-size:8px}.regulatory-disclosure>summary em{font-style:normal;color:#e8be69;font-size:8px;font-weight:900}
+.regulatory-profile{margin:0!important;border:0!important;border-top:1px solid rgba(255,255,255,.07)!important;border-radius:0!important;background:#0e151e!important}.reg-docs{margin:13px 0}.reg-docs>ul{margin:8px 0 0;padding-left:18px;color:#aeb8c5;font-size:9px;line-height:1.65}
+.reg-sources{display:grid;gap:8px}.reg-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:#0a1017;text-decoration:none!important}.reg-source-row b,.reg-source-row small,.reg-source-row span{display:block}.reg-source-row b{color:#dfe5ed;font-size:9px}.reg-source-row small,.reg-source-row span{margin-top:2px;color:#7e8997;font-size:7.5px;line-height:1.45}.reg-source-row>a{color:#e8be69;font-size:8px;font-weight:800;text-decoration:none;white-space:nowrap}.reg-check{grid-column:1/-1;font-style:normal;font-size:7px;color:#75cda6}.reg-check.changed{color:#efae72}.regulatory-human-control{margin:13px 0 0;padding:10px;border-radius:10px;background:rgba(232,190,105,.06);color:#a79a7b;font-size:8px;line-height:1.55}
+.finder-status{min-height:18px;margin:7px 0 0;color:#7f8b9a;font-size:9px}.finder-answer-actions{margin-top:10px}.finder-answer.waiting{opacity:.72}
+
+/* Mobile setup should read like a form, not a stack hidden behind fixed controls. */
+@media(max-width:760px){
+  .industry-browser-shell{padding:14px;margin-top:12px}.industry-browser-head{display:grid}.industry-browser-head .secondary-button{justify-self:start}.industry-browser-grid{grid-template-columns:1fr;max-height:560px}.industry-browser-status{display:grid;gap:3px}.industry-browser-card{grid-template-columns:40px minmax(0,1fr) auto}
+  .reg-source-row{grid-template-columns:1fr}.reg-source-row>a{justify-self:start}
+  #onboarding-view .sticky-save{position:static!important;inset:auto!important;margin-top:16px!important;box-shadow:none!important}
+  #onboarding-view .settings-content{padding-bottom:20px!important}
+}

@@ -33,6 +33,30 @@
     {id:'limitations',title:'What is not live yet',keys:['not working','not live','limitation','limitations','available now','production ready','ready','real ai','live ai'],answer:'This is a pre-launch build. Core workspace flows, product guidance and secure-registration architecture are implemented for testing, while individual external integrations are only live when their production credentials, provider authorisation and connection tests are complete.',next:['What can I test now?','What credentials are needed for production?','Which integrations still need connection?']}
   ];
 
+  const legacyKnowledge=[
+    {id:'account-verification',keys:'account create register verification abn acn abr guid email otp mobile sms code australian business',text:'Account creation is designed to verify the Australian business identity first, then verify the owner email and Australian mobile before the workspace is created. Production ABN verification requires a genuine ABN Lookup Web Services GUID; a registration reference or placeholder is not a GUID.'},
+    {id:'workspace-navigation',keys:'workspace navigation menu command centre dashboard where page section',text:'The workspace navigation is organised into Command centre, Business setup, People & workforce, Jobs & allocation, Expenses & profit for authorised roles, AI Operations, Content Studio, Connections, Trust & governance, Help & complaints, Digital user manual, and Plans & billing.'},
+    {id:'ai-operations',keys:'ai operations assistant help guide chat memory question answer operations intelligence',text:'AI Operations is the in-workspace assistant area. It should answer product and workspace questions, explain setup and connections, help plan operational work, and keep consequential actions under human approval. Saved operational tasks remain organisation-scoped.'},
+    {id:'workforce',keys:'worker employee staff workforce people add employee compliance skill level work rights roster',text:'People & Workforce supports worker profiles, employment details, work-right readiness, onboarding progress, verified skills, scheduling readiness and role-aware access. The owner can also be represented as a worker where appropriate.'},
+    {id:'jobs',keys:'job work order allocation booking schedule worker match dispatch eligible',text:'Jobs & Allocation supports work orders with time, location, required worker count, level and skills. The eligibility flow can match active, available and scheduling-approved workers, but consequential allocation remains reviewable.'},
+    {id:'finance',keys:'expense profit finance overhead material gst net profit job profitability',text:'Expenses & Profit can record operational expenses and link costs to jobs so authorised users can compare recorded revenue and expenses. It is operational reporting, not tax or accounting advice.'},
+    {id:'content-studio',keys:'content studio video reel render transition tiktok instagram youtube caption trend',text:'Content Studio prepares platform-aware render specifications, including aspect ratio, pacing, hooks, captions, transitions, reframing, highlights and CTA guidance. Live trends, publishing and account analytics require official platform connections.'},
+    {id:'connections',keys:'connections integration connect api oauth credentials social channel',text:'Connections are designed around server-side application credentials plus provider-authorised account consent. Customers should not be asked to paste developer secrets. A provider should only be shown as live after credentials, permissions and a connection test succeed.'},
+    {id:'whatsapp',keys:'whatsapp meta facebook phone number id access token business messaging',text:'WhatsApp Business integration uses the Meta business/app setup, a WhatsApp Business Account, a Phone Number ID and an authorised access token with the required WhatsApp management and messaging permissions. Tokens must stay in protected server environment variables.'},
+    {id:'google-youtube',keys:'google youtube oauth client id client secret api key youtube data api',text:'Google and YouTube connection uses a Google Cloud project, YouTube Data API v3, and OAuth web-application credentials for user-authorised channel access. Redirect URIs must exactly match the deployed HTTPS callback configured by the application.'},
+    {id:'tiktok',keys:'tiktok oauth login kit client key secret redirect',text:'TikTok connection uses the official OAuth/Login Kit flow with an app client key, protected client secret and exact HTTPS redirect URI. Account tokens belong server-side and the application should report connection status only after authorisation succeeds.'},
+    {id:'telnyx',keys:'telnyx phone call sms ai receptionist number 1300 transfer voice',text:'The telephony architecture targets Telnyx for business calls, SMS and AI receptionist workflows. Protected owner transfer must never disclose a private destination number, and call/SMS status should only be reported after the provider confirms it.'},
+    {id:'email',keys:'email resend smtp verification email notification',text:'Email features can use an approved transactional email provider. Verification and operational notifications must use verified sending identities and protected API credentials; delivery should not be claimed until the provider confirms success.'},
+    {id:'payments',keys:'stripe paypal payment billing subscription charge card',text:'Paid billing must remain disabled until the selected payment provider is configured, final commercial terms are set and the customer explicitly authorises payment. No charge should occur silently.'},
+    {id:'social-future',keys:'snapchat x twitter social media connection',text:'Snapchat and X are optional platform connections. They remain unavailable until the relevant developer account, application credentials, permissions and provider review are completed.'},
+    {id:'security',keys:'security privacy password mfa session tenant isolation rate limit audit secret api key',text:'The security design includes protected server-side secrets, authenticated sessions, tenant isolation, rate limiting, optional authenticator MFA, role controls and audit-ready events. Raw API keys and private transfer details must never be exposed to customer workspaces.'},
+    {id:'governance',keys:'governance audit complaint help desk policy privacy security report case',text:'Trust & Governance includes role-aware policy guidance, audit evidence and protected support/escalation workflows. The Help & Complaint Desk can route general help, complaints, privacy/security concerns and higher-risk matters for authorised human review.'},
+    {id:'manual',keys:'manual tutorial guide walkthrough how to use where am i next step',text:'The Digital User Manual is intended to explain the current workspace area, show what it is for and guide the user to the next permitted action. First-time users should be able to follow a guided workspace journey and revisit help later.'},
+    {id:'install',keys:'install pwa mobile desktop tablet add home screen browser app',text:'Super Pro includes Progressive Web App support for compatible browsers on desktop and mobile. Private workspace and API requests are intentionally excluded from the public offline cache.'},
+    {id:'plans',keys:'plan pricing starter operations scale trial cost subscription',text:'The current test presentation shows a 14-day trial with no card required and indicative AUD plans: Starter A$99/month + GST, Operations A$199/month + GST and Scale A$349/month + GST. Commercial billing requires final terms and a configured payment provider.'},
+    {id:'limitations',keys:'not working missing not connected pending limitation live production',text:'This is a live-test/pre-launch build. A feature that depends on an external provider is only fully live when its real credentials, required permissions and end-to-end connection test are complete. The assistant must distinguish implemented application capability from an external connection that is still pending.'}
+  ];
+
   const clean=value=>String(value||'').toLowerCase().replace(/[^\p{L}\p{N}+&\s-]/gu,' ').replace(/\s+/g,' ').trim();
   const words=value=>clean(value).split(' ').filter(Boolean);
   function rank(query,topic){
@@ -112,6 +136,21 @@
     ja:'はい、日本語でお話しできます。日本語で質問してください。同じ言語で回答します。設定、AI Operations、通話、WhatsApp、スタッフ、仕事、セキュリティ、その他の機能について質問できます。',
     ko:'네, 한국어로 대화할 수 있습니다. 한국어로 질문하면 같은 언어로 답변하겠습니다. 설정, AI Operations, 통화, WhatsApp, 직원, 작업, 보안 또는 다른 기능에 대해 물어보세요.'
   };
+  function knowledgeContext(query,maxChars=950){
+    const q=clean(query),qWords=q.split(/\s+/).filter(x=>x.length>2),rows=[];
+    const scoreText=text=>qWords.reduce((n,w)=>n+(clean(text).includes(w)?1:0),0);
+    for(const k of legacyKnowledge){const score=scoreText(`${k.keys} ${k.text}`);if(score)rows.push({score,text:k.text})}
+    for(const t of topics){const score=scoreText(`${t.title} ${(t.keys||[]).join(' ')} ${t.answer||''}`);if(score)rows.push({score,text:t.answer})}
+    if(typeof document!=='undefined'&&document.body){
+      for(const el of document.querySelectorAll('.workspace-nav button,.page-heading,.feature-card,.security-list,.industry-rail button,.integration-card,.panel-head,.manual-card')){
+        const text=String(el.innerText||'').replace(/\s+/g,' ').trim();if(text.length<15||text.length>900)continue;const score=scoreText(text);if(score>1)rows.push({score,text});
+      }
+    }
+    rows.sort((a,b)=>b.score-a.score);
+    const out=[];let used=0;
+    for(const row of rows){const text=String(row.text||'').replace(/\s+/g,' ').trim();if(!text||out.includes(text))continue;const add=(out.length?3:0)+text.length;if(used+add>maxChars)break;out.push(text);used+=add}
+    return out.join(' | ');
+  }
   function plainText(value){
     return String(value??'')
       .replace(/\r\n?/g,'\n')
@@ -156,7 +195,7 @@
     const q=String(query||'').trim(),local=answer(q,context,previousTopic);
     const detected=language&&language!=='auto'?language:detectLanguage(q);
     const memory=relevantMemory(context,q);
-    const providerQuestion=memory?`${q}\n\nRelevant recent conversation context:\n${memory}`:q;
+    const knowledge=knowledgeContext(q),providerQuestion=[q,knowledge&&`Verified product context: ${knowledge}`,memory&&`Relevant recent conversation context:\n${memory}`].filter(Boolean).join('\n\n');
     try{
       const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion,context,language:detected,conversation_id:conversationId(context)})});
       const d=await r.json().catch(()=>({}));

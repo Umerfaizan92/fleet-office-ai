@@ -38,7 +38,9 @@ function geminiProviderConfig() {
 }
 export function resolveAiProviderConfig() {
   const gemini = geminiProviderConfig();
-  if (freeAiModeEnabled() && gemini) return gemini;
+  // Strict free mode never falls through to a paid provider. This prevents an
+  // exhausted OpenAI key from generating repeated 429 errors or unexpected cost.
+  if (freeAiModeEnabled()) return gemini;
   if (completeProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, env.AI_PROVIDER_MODEL)) {
     return { base:String(env.AI_PROVIDER_BASE_URL).trim(), key:String(env.AI_PROVIDER_API_KEY).trim(), model:String(env.AI_PROVIDER_MODEL).trim(), source:'primary' };
   }

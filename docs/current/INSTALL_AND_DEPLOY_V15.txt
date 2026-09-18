@@ -1,0 +1,37 @@
+SUPER PRO AI OFFICE MANAGER V15 — INSTALL & DEPLOY
+
+LOCAL TEST
+1. Extract ZIP.
+2. copy .env.example .env
+3. npm install
+4. npm run generate:admin-key
+5. Put generated ADMIN_API_KEY into .env. Never commit .env.
+6. Set PORT=3000, NODE_ENV=development, PUBLIC_BASE_URL=http://localhost:3000, SAAS_VERIFICATION_TEST_MODE=1.
+7. npm run validate:final
+8. npm run quality:check
+9. npm run check:config
+10. npm start
+11. Open http://localhost:3000/saas/
+
+VOICE TEST
+- Ask in English: confirm text + spoken reply.
+- Select Urdu, ask by microphone and confirm an Urdu-compatible installed voice is used. If no Urdu voice exists, text must remain available and the product must state that compatible audio is unavailable instead of reading Urdu with an English voice.
+- Try Auto / Female / Male. Gender preference applies only if a matching-language browser/device voice exposes a recognizable option.
+- Confirm the live voice status never covers microphone, language, voice-style, speaker, clear-chat or send controls.
+
+PWA TEST
+- Desktop Chrome/Edge: confirm direct browser install prompt where eligible.
+- Installed mode: confirm “already installed” state.
+- iPhone/iPad: confirm Safari → Share → Add to Home Screen guidance.
+- Mobile/tablet and Secure by default cards must open useful instructions.
+- Confirm private workspace, auth pages, Office Manager and /api/ requests are not handled by the public offline cache.
+
+BEFORE GITHUB/RENDER
+- Keep .env, databases, uploads, logs, node_modules and secret files out of Git.
+- Configure real PUBLIC_BASE_URL.
+- Add production secrets to Render/AWS secret environment, not source code.
+- Set SAAS_VERIFICATION_TEST_MODE=0.
+- Connect provider webhooks/OAuth callback URLs.
+- Verify /robots.txt, /sitemap.xml, /saas/answers.html and Search Visibility Centre.
+- Configure INDEXNOW_KEY after public domain is live.
+- Run final runtime and mobile tests before onboarding external pilot businesses.

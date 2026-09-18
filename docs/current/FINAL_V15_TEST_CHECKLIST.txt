@@ -1,0 +1,35 @@
+FINAL V15 TEST CHECKLIST
+
+[ ] npm install reports no critical dependency failure
+[ ] npm run validate:final
+[ ] npm run quality:check
+[ ] npm run check:config
+[ ] npm start
+[ ] Landing page and Explore Platform work
+[ ] Product Guide typed question → text reply → spoken reply
+[ ] Product Guide microphone question works
+[ ] Urdu/selected-language reply uses compatible same-language voice only
+[ ] Auto/Female/Male preference works where compatible voices exist
+[ ] Long AI spoken reply continues through all chunks without silent stall
+[ ] Voice capability status is meaningful, responsive and does not obstruct controls
+[ ] Desktop/laptop install card opens useful steps
+[ ] Mobile/tablet install card opens useful steps
+[ ] Secure by default install card explains private-cache boundary
+[ ] Install Super Pro opens direct prompt when browser makes it available
+[ ] Installed state and appinstalled state are handled
+[ ] PWA public cache excludes workspace/auth/Office/API paths
+[ ] Referral code reaches create-account form
+[ ] ABN/ACN/email/mobile registration still works
+[ ] Business setup asks structure + solo/team and AI design can be reviewed before save
+[ ] Workspace remains signed in while navigating
+[ ] Office Manager Expenses & Profit saves and calculates
+[ ] Performance Centre loads and shows human-review warning
+[ ] AI Quality Loop records checker run
+[ ] Campaign/Connections existing flows still load
+[ ] SEO/GEO/AEO Search Visibility Centre loads
+[ ] /robots.txt and /sitemap.xml work
+[ ] /saas/answers.html works
+[ ] Help, Complaints, Governance, Staff Chat and AI receptionist remain functional
+[ ] Mobile/tablet/desktop responsive test
+[ ] No 429 during normal navigation
+[ ] No secrets in browser/source bundle

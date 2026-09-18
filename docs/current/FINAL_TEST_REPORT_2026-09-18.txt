@@ -1,0 +1,67 @@
+SUPER PRO AI OFFICE MANAGER — FINAL TEST REPORT
+Date: 18 September 2026
+Release: 15.1.0 unified final
+
+FINAL STATUS
+PASS — branch consolidation/static integrity
+PASS — final project validator
+PASS — independent quality checker: 100/100
+PASS — JavaScript syntax scan
+PASS — unresolved merge-marker scan
+PASS — exact duplicate-file scan
+PASS — local HTML asset/reference scan
+PASS — embedded-secret pattern scan
+LIMITED — full Express server boot was not completed inside the packaging environment because npm dependency installation could not complete from the available registry/cache. This is an environment/install limitation, so runtime deployment must still be smoke-tested after a successful npm install/npm ci on the target machine or CI runner.
+
+SOURCE CONSOLIDATION
+Audited/merged the current v15 cleanup, registration-fix, persistent-session, public-guide-fix and live-test package lines. Protected v15-final and v14-final baselines were compared against the unified tree.
+
+PRESERVATION
+- v15 final candidate paths missing from unified release: 0
+- v14 final paths missing from unified release: 0
+- latest live-test behaviour retained where it superseded older overlapping branch code
+- duplicate-account/business registration protection retained
+- persistent session support retained
+- current multilingual voice/product-guide changes retained
+
+VALIDATION EXECUTED ON FINAL TREE
+1) npm run validate:final
+   RESULT: PASS
+   Validator reported 36 protected/core files, 13 SaaS HTML pages, v14 capability retention, multilingual spoken-reply controls and PWA install guidance.
+
+2) npm run quality:check
+   RESULT: PASS — 100/100
+   Covered SEO, GEO/IndexNow, language-aware voice, no arbitrary wrong-language voice fallback, PWA, maker/checker, finance, referrals, marketing, solo/team setup, AI design, governance, support, staff chat, receptionist and private noindex controls.
+
+3) node --check across JavaScript/MJS under saas/, src/ and scripts/
+   RESULT: PASS — 25 checked, 0 failures
+
+4) Release-tree integrity scan (excluding .git and node_modules)
+   RESULT at audit time:
+   - exact duplicate groups: 0
+   - unresolved merge-marker files: 0
+   - suspicious embedded live-secret pattern hits: 0
+   - missing local HTML references: 0
+   - intentional __PUBLIC_BASE_URL__ template references: 2 (replaced by server rendering)
+
+CHANGES MADE DURING FINAL AUDIT
+- package identity normalised to super-pro-ai-office-manager v15.1.0
+- public SEO title upgraded to full Super Pro AI Office Manager title
+- validator cache-version expectations updated to current assets
+- voice quality assertion aligned to current language-safe fallback implementation
+- older v14/v15 root manifests moved into docs/archive instead of being discarded
+- .git, node_modules, real secrets, databases, logs and customer uploads excluded from final distribution
+
+REQUIRED LAST DEPLOYMENT SMOKE TEST
+Do this before deleting old deployed branches/packages:
+1. Extract the final ZIP into a clean folder.
+2. Copy .env.example to .env and add your real deployment secrets privately.
+3. Run: npm ci   (or npm install if required by your environment)
+4. Run: npm run validate:final
+5. Run: npm run quality:check
+6. Run: npm run check:config
+7. Run: npm start
+8. Check: /healthz and /saas/
+9. Test sign-up/verification, sign-in persistence/recovery, Product Guide text + voice, Copilot voice, receptionist, staff chat, connections/providers, Content Studio, finance/jobs/enquiries, PWA install and logout/relogin.
+
+Do not delete the old GitHub branches/backups until step 1–9 succeeds on the real deployment environment and you have tagged/backed up the final working release.

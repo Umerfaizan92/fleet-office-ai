@@ -1,0 +1,25 @@
+SUPER PRO AI OFFICE MANAGER — V14 USER REQUIREMENTS PRESERVED
+
+Source additions incorporated in this upgrade:
+1. Download/install section for mobile, desktop, tablet/laptop-compatible use.
+2. Social media, email, SMS, WhatsApp, Google, website marketing performance reporting in campaigns.
+3. Expenses section with customised categories for stock, products, services supplied costs, overheads, subscriptions, insurance and other costs; AI-assisted net profit per job and total net profit.
+4. Performance comparison across sections, including staff and customers, with levels and policy-controlled bonus suggestions subject to human review.
+5. Referral/reward foundation with original/root referral attribution and downstream levels.
+6. Digital automation, security and privileged access for owner/manager/senior roles where applicable.
+7. Customisable Business Setup profile with AI-assisted professional/industry-relevant section design, without silently changing protected/core information.
+8. Beginning-of-setup choice for sole trader/solo operator versus staff/team, with workspace recommendations adapted accordingly.
+9. Improve multilingual public AI and language-correct speech behavior.
+10. Maker/checker separation: creator is not the only grader; independent checker, logged experiments, verifier and quality ratchet.
+11. Compare current market/HighLevel capabilities and improve differentiated AI-based operations without replacing the product core.
+12. Competitor gap research and missing-capability review.
+13. SEO + GEO + AEO implementation and audit, with public/private crawl separation.
+14. Preserve all prior v13 security, governance, receptionist, staff chat, historical records, customer 360, Content Studio, connections, billing foundations and persistent-session fixes.
+
+Maker/checker screenshot principle applied:
+- Separate maker and checker.
+- Keep evaluation criteria/read-only verification independent from the maker.
+- Log hypotheses/results/lessons.
+- Use a strong verifier/test suite.
+- Keep a quality ratchet so accepted quality does not silently fall below the recorded floor.
+- Re-check repeatedly rather than relying on one self-review.

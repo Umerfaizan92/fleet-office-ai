@@ -1,0 +1,24 @@
+SUPER PRO AI OFFICE MANAGER V14 — INSTALL & DEPLOY
+
+LOCAL TEST
+1. Extract ZIP.
+2. copy .env.example .env
+3. npm install
+4. npm run generate:admin-key
+5. Put generated ADMIN_API_KEY into .env. Never commit .env.
+6. Set PORT=3000, NODE_ENV=development, PUBLIC_BASE_URL=http://localhost:3000, SAAS_VERIFICATION_TEST_MODE=1.
+7. npm run validate:final
+8. npm run quality:check
+9. npm run check:config
+10. npm start
+11. Open http://localhost:3000/saas/
+
+BEFORE GITHUB/RENDER
+- Keep .env, databases, uploads, logs, node_modules and secret files out of Git.
+- Configure real PUBLIC_BASE_URL.
+- Add production secrets to Render/AWS secret environment, not source code.
+- Set SAAS_VERIFICATION_TEST_MODE=0.
+- Connect provider webhooks/OAuth callback URLs.
+- Verify /robots.txt, /sitemap.xml, /saas/answers.html and Search Visibility Centre.
+- Configure INDEXNOW_KEY after public domain is live.
+- Run final runtime and mobile tests before onboarding external pilot businesses.

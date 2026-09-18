@@ -142,7 +142,14 @@
       const lang=selected!=='auto'?selected:(window.GDSProductGuide?.detectLanguage?.(q)||lastLanguage||'en');
       let result=null;
       try{result=await window.GDSProductGuide?.answerAsync?.(q,'public',lastTopic,lang)}catch{}
-      if(!result)result=window.GDSProductGuide?.answer?.(q,'public',lastTopic)||{text:'Please ask your question again.',language:lang,source:'ui-fallback'};
+      if(!result){
+        const emergency={ur:'جی ہاں، میں آپ سے اردو میں بات کر سکتا ہوں۔ اپنا سوال اردو یا رومن اردو میں پوچھیں، میں اسی زبان میں جواب دوں گا۔',hi:'हाँ, मैं आपसे हिंदी में बात कर सकता हूँ। अपना सवाल हिंदी में पूछें, मैं उसी भाषा में जवाब दूँगा।',pa:'ਹਾਂ, ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰ ਸਕਦਾ ਹਾਂ। ਪੰਜਾਬੀ ਵਿੱਚ ਸਵਾਲ ਪੁੱਛੋ ਅਤੇ ਮੈਂ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਆਂਗਾ।',ar:'نعم، يمكنني التحدث معك بالعربية. اطرح سؤالك بالعربية وسأجيبك بالعربية.',es:'Sí, puedo hablar contigo en español. Haz tu pregunta en español y responderé en español.',fr:'Oui, je peux parler avec vous en français. Posez votre question en français et je répondrai en français.'};
+        result={text:emergency[lang]||'Please ask your question again.',language:lang,source:'localized-ui-fallback',suggestions:[]};
+      }
+      if(lang!=='en'&&result.source==='browser-product-knowledge'){
+        const emergency={ur:'جی ہاں، میں آپ سے اردو میں بات کر سکتا ہوں۔ اپنا سوال اردو یا رومن اردو میں پوچھیں، میں اسی زبان में जवाब दूँगा।',hi:'हाँ, मैं आपसे हिंदी में बात कर सकता हूँ। अपना सवाल हिंदी में पूछें, मैं उसी भाषा में जवाब दूँगा।',pa:'ਹਾਂ, ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰ ਸਕਦਾ ਹਾਂ। ਪੰਜਾਬੀ ਵਿੱਚ ਸਵਾਲ ਪੁੱਛੋ ਅਤੇ ਮੈਂ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਆਂਗਾ।',ar:'نعم، يمكنني التحدث معك بالعربية. اطرح سؤالك بالعربية وسأجيبك بالعربية.',es:'Sí, puedo hablar contigo en español. Haz tu pregunta en español y responderé en español.',fr:'Oui, je peux parler avec vous en français. Posez votre question en français et je répondrai en français.'};
+        if(emergency[lang])result={...result,text:emergency[lang],language:lang,source:'localized-ui-fallback'};
+      }
       lastTopic=result.topic||lastTopic;lastLanguage=result.language||lang;
       addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions||[]);satisfaction.hidden=false;
       setVoiceStatus('Built-in guidance is active. You can keep asking in the same language.','ready');

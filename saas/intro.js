@@ -136,7 +136,18 @@
       const result=await (window.GDSProductGuide.answerAsync?.(q,'public',lastTopic,language)||Promise.resolve(window.GDSProductGuide.answer(q,'public',lastTopic)));
       lastTopic=result.topic||lastTopic;lastLanguage=result.language||window.GDSProductGuide.detectLanguage?.(q)||'en';
       wait.remove();addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions);satisfaction.hidden=false;await speak(result.text,lastLanguage);
-    }catch(e){wait.remove();addMessage('ai','I could not reach the AI guidance service. I can still guide you through the built-in product knowledge and navigation.');setVoiceStatus('Text guidance is still available. Voice will retry on your next question.','limited')}
+    }catch(e){
+      wait.remove();
+      const selected=$('#guide-language')?.value||'auto';
+      const lang=selected!=='auto'?selected:(window.GDSProductGuide?.detectLanguage?.(q)||lastLanguage||'en');
+      let result=null;
+      try{result=await window.GDSProductGuide?.answerAsync?.(q,'public',lastTopic,lang)}catch{}
+      if(!result)result=window.GDSProductGuide?.answer?.(q,'public',lastTopic)||{text:'Please ask your question again.',language:lang,source:'ui-fallback'};
+      lastTopic=result.topic||lastTopic;lastLanguage=result.language||lang;
+      addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions||[]);satisfaction.hidden=false;
+      setVoiceStatus('Built-in guidance is active. You can keep asking in the same language.','ready');
+      await speak(result.text,lastLanguage);
+    }
   }
   form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
   input.addEventListener('input',resize);

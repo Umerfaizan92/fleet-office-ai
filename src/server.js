@@ -2029,6 +2029,7 @@ const businessVerificationLimiter=rateLimit({windowMs:15*60*1000,limit:30,standa
 const registrationStartLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many account verification starts. Please wait briefly and try again.'}});
 const otpResendLimiter=rateLimit({windowMs:10*60*1000,limit:8,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many code resend requests. Please wait before requesting another code.'}});
 const otpVerifyLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many incorrect verification attempts. Please wait before trying again.'}});
+const voiceReplyLimiter=rateLimit({windowMs:60*1000,limit:24,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many voice requests. Please wait a moment and try again.'}});
 const sessionCookieName='fp_session';
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const passwordHash=(password,salt)=>crypto.scryptSync(password,salt,64,{N:16384,r:8,p:1}).toString('hex');
@@ -2457,6 +2458,51 @@ app.post('/api/saas/mfa/verify',requireSaasUser,(req,res)=>{const parsed=z.objec
 
 
 app.get('/api/health/storage',(req,res)=>res.json({ok:true,persistent_storage_detected:persistentStorageDetected,production:env.NODE_ENV==='production',recommendation:env.NODE_ENV==='production'&&!persistentStorageDetected?'Configure a Render persistent disk at /var/data (paid service) or migrate the relational datastore to a managed database before relying on customer accounts.':null}));
+
+app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,async(req,res)=>{
+  const parsed=z.object({text:z.string().trim().min(1).max(3500),language:z.string().trim().max(20).default('en'),voice:z.enum(['auto','female','male']).default('auto')}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Voice text is invalid.'});
+
+  const explicitBase=String(env.AI_TTS_PROVIDER_BASE_URL||'').trim().replace(/\/$/,'');
+  const aiBase=String(env.AI_PROVIDER_BASE_URL||'').trim().replace(/\/$/,'');
+  const base=explicitBase||(/api\.openai\.com/i.test(aiBase)?aiBase:'');
+  const explicitKey=String(env.AI_TTS_API_KEY||env.OPENAI_API_KEY||'').trim();
+  const inheritedKey=/api\.openai\.com/i.test(base)?String(env.AI_PROVIDER_API_KEY||'').trim():'';
+  const key=explicitKey||inheritedKey;
+  if(!base||!key||!/api\.openai\.com/i.test(base)){
+    return res.status(503).json({ok:false,error:'Server speech is not configured for this AI provider.',fallback:'browser'});
+  }
+
+  const languageNames={en:'English',ur:'Urdu',hi:'Hindi',pa:'Punjabi',ar:'Arabic',bn:'Bengali',ta:'Tamil',zh:'Mandarin Chinese',ja:'Japanese',ko:'Korean',es:'Spanish',fr:'French'};
+  const voiceChoice=parsed.data.voice==='male'?String(env.AI_TTS_MALE_VOICE||'onyx'):parsed.data.voice==='female'?String(env.AI_TTS_FEMALE_VOICE||'coral'):String(env.AI_TTS_VOICE||'coral');
+  try{
+    const response=await fetch(base+'/audio/speech',{
+      method:'POST',
+      headers:{authorization:'Bearer '+key,'content-type':'application/json','accept':'audio/mpeg'},
+      body:JSON.stringify({
+        model:String(env.AI_TTS_MODEL||'gpt-4o-mini-tts'),
+        voice:voiceChoice,
+        input:parsed.data.text,
+        response_format:'mp3',
+        instructions:'Speak naturally and clearly in '+(languageNames[parsed.data.language]||parsed.data.language||'English')+'. Sound professional and conversational. Do not read markdown symbols aloud.'
+      })
+    });
+    if(!response.ok){
+      const detail=await response.text().catch(()=> '');
+      console.warn('[VOICE TTS] provider error',response.status,detail.slice(0,400));
+      return res.status(502).json({ok:false,error:'Server voice generation is temporarily unavailable.',fallback:'browser'});
+    }
+    const audio=Buffer.from(await response.arrayBuffer());
+    if(!audio.length)return res.status(502).json({ok:false,error:'Voice provider returned empty audio.',fallback:'browser'});
+    res.setHeader('Content-Type','audio/mpeg');
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('Content-Length',String(audio.length));
+    return res.send(audio);
+  }catch(err){
+    console.warn('[VOICE TTS] failed:',err.message);
+    return res.status(502).json({ok:false,error:'Server voice generation could not complete.',fallback:'browser'});
+  }
+});
 
 app.get('/api/saas/industry-registry',requireSaasUser,(req,res)=>{
   const state=String(req.saas.address_state||'').toUpperCase();

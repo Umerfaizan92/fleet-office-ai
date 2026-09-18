@@ -22,7 +22,9 @@ const groups=[
   {name:'Core admin',sets:[['ADMIN_API_KEY']]},
   {name:'Australian business verification',sets:[['ABR_GUID']]},
   {name:'Email',sets:[['RESEND_API_KEY'],['SMTP_HOST','SMTP_USER','SMTP_PASS']]},
-  {name:'AI multilingual Co-pilot',sets:[['AI_PROVIDER_BASE_URL','AI_PROVIDER_API_KEY','AI_PROVIDER_MODEL']]},
+  {name:'Free AI text',sets:[['GEMINI_API_KEY'],['GOOGLE_AI_API_KEY']]},
+  {name:'Optional alternate AI',sets:[['AI_PROVIDER_BASE_URL','AI_PROVIDER_API_KEY','AI_PROVIDER_MODEL'],['OPENAI_API_KEY']]},
+  {name:'Multilingual server voice',sets:[['GEMINI_API_KEY'],['GOOGLE_AI_API_KEY'],['AI_TTS_API_KEY'],['OPENAI_API_KEY']]},
   {name:'Business telephone',sets:[['TELNYX_API_KEY','TELNYX_CONNECTION_ID','BUSINESS_PRIMARY_NUMBER']]},
   {name:'Business SMS',sets:[['TELNYX_API_KEY','TELNYX_FROM_NUMBER']]},
   {name:'WhatsApp Business',sets:[['WHATSAPP_ACCESS_TOKEN','WHATSAPP_PHONE_NUMBER_ID']]},
@@ -40,9 +42,8 @@ const groups=[
   {name:'AWS protected storage',sets:[['AWS_REGION','AWS_S3_BUCKET','AWS_KMS_KEY_ID']]},
   {name:'Render deployment',sets:[['RENDER_API_KEY','RENDER_SERVICE_ID']]},
   {name:'Website/API control',sets:[['WEBSITE_PUBLIC_URL'],['WEBSITE_API_BASE_URL','WEBSITE_API_KEY'],['WEBSITE_WEBHOOK_SECRET']]},
-  {name:'Search visibility / IndexNow',sets:[['PUBLIC_BASE_URL','INDEXNOW_KEY']]},
-  {name:'Independent AI checker provider',sets:[['AI_CHECKER_PROVIDER_BASE_URL','AI_CHECKER_API_KEY','AI_CHECKER_MODEL']]}
-];
+  {name:'Search visibility / IndexNow',sets:[['PUBLIC_BASE_URL','INDEXNOW_KEY']]}
+]
 
 function present(k){
   const v=String(env[k]||'').trim();

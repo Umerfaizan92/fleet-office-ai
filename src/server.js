@@ -2346,7 +2346,7 @@ app.post('/api/saas/registration/resend',otpResendLimiter,async(req,res)=>{
 });
 
 app.post('/api/saas/registration/verify',otpVerifyLimiter,async(req,res)=>{
-  const parsed=z.object({pending_id:z.string().uuid(),email_code:z.string().regex(/^\d{6}$/),sms_code:z.string().regex(/^\d{6}$/)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter both six-digit verification codes.'});
+  const parsed=z.object({pending_id:z.string().uuid(),email_code:z.string().regex(/^\d{6}$/),sms_code:z.string().regex(/^\d{4,8}$/)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter the 6-digit email code and the SMS verification code exactly as received.'});
   const row=db.prepare(`SELECT * FROM pending_registrations WHERE id=?`).get(parsed.data.pending_id);if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'The verification codes expired. Start registration again.'});if(row.verification_attempts>=8)return res.status(429).json({ok:false,error:'Too many incorrect codes. Start registration again for your security.'});
   const emailOk=crypto.timingSafeEqual(Buffer.from(otpHash(row.id,parsed.data.email_code)),Buffer.from(row.email_code_hash));
   let smsOk=false,smsReason='';

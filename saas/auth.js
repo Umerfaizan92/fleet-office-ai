@@ -57,7 +57,7 @@
 
   if(page==='verify'){
     const raw=sessionStorage.getItem('gds-pending-registration');if(!raw){location.href='create-account.html';return}let state;try{state=JSON.parse(raw)}catch{location.href='create-account.html';return}
-    $('#verification-destination').textContent=`Enter the 6-digit codes sent to ${state.email} and ${state.phone}.`;
+    $('#verification-destination').textContent=`Enter the 6-digit email code sent to ${state.email} and the SMS code exactly as received on ${state.phone}.`;
     const paintDelivery=()=>{
       for(const channel of ['email','sms']){
         const row=document.querySelector(`[data-delivery="${channel}"]`),delivery=state.delivery?.[channel]||{};
@@ -85,7 +85,10 @@
       }
     }).catch(()=>{});
     if(state.test_mode&&state.test_codes){const box=$('#test-codes');box.hidden=false;box.innerHTML=`<b>LOCAL TEST MODE</b><br>Email code: <strong>${state.test_codes.email}</strong> · SMS code: <strong>${state.test_codes.sms}</strong><br><small>Test codes are exposed only when SAAS_VERIFICATION_TEST_MODE=1 outside production.</small>`}
-    const form=$('#verification-form'),button=$('#verification-submit');form.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(form);b.pending_id=state.pending_id;button.disabled=true;button.textContent='Verifying…';try{await api('/api/saas/registration/verify',{method:'POST',body:JSON.stringify(b)});sessionStorage.removeItem('gds-pending-registration');sessionStorage.setItem('gds-new-email',state.raw_email||'');sessionStorage.setItem('gds-first-login-tour','1');location.href='sign-in.html?created=1'}catch(err){show(err.message,true);button.disabled=false;button.textContent='Complete secure verification →'}};
+    const form=$('#verification-form'),button=$('#verification-submit');
+    for(const input of form.querySelectorAll('input[inputmode="numeric"]')){
+      input.addEventListener('input',()=>{input.value=input.value.replace(/\D/g,'').slice(0,Number(input.maxLength)>0?Number(input.maxLength):8)});
+    }form.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(form);b.pending_id=state.pending_id;button.disabled=true;button.textContent='Verifying…';try{await api('/api/saas/registration/verify',{method:'POST',body:JSON.stringify(b)});sessionStorage.removeItem('gds-pending-registration');sessionStorage.setItem('gds-new-email',state.raw_email||'');sessionStorage.setItem('gds-first-login-tour','1');location.href='sign-in.html?created=1'}catch(err){show(err.message,true);button.disabled=false;button.textContent='Complete secure verification →'}};
     document.querySelectorAll('[data-resend]').forEach(btn=>btn.onclick=async()=>{
       if(btn.disabled)return;
       const channel=btn.dataset.resend,original=btn.textContent;

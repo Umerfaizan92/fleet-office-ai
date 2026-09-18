@@ -69,3 +69,17 @@
   #onboarding-view .sticky-save{position:static!important;inset:auto!important;margin-top:16px!important;box-shadow:none!important}
   #onboarding-view .settings-content{padding-bottom:20px!important}
 }
+
+/* v15 cleanup: floating tools must never cover chat composers or page navigation. */
+#gds-staff-chat,#gds-copilot{max-width:calc(100vw - 24px)}
+#gds-staff-chat:has(.staff-chat-panel:not([hidden]))~#gds-copilot,
+#gds-copilot:has(.copilot-panel:not([hidden]))~#gds-staff-chat{pointer-events:none}
+@media(max-width:760px){
+  body{padding-bottom:max(92px,calc(76px + env(safe-area-inset-bottom)))}
+  #gds-staff-chat,#gds-copilot{bottom:max(12px,env(safe-area-inset-bottom))!important}
+  .staff-chat-panel,.copilot-panel{left:10px!important;right:10px!important;bottom:max(72px,calc(60px + env(safe-area-inset-bottom)))!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - 96px)!important}
+  .copilot-panel form,.staff-chat-panel form{position:sticky;bottom:0;z-index:4;background:var(--panel,#0e1117)}
+  .copilot-panel textarea,.staff-chat-panel textarea{min-width:0}
+  .copilot-send,.copilot-mic,.staff-chat-panel form button{position:relative;z-index:5}
+  .flow-nav{margin-bottom:max(74px,calc(62px + env(safe-area-inset-bottom)))}
+}

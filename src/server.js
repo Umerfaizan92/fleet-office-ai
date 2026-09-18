@@ -397,11 +397,12 @@ async function handleTelnyxCallAnswered(
 
 
 
+const renderPersistentRoot = fs.existsSync('/var/data') ? '/var/data' : null;
 const databasePath = path.isAbsolute(env.DATABASE_PATH || '')
   ? env.DATABASE_PATH
   : path.resolve(
       backendRoot,
-      env.DATABASE_PATH || './data/fleet-parlour.sqlite'
+      env.DATABASE_PATH || (renderPersistentRoot ? '/var/data/super-pro.sqlite' : './data/fleet-parlour.sqlite')
     );
 
 const db = createDb(databasePath);
@@ -411,7 +412,7 @@ const uploadRoot = path.isAbsolute(env.UPLOAD_DIR || '')
   ? env.UPLOAD_DIR
   : path.resolve(
       backendRoot,
-      env.UPLOAD_DIR || './data/uploads'
+      env.UPLOAD_DIR || (renderPersistentRoot ? '/var/data/uploads' : './data/uploads')
     );
 
 const maxFileMb = Number(env.MAX_FILE_MB || 8);

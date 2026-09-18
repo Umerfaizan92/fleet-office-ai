@@ -52,7 +52,15 @@
     const pass=form.elements.password,confirm=form.elements.confirm_password,meter=$('#password-meter'),hint=$('#password-hint');
     function updatePassword(){const v=pass.value;let score=0;if(v.length>=14)score++;if(/[A-Z]/.test(v)&&/[a-z]/.test(v))score++;if(/\d/.test(v))score++;if(/[^A-Za-z0-9]/.test(v))score++;meter.dataset.score=String(score);if(confirm.value)hint.textContent=pass.value===confirm.value?'Passwords match.':'Passwords do not match.';else hint.textContent='Use at least 14 characters; a passphrase is recommended.';hint.style.color=confirm.value&&pass.value!==confirm.value?'var(--red)':''}
     pass.addEventListener('input',updatePassword);confirm.addEventListener('input',updatePassword);
-    form.onsubmit=async e=>{e.preventDefault();show('');if(!businessVerified||verifiedFingerprint!==fingerprint()){invalidate();show('Verify the current Australian business identity before continuing.',true);status.scrollIntoView({behavior:'smooth',block:'center'});return}if(pass.value!==confirm.value){show('Passwords do not match.',true);confirm.focus();return}if(!form.elements.accept_terms.checked){show('Please accept the Terms of Service and Privacy Notice.',true);return}updateAddressPreview();const b=objectFrom(form);b.accept_terms=true;b.terms_version='prelaunch-2026-09-18-v16.3';submit.disabled=true;submit.textContent='Creating secure verification…';try{const d=await api('/api/saas/registration/start',{method:'POST',body:JSON.stringify(b)});sessionStorage.setItem('gds-pending-registration',JSON.stringify({pending_id:d.pending_id,email:d.email,phone:d.phone,business:d.business,test_mode:d.test_mode,test_codes:d.delivery?.test_codes||null,delivery:d.delivery||{},raw_email:b.email}));location.href='verify-account.html'}catch(err){show(err.message,true);submit.disabled=false;submit.textContent='Join your AI Office →'}};
+    form.onsubmit=async e=>{e.preventDefault();show('');if(!businessVerified||verifiedFingerprint!==fingerprint()){invalidate();show('Verify the current Australian business identity before continuing.',true);status.scrollIntoView({behavior:'smooth',block:'center'});return}if(pass.value!==confirm.value){show('Passwords do not match.',true);confirm.focus();return}if(!form.elements.accept_terms.checked){show('Please accept the Terms of Service and Privacy Notice.',true);return}updateAddressPreview();const b=objectFrom(form);b.accept_terms=true;b.terms_version='prelaunch-2026-09-18-v16.3';submit.disabled=true;submit.textContent='Creating secure verification…';try{const d=await api('/api/saas/registration/start',{method:'POST',body:JSON.stringify(b)});sessionStorage.setItem('gds-pending-registration',JSON.stringify({pending_id:d.pending_id,email:d.email,phone:d.phone,business:d.business,test_mode:d.test_mode,test_codes:d.delivery?.test_codes||null,delivery:d.delivery||{},raw_email:b.email}));location.href='verify-account.html'}catch(err){
+      if(err.payload?.code==='ACCOUNT_EXISTS'||err.payload?.code==='BUSINESS_EXISTS'){
+        const label=err.payload?.business_name?`Workspace already exists for ${err.payload.business_name}. `:'';
+        show(label+(err.message||'An account already exists.')+' Redirecting to sign in…',true);
+        sessionStorage.setItem('gds-new-email',String(b.email||''));
+        setTimeout(()=>{location.href=err.payload.sign_in_url||'sign-in.html'},1800);
+        return;
+      }
+      show(err.message,true);submit.disabled=false;submit.textContent='Join your AI Office →'}};
   }
 
   if(page==='verify'){
@@ -88,7 +96,15 @@
     const form=$('#verification-form'),button=$('#verification-submit');
     for(const input of form.querySelectorAll('input[inputmode="numeric"]')){
       input.addEventListener('input',()=>{input.value=input.value.replace(/\D/g,'').slice(0,Number(input.maxLength)>0?Number(input.maxLength):8)});
-    }form.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(form);b.pending_id=state.pending_id;button.disabled=true;button.textContent='Verifying…';try{await api('/api/saas/registration/verify',{method:'POST',body:JSON.stringify(b)});sessionStorage.removeItem('gds-pending-registration');sessionStorage.setItem('gds-new-email',state.raw_email||'');sessionStorage.setItem('gds-first-login-tour','1');location.href='sign-in.html?created=1'}catch(err){show(err.message,true);button.disabled=false;button.textContent='Complete secure verification →'}};
+    }form.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(form);b.pending_id=state.pending_id;button.disabled=true;button.textContent='Verifying…';try{await api('/api/saas/registration/verify',{method:'POST',body:JSON.stringify(b)});sessionStorage.removeItem('gds-pending-registration');sessionStorage.setItem('gds-new-email',state.raw_email||'');sessionStorage.setItem('gds-first-login-tour','1');location.href='sign-in.html?created=1'}catch(err){
+      if(err.payload?.code==='ACCOUNT_EXISTS'||err.payload?.code==='BUSINESS_EXISTS'){
+        show((err.message||'This workspace already exists.')+' Redirecting to sign in…',true);
+        sessionStorage.removeItem('gds-pending-registration');
+        sessionStorage.setItem('gds-new-email',state.raw_email||'');
+        setTimeout(()=>{location.href=err.payload.sign_in_url||'sign-in.html'},1800);
+        return;
+      }
+      show(err.message,true);button.disabled=false;button.textContent='Complete secure verification →'}};
     document.querySelectorAll('[data-resend]').forEach(btn=>btn.onclick=async()=>{
       if(btn.disabled)return;
       const channel=btn.dataset.resend,original=btn.textContent;

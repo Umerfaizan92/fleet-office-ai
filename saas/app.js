@@ -174,7 +174,7 @@ async function loadRegulatorySources(){
 $('#check-regulatory-sources')?.addEventListener('click',async()=>{
   const b=$('#check-regulatory-sources');b.disabled=true;b.textContent='Checking official sources…';
   try{
-    const d=await api('/api/saas/regulatory/check',{method:'POST',body:'{}'});note(d.message||'Official-source check completed.');
+    const d=await api('/api/saas/regulatory/check',{method:'POST',body:JSON.stringify({industry_code:$('#industry-code')?.value||selectedIndustryCode})});note(d.message||'Official-source check completed.');
     await loadRegulatorySources();
   }catch(err){note(err.message,true)}
   finally{b.disabled=false;b.textContent='Check official sources now'}

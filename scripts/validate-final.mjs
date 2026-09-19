@@ -7,9 +7,9 @@ const abs=p=>path.join(root,p),exists=p=>fs.existsSync(abs(p)),read=p=>fs.readFi
 
 const required=[
   'package.json','.env.example',
-  'src/server.js','src/db.js','src/ai-provider-shim.js',
+  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manual.js','saas/support.js','saas/adaptive.css','saas/governance.css','saas/manifest.webmanifest','saas/sw.js',
   'saas/superpro-icon-192.png','saas/superpro-icon-512.png',
@@ -60,11 +60,11 @@ for(const file of jsFiles){
 
 const index=read('saas/index.html'),workspace=read('saas/workspace.html'),office=read('office/index.html'),guide=read('saas/product-guide.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),intro=read('saas/intro.js'),sw=read('saas/sw.js'),render=read('render.yaml');
 for(const token of ['product-guide.js','intro.js','common.js','install.js','id="voice-capability"','Multilingual AI','manifest.webmanifest'])if(!index.includes(token))failures.push('index.html missing '+token);
-for(const token of ['workspace-ai-runtime.js','app.js','ai-operations.js','platform-notices.js','workspace-extras.js','common.js','id="integration-self-service"','id="manual-view"','id="support-view"'])if(!workspace.includes(token))failures.push('workspace.html missing '+token);
+for(const token of ['workspace-ai-runtime.js','app.js','ai-operations.js','integration-manager.js','platform-notices.js','workspace-extras.js','common.js','id="integration-self-service"','id="manual-view"','id="support-view"'])if(!workspace.includes(token))failures.push('workspace.html missing '+token);
 if((workspace.match(/id="integration-self-service"/g)||[]).length!==1)failures.push('workspace.html must contain exactly one Connections hub');
 for(const token of ['office.js','office-extras.js','office-records.js','office-insights.js','office-theme.css','office-layout.css','../saas/experience.css'])if(!office.includes(token))failures.push('office/index.html missing '+token);
 for(const token of ['localized-browser-fallback','superpro_ai_memory_current','conversation_id:conversationId','knowledgeContext','detectLanguage'])if(!guide.includes(token))failures.push('product-guide.js missing '+token);
-for(const token of ['/api/saas/industry-registry','/api/saas/onboarding','/api/saas/regulatory/sources','/api/saas/regulatory/check','/api/saas/releases/latest','/api/saas/announcements','/api/admin/platform-announcements','/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/speech-stream','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/:provider/callback','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
+for(const token of ['/api/saas/integrations/self-service/:provider/test','/api/saas/integrations/self-service/:provider/resources','/api/saas/industry-registry','/api/saas/onboarding','/api/saas/regulatory/sources','/api/saas/regulatory/check','/api/saas/releases/latest','/api/saas/announcements','/api/admin/platform-announcements','/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/speech-stream','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/:provider/callback','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
 for(const token of ['freeAiModeEnabled','geminiProviderConfig','if (freeAiModeEnabled()) return gemini','if (freeAiModeEnabled()) return null'])if(!shim.includes(token))failures.push('ai-provider-shim.js missing '+token);
 for(const token of ['startBrowserRecognitionFallback','findLanguageVoice','splitSpeech','speechHeartbeat','guide-voice'])if(!intro.includes(token))failures.push('intro.js missing '+token);
 for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')","const CACHE='superpro-public-"])if(!sw.includes(token))failures.push('sw.js missing '+token);
@@ -86,6 +86,10 @@ for(const token of ['/api/saas/voice/transcribe','/api/saas/voice/speech','/api/
 if(app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"))failures.push('app.js contains unsafe copilot voice initialization ordering');
 if(!workspaceAi.includes('window.SuperProAIClient')||!workspaceAi.includes('/api/saas/voice/speech-stream')||!workspaceAi.includes('/api/saas/voice/transcribe'))failures.push('workspace shared AI runtime is incomplete');
 if(!app.includes('SuperProAIClient')||!ops.includes('SuperProAIClient'))failures.push('workspace assistants are not using the shared AI runtime');
+const integrationRuntime=read('src/integration-runtime.js'),integrationManager=read('saas/integration-manager.js');
+if(!integrationRuntime.includes('decryptBundle')||!integrationRuntime.includes('refreshToken')||!integrationRuntime.includes('testConnection')||!integrationRuntime.includes('revokeConnection'))failures.push('integration token lifecycle runtime is incomplete');
+if(!integrationManager.includes('Test connection')||!integrationManager.includes('Disconnect')||!integrationManager.includes('Save selection'))failures.push('customer integration management UI is incomplete');
+if(!server.includes('loadIntegrationBundle')||!server.includes('persistIntegrationBundle'))failures.push('server does not use encrypted integration token runtime');
 if(!platformNotices.includes('/api/saas/announcements')||!platformNotices.includes('Updates & service notices'))failures.push('platform notice inbox is incomplete');
 if(!db.includes('platform_announcements')||!db.includes('platform_announcement_deliveries'))failures.push('platform announcement storage is missing');
 if(app.includes('button.hidden=!always&&!allowed.has(view)'))failures.push('industry setup must not hide core workspace modules');

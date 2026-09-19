@@ -296,7 +296,7 @@ finder.className='modal smart-finder';
 finder.innerHTML='<form method="dialog" class="finder-close"><button class="secondary-button" aria-label="Close search">Close</button></form><div class="finder-heading"><span class="panel-kicker">GLOBAL AI SEARCH</span><h2>What do you want to do?</h2><p>Ask naturally about Super Pro, your workspace, setup, security, connections or where to go next.</p></div><div class="finder-input-row"><input id="page-search" type="search" placeholder="Ask or search the workspace…"><button class="secondary-button finder-mic" id="finder-mic" type="button">🎙 Talk</button></div><div class="finder-status" id="finder-status" aria-live="polite"></div><div id="page-results" class="smart-results"></div>';
 document.body.append(finder);
 let finderRequest=0,finderAnswerText='',finderAnswerLang='en',finderTimer=null,finderAudio=null,finderAudioUrl='';
-function stopFinderVoice(){if(finderAudio){try{finderAudio.pause();finderAudio.src=''}catch{}finderAudio=null}if(finderAudioUrl){try{URL.revokeObjectURL(finderAudioUrl)}catch{}finderAudioUrl=''}try{speechSynthesis.cancel()}catch{}}
+function stopFinderVoice(){window.SuperProAIClient?.stopSpeech?.();if(finderAudio){try{finderAudio.pause();finderAudio.src=''}catch{}finderAudio=null}if(finderAudioUrl){try{URL.revokeObjectURL(finderAudioUrl)}catch{}finderAudioUrl=''}try{speechSynthesis.cancel()}catch{}}
 function finderBrowserSpeak(text,lang='en'){
   if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window))return false;
   const locale={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',bn:'bn-BD',ta:'ta-IN',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',es:'es-ES',fr:'fr-FR'}[lang]||'en-AU';
@@ -307,13 +307,16 @@ function finderBrowserSpeak(text,lang='en'){
 }
 async function speakFinderAnswer(){
   if(!finderAnswerText){$('#finder-status').textContent='Ask a question first.';return}
-  stopFinderVoice();$('#finder-status').textContent='Preparing voice reply…';
-  try{
-    const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:finderAnswerText,language:finderAnswerLang,voice:'auto'})});
-    if(response.ok){
-      const blob=await response.blob();if(blob.size){finderAudioUrl=URL.createObjectURL(blob);finderAudio=new Audio(finderAudioUrl);finderAudio.onplay=()=>{$('#finder-status').textContent='Speaking with Super Pro voice…'};finderAudio.onended=()=>{$('#finder-status').textContent='Voice reply finished.';URL.revokeObjectURL(finderAudioUrl);finderAudioUrl='';finderAudio=null};await finderAudio.play();return}
-    }
-  }catch{}
+  stopFinderVoice();
+  const runtime=window.SuperProAIClient;
+  if(runtime){
+    await runtime.ensurePlaybackContext?.();
+    await runtime.speak(finderAnswerText,finderAnswerLang,{
+      voice:'auto',
+      onStatus:(message)=>{$('#finder-status').textContent=message}
+    });
+    return;
+  }
   if(!finderBrowserSpeak(finderAnswerText,finderAnswerLang))$('#finder-status').textContent='Voice playback is unavailable on this browser/device.';
 }
 async function searchPages(){
@@ -347,10 +350,10 @@ finder.addEventListener('close',stopFinderVoice);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#workspace').hidden){e.preventDefault();openFinder()}});
 (()=>{
   const mic=finder.querySelector('#finder-mic'),R=window.SpeechRecognition||window.webkitSpeechRecognition;
-  let recorder=null,stream=null,listening=false,recognition=null;
+  let listening=false,recognition=null;
   const finish=()=>{listening=false;mic.classList.remove('listening');mic.textContent='🎙 Talk'};
   function browserFallback(){
-    if(!R){finish();$('#finder-status').textContent='Server transcription is unavailable and this browser has no speech recognition. Type your request instead.';return}
+    if(!R){finish();$('#finder-status').textContent='Voice input is unavailable on this browser/device.';return}
     if(!recognition){
       recognition=new R();recognition.interimResults=true;recognition.continuous=false;recognition.lang=navigator.language||'en-AU';
       recognition.onstart=()=>{listening=true;mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening with device recognition…'};
@@ -361,43 +364,26 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
     try{recognition.start()}catch{finish()}
   }
   async function start(){
-    if(listening){if(recorder?.state==='recording')recorder.stop();else try{recognition?.stop()}catch{};return}
+    const runtime=window.SuperProAIClient;
+    if(runtime?.isListening?.()){runtime.stopListening();return}
+    if(listening){try{recognition?.stop()}catch{};return}
     stopFinderVoice();
-    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){browserFallback();return}
-    let chunks=[];
+    if(!runtime){browserFallback();return}
     try{
-      stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-      const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
-      recorder=new MediaRecorder(stream,preferred?{mimeType:preferred}:undefined);
-      recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      recorder.onstart=()=>{listening=true;mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening with automatic language detection…'};
-      recorder.onstop=async()=>{
-        finish();stream?.getTracks().forEach(t=>t.stop());
-        const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
-        if(!blob.size){browserFallback();return}
-        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');
-        $('#finder-status').textContent='Detecting language and transcribing…';
-        try{
-          const r=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});
-          const d=await r.json().catch(()=>({}));
-          if(!r.ok||!d.text)throw new Error(d.error||'Transcription failed.');
-          finder.querySelector('input').value=d.text;
-          $('#finder-status').textContent=`Detected ${String(d.language||'auto').toUpperCase()} · searching…`;
-          scheduleFinderSearch();
-        }catch(err){
-          $('#finder-status').textContent='Server transcription unavailable. Switching to device recognition…';
-          setTimeout(browserFallback,120);
-        }
-      };
-      recorder.start();setTimeout(()=>{if(recorder?.state==='recording')recorder.stop()},15000);
-    }catch(err){
-      stream?.getTracks().forEach(t=>t.stop());finish();
-      if(err?.name==='NotAllowedError'){$('#finder-status').textContent='Microphone permission is blocked.';return}
-      browserFallback();
-    }
+      const result=await runtime.listen({
+        language:'auto',
+        onStatus:(message)=>{$('#finder-status').textContent=message},
+        onListening:(active)=>{listening=active;mic.classList.toggle('listening',active);mic.textContent=active?'Listening…':'🎙 Talk'}
+      });
+      if(result?.text){
+        finder.querySelector('input').value=result.text;
+        $('#finder-status').textContent=`Detected ${String(result.language||'auto').toUpperCase()} · searching…`;
+        scheduleFinderSearch();
+      }
+    }catch(err){finish();$('#finder-status').textContent=err.message||'Voice transcription failed. Please try again.'}
   }
   mic.onclick=start;
-})();
+})();;
 $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashboard');note('Review the command centre for current activity and attention items.');});
 
 // Content Studio source library — local workspace organisation layer

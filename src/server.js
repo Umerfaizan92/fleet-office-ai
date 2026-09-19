@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 import { createDb } from './db.js';
-import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification } from './mailer.js';
+import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
 import { aiProviderStatus, generateAiText, meaningfulConfigValue, resolveAiProviderConfig } from './ai-provider-shim.js';
@@ -2901,7 +2901,8 @@ app.post('/api/admin/platform-announcements',requireAdmin,(req,res)=>{
   const d=parsed.data,id=crypto.randomUUID(),now=new Date().toISOString(),reference=announcementReference();
   db.prepare(`INSERT INTO platform_announcements (id,reference_code,kind,status,severity,title,message,before_summary,after_summary,starts_at,expected_end_at,resolved_at,publish_at,audience,notify_in_app,notify_email,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,reference,d.kind,d.status,d.severity,d.title,d.message,d.before_summary||null,d.after_summary||null,d.starts_at||null,d.expected_end_at||null,d.kind==='resolved'?now:null,d.publish_at||now,d.audience,d.notify_in_app?1:0,d.notify_email?1:0,'admin',now,now);
   if(d.notify_email){
-    const users=db.prepare(`SELECT DISTINCT u.id,u.email FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisation_subscriptions s ON s.organisation_id=m.organisation_id WHERE u.status='active' AND u.email IS NOT NULL AND u.email<>''`).all();
+    const users=db.prepare(`SELECT DISTINCT u.id,u.email,s.status subscription_status FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisation_subscriptions s ON s.organisation_id=m.organisation_id WHERE u.status='active' AND u.email IS NOT NULL AND u.email<>''`).all()
+      .filter(user=>d.audience==='all'||d.audience==='trial_and_paid'||(d.audience==='trial'&&user.subscription_status==='trialing')||(d.audience==='paid'&&user.subscription_status!=='trialing'));
     const insert=db.prepare(`INSERT OR IGNORE INTO platform_announcement_deliveries (id,announcement_id,user_id,email,status,attempts,created_at,updated_at) VALUES (?,?,?,?, 'queued',0,?,?)`);
     const tx=db.transaction(()=>{for(const user of users)insert.run(crypto.randomUUID(),id,user.id,user.email,now,now)});tx();
   }
@@ -2912,9 +2913,53 @@ app.post('/api/admin/platform-announcements/:id/resolve',requireAdmin,(req,res)=
   const row=db.prepare(`SELECT * FROM platform_announcements WHERE id=?`).get(req.params.id);
   if(!row)return res.status(404).json({ok:false,error:'Announcement not found.'});
   const now=new Date().toISOString(),after=String(req.body?.after_summary||'').trim().slice(0,3000);
-  db.prepare(`UPDATE platform_announcements SET status='resolved',kind='resolved',resolved_at=?,after_summary=COALESCE(NULLIF(?,''),after_summary),updated_at=? WHERE id=?`).run(now,after,now,row.id);
-  res.json({ok:true,resolved_at:now});
+  db.prepare(`UPDATE platform_announcements SET status='resolved',resolved_at=?,after_summary=COALESCE(NULLIF(?,''),after_summary),updated_at=? WHERE id=?`).run(now,after,now,row.id);
+
+  const resolvedId=crypto.randomUUID(),resolvedRef=announcementReference();
+  const resolvedTitle=String(req.body?.title||('Resolved: '+row.title)).trim().slice(0,180);
+  const resolvedMessage=String(req.body?.message||'The scheduled update or technical issue has been completed. Normal service is available.').trim().slice(0,5000);
+  db.prepare(`INSERT INTO platform_announcements (id,reference_code,kind,status,severity,title,message,before_summary,after_summary,starts_at,expected_end_at,resolved_at,publish_at,audience,notify_in_app,notify_email,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    resolvedId,resolvedRef,'resolved','resolved','info',resolvedTitle,resolvedMessage,row.before_summary||row.message,after||row.after_summary||null,row.starts_at,row.expected_end_at,now,now,row.audience,row.notify_in_app,row.notify_email,'admin',now,now
+  );
+  if(row.notify_email){
+    const users=db.prepare(`SELECT DISTINCT u.id,u.email,s.status subscription_status FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisation_subscriptions s ON s.organisation_id=m.organisation_id WHERE u.status='active' AND u.email IS NOT NULL AND u.email<>''`).all()
+      .filter(user=>row.audience==='all'||row.audience==='trial_and_paid'||(row.audience==='trial'&&user.subscription_status==='trialing')||(row.audience==='paid'&&user.subscription_status!=='trialing'));
+    const insert=db.prepare(`INSERT OR IGNORE INTO platform_announcement_deliveries (id,announcement_id,user_id,email,status,attempts,created_at,updated_at) VALUES (?,?,?,?, 'queued',0,?,?)`);
+    db.transaction(()=>{for(const user of users)insert.run(crypto.randomUUID(),resolvedId,user.id,user.email,now,now)})();
+  }
+  res.json({ok:true,resolved_at:now,resolution_announcement:{id:resolvedId,reference_code:resolvedRef}});
 });
+
+async function processPlatformAnnouncementEmails(){
+  const now=new Date().toISOString();
+  const rows=db.prepare(`
+    SELECT d.*,a.reference_code,a.kind,a.status announcement_status,a.severity,a.title,a.message,
+           a.before_summary,a.after_summary,a.starts_at,a.expected_end_at,a.publish_at
+    FROM platform_announcement_deliveries d
+    JOIN platform_announcements a ON a.id=d.announcement_id
+    WHERE d.status IN ('queued','retry')
+      AND d.attempts<5
+      AND a.notify_email=1
+      AND a.status IN ('published','active','resolved')
+      AND (a.publish_at IS NULL OR a.publish_at<=?)
+    ORDER BY d.created_at
+    LIMIT 20
+  `).all(now);
+  for(const row of rows){
+    try{
+      db.prepare(`UPDATE platform_announcement_deliveries SET attempts=attempts+1,status='sending',updated_at=? WHERE id=?`).run(now,row.id);
+      const result=await sendPlatformAnnouncementEmail(env,{to:row.email,announcement:row});
+      const sentAt=new Date().toISOString();
+      db.prepare(`UPDATE platform_announcement_deliveries SET status=?,sent_at=?,last_error=NULL,updated_at=? WHERE id=?`).run(result.sent?'sent':'retry',result.sent?sentAt:null,sentAt,row.id);
+    }catch(err){
+      const updated=new Date().toISOString();
+      db.prepare(`UPDATE platform_announcement_deliveries SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'retry' END,last_error=?,updated_at=? WHERE id=?`).run(String(err?.message||err).slice(0,1000),updated,row.id);
+    }
+  }
+}
+setTimeout(processPlatformAnnouncementEmails,20*1000).unref?.();
+setInterval(processPlatformAnnouncementEmails,60*1000).unref?.();
+
 
 app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 

@@ -481,20 +481,16 @@ function maybeStartTour(me){
   async function speakReply(value,lang='en'){
     if(!voiceOn)return;
     const spoken=cleanSpeech(value);if(!spoken)return;
+    const runtime=window.SuperProAIClient;
+    if(runtime){
+      await runtime.ensurePlaybackContext?.();
+      return runtime.speak(spoken,lang,{
+        voice:voicePreference,
+        onStatus:(message)=>{voiceStatus.textContent=message}
+      });
+    }
     stopVoice();const run=++speechRun;
-    voiceStatus.textContent='Preparing spoken reply…';
-    try{
-      const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text:spoken,language:lang,voice:voicePreference})});
-      if(response.ok&&run===speechRun&&voiceOn){
-        const blob=await response.blob();if(!blob.size)throw new Error('empty audio');
-        activeVoiceUrl=URL.createObjectURL(blob);activeVoiceAudio=new Audio(activeVoiceUrl);activeVoiceAudio.preload='auto';activeVoiceAudio.playsInline=true;
-        activeVoiceAudio.onplay=()=>voiceStatus.textContent='Speaking with Super Pro voice…';
-        activeVoiceAudio.onended=()=>{if(run===speechRun)voiceStatus.textContent='Voice reply finished.';if(activeVoiceUrl){URL.revokeObjectURL(activeVoiceUrl);activeVoiceUrl=''}activeVoiceAudio=null};
-        activeVoiceAudio.onerror=()=>browserSpeak(spoken,lang,run);
-        try{await activeVoiceAudio.play();return}catch{}
-      }
-    }catch{}
-    browserSpeak(spoken,lang,run);
+    return browserSpeak(spoken,lang,run);
   }
   async function reply(q){
     const actions=window.GDSProductGuide?.findActions(q)||[],best=actions[0];
@@ -515,27 +511,30 @@ function maybeStartTour(me){
   const R=window.SpeechRecognition||window.webkitSpeechRecognition,mic=shell.querySelector('.copilot-mic');
   let copilotRecorder=null,copilotStream=null,copilotListening=false;
   async function copilotAutoListen(){
-    if(copilotRecorder&&copilotRecorder.state==='recording'){copilotRecorder.stop();return}
     stopVoice();
+    const runtime=window.SuperProAIClient;
+    if(runtime){
+      if(runtime.isListening?.()){runtime.stopListening?.();return}
+      try{
+        const result=await runtime.listen({
+          language:'auto',
+          onStatus:(message)=>{voiceStatus.textContent=message},
+          onListening:(active)=>{copilotListening=active;mic.classList.toggle('listening',active)}
+        });
+        if(result?.text){
+          text.value=result.text;
+          const lang=result.language||languageOf(result.text);
+          voiceStatus.textContent=`Detected ${String(lang).toUpperCase()} · preparing reply…`;
+          await reply(result.text);
+        }
+      }catch(err){voiceStatus.textContent=err.message||'Voice transcription failed. Please try again.'}
+      return;
+    }
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
       if(!R){voiceStatus.textContent='Voice input is not supported in this browser.';return}
       browserListen();return;
     }
-    let chunks=[];
-    try{
-      copilotStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-      const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
-      copilotRecorder=new MediaRecorder(copilotStream,preferred?{mimeType:preferred}:undefined);
-      copilotRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      copilotRecorder.onstart=()=>{copilotListening=true;mic.classList.add('listening');voiceStatus.textContent='Listening with automatic language detection… speak naturally.'};
-      copilotRecorder.onstop=async()=>{
-        copilotListening=false;mic.classList.remove('listening');copilotStream?.getTracks().forEach(t=>t.stop());
-        const blob=new Blob(chunks,{type:copilotRecorder.mimeType||'audio/webm'});if(!blob.size){voiceStatus.textContent='No speech was captured. Tap the mic and try again.';return}
-        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');voiceStatus.textContent='Detecting language and transcribing…';
-        try{const response=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});const d=await response.json();if(!response.ok)throw new Error(d.error||'Transcription failed.');text.value=d.text;voiceStatus.textContent=`Detected ${(d.language||languageOf(d.text)).toUpperCase()} · preparing reply…`;await reply(d.text)}catch(err){voiceStatus.textContent=err.message||'Voice transcription failed. Falling back to browser recognition.';if(R)setTimeout(browserListen,150)}
-      };
-      copilotRecorder.start();setTimeout(()=>{if(copilotRecorder?.state==='recording')copilotRecorder.stop()},15000);
-    }catch(err){copilotStream?.getTracks().forEach(t=>t.stop());voiceStatus.textContent=err?.name==='NotAllowedError'?'Microphone permission is blocked.':'Microphone could not start.'}
+    browserListen();
   }
   let browserRecognition=null;
   function browserListen(){
@@ -550,7 +549,7 @@ function maybeStartTour(me){
     const nav=String(navigator.language||'').toLowerCase();browserRecognition.lang=recognitionLocales.find(x=>x.toLowerCase()===nav)||recognitionLocales.find(x=>x.toLowerCase().split('-')[0]===nav.split('-')[0])||'en-AU';
     try{browserRecognition.start()}catch{}
   }
-  mic.onclick=()=>{stopVoice();if(copilotListening){if(copilotRecorder?.state==='recording')copilotRecorder.stop();else try{browserRecognition?.stop()}catch{};return}copilotAutoListen()};
+  mic.onclick=()=>{stopVoice();const runtime=window.SuperProAIClient;if(runtime?.isListening?.()){runtime.stopListening();return}if(copilotListening){try{browserRecognition?.stop()}catch{};return}copilotAutoListen()};
 })();
 
 $('#replay-tour')?.addEventListener('click',async()=>{try{const me=await api('/api/saas/me');localStorage.removeItem(`gds-tour-${me.organisation.slug}`);sessionStorage.setItem('gds-run-tour','1');maybeStartTour(me)}catch(e){note(e.message,true)}});

@@ -20,8 +20,11 @@
 
   const log=$('#chat-log'), input=$('#chat-input'), form=$('#chat-form'), satisfaction=$('#satisfaction'), conversion=$('#conversion-panel');
   let voiceReplies=localStorage.getItem('superpro_voice_replies')!=='off';
-  let conversationLanguage=localStorage.getItem('superpro_conversation_language')||'auto';
-  let recognition=null, listening=false, lastTopic='', lastLanguage=conversationLanguage==='auto'?'en':conversationLanguage, availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
+  // Auto language is deliberately per-turn. Older builds persisted a detected
+  // language and accidentally forced later questions into that language.
+  try{localStorage.removeItem('superpro_conversation_language')}catch{}
+  let conversationLanguage='auto';
+  let recognition=null, listening=false, lastTopic='', lastLanguage='en', availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
   let speechRun=0, speechHeartbeat=null, speechPrimed=false, playbackContext=null, playbackSource=null;
   const escape=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const speechSupported='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -74,8 +77,10 @@
   }
   function lockConversationLanguage(lang){
     if(!lang||lang==='auto')return;
-    conversationLanguage=lang;lastLanguage=lang;
-    try{localStorage.setItem('superpro_conversation_language',lang)}catch{}
+    // Keep the detected language for the current turn/TTS only. Do not persist
+    // it while the selector is Auto; the next customer turn must be detected
+    // independently.
+    lastLanguage=lang;
     if(recognition)recognition.lang=speechLocale(lang);
     const select=$('#guide-language');if(select&&select.value==='auto')select.dataset.detectedLanguage=lang;
   }
@@ -210,16 +215,15 @@
     try{
       const selectedLanguage=$('#guide-language')?.value||'auto';
       const switched=languageSwitch(q);
-      if(switched)lockConversationLanguage(switched);
       const detectedLanguage=window.GDSProductGuide.detectLanguage?.(q)||'en';
-      if(selectedLanguage==='auto'&&conversationLanguage==='auto'&&detectedLanguage!=='en')lockConversationLanguage(detectedLanguage);
-      const language=selectedLanguage==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):selectedLanguage;
+      const language=selectedLanguage==='auto'?(switched||detectedLanguage):selectedLanguage;
+      if(selectedLanguage==='auto')lockConversationLanguage(language);
       const result=await (window.GDSProductGuide.answerAsync?.(q,'public',lastTopic,language)||Promise.resolve(window.GDSProductGuide.answer(q,'public',lastTopic)));
       lastTopic=result.topic||lastTopic;
-      // A locked/selected conversation language owns both reply and TTS locale.
-      // Do not let provider metadata switch an Urdu conversation back to English.
+      // In Auto mode every turn owns its own reply/TTS language. A manually
+      // selected language still overrides detection until the user changes it.
       const selectedNow=$('#guide-language')?.value||'auto';
-      lastLanguage=selectedNow!=='auto'?selectedNow:(conversationLanguage!=='auto'?conversationLanguage:(result.language||window.GDSProductGuide.detectLanguage?.(q)||'en'));
+      lastLanguage=selectedNow!=='auto'?selectedNow:(result.language||language||detectedLanguage||'en');
       wait.remove();addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions);satisfaction.hidden=false;await speak(result.text,lastLanguage);
     }catch(e){
       wait.remove();
@@ -245,7 +249,7 @@
   input.addEventListener('input',resize);
   input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();form.requestSubmit()}});
   function resize(){input.style.height='auto';input.style.height=Math.min(110,input.scrollHeight)+'px'}
-  $('#clear-chat').onclick=()=>{stopSpeech();log.innerHTML='<div class="message ai"><span>AI</span><div><b>Fresh conversation.</b><p>Ask me anything about Super Pro AI Office Manager—features, AI, plans, security, setup, industries, jobs, calls, content or integrations.</p></div></div>';lastTopic='';satisfaction.hidden=true;conversion.hidden=true;setQuick(['What can this software do?','Can AI answer calls and messages?','How secure is account creation?']);setVoiceStatus('Fresh conversation ready. Speak or type in your preferred language.','ready')};
+  $('#clear-chat').onclick=()=>{stopSpeech();conversationLanguage='auto';lastLanguage='en';try{localStorage.removeItem('superpro_conversation_language')}catch{}log.innerHTML='<div class="message ai"><span>AI</span><div><b>Fresh conversation.</b><p>Ask me anything about Super Pro AI Office Manager—features, AI, plans, security, setup, industries, jobs, calls, content or integrations.</p></div></div>';lastTopic='';satisfaction.hidden=true;conversion.hidden=true;setQuick(['What can this software do?','Can AI answer calls and messages?','How secure is account creation?']);setVoiceStatus('Fresh conversation ready. Speak or type in your preferred language.','ready')};
 
   const voiceOutput=$('#voice-output');
   function paintVoiceToggle(){if(!voiceOutput)return;voiceOutput.classList.toggle('active',voiceReplies);voiceOutput.textContent=voiceReplies?'🔊':'🔇';voiceOutput.title=voiceReplies?'Voice replies on':'Voice replies off';voiceOutput.setAttribute('aria-pressed',String(voiceReplies))}
@@ -329,7 +333,7 @@
           setVoiceStatus('I did not catch that clearly. Still listening… please continue.','listening');
           setTimeout(()=>startBrowserRecognitionFallback(),100);return
         }
-        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',($('#guide-language')?.value||'auto')==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):$('#guide-language').value);
+        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',$('#guide-language')?.value||'auto');
         setVoiceStatus('Understanding what you said…','listening');
         try{
           const r=await fetch('/api/product-guide/transcribe',{method:'POST',credentials:'same-origin',body:fd});
@@ -338,8 +342,7 @@
           const transcript=String(d.text).trim();
           input.value=transcript;
           const switched=languageSwitch(transcript),detected=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';
-          if(switched)lockConversationLanguage(switched);else if(($('#guide-language')?.value||'auto')==='auto'&&conversationLanguage==='auto'&&detected!=='en')lockConversationLanguage(detected);
-          lastLanguage=conversationLanguage!=='auto'?conversationLanguage:detected;resize();
+          lastLanguage=(($('#guide-language')?.value||'auto')==='auto'?(switched||detected):$('#guide-language').value);resize();
           setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
           await ask(transcript);
         }catch(e){
@@ -361,7 +364,7 @@
     const select=document.createElement('select');select.id='guide-language';select.className='guide-language';select.title='Reply and voice-input language';select.setAttribute('aria-label','Reply language');select.innerHTML='<option value="auto">Auto language</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option><option value="pa">Punjabi</option><option value="ar">Arabic</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="es">Spanish</option><option value="fr">French</option>';
     const savedLanguage=localStorage.getItem('superpro_guide_language');if([...select.options].some(o=>o.value===savedLanguage))select.value=savedLanguage;
     guideHeader.prepend(voice);guideHeader.prepend(select);
-    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);if(select.value==='auto'){conversationLanguage='auto';localStorage.removeItem('superpro_conversation_language');lastLanguage='en'}else lockConversationLanguage(select.value);if(recognition)recognition.lang=speechLocale(activeInputLanguage());setVoiceStatus(select.value==='auto'?'Auto language is on. Typed text and microphone audio are detected automatically using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
+    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);conversationLanguage='auto';try{localStorage.removeItem('superpro_conversation_language')}catch{}if(select.value==='auto')lastLanguage='en';else lockConversationLanguage(select.value);if(recognition)recognition.lang=speechLocale(activeInputLanguage());setVoiceStatus(select.value==='auto'?'Auto language is on. Each typed or spoken turn is detected independently using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
     voice.onchange=()=>{localStorage.setItem('superpro_voice_preference',voice.value);setVoiceStatus(`Voice preference set to ${voice.selectedOptions[0].textContent.replace('Voice: ','')}. Language matching takes priority; gender preference is applied only when the device exposes a suitable named voice.`,'ready')};
   }
 

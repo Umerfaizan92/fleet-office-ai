@@ -2781,6 +2781,141 @@ async function transcribeVoice(req,res){
 }
 app.post('/api/product-guide/transcribe',productGuideLimiter,voiceInputUpload.single('audio'),transcribeVoice);
 app.post('/api/saas/voice/transcribe',requireSaasUser,voiceReplyLimiter,voiceInputUpload.single('audio'),transcribeVoice);
+
+app.get('/api/saas/onboarding',requireSaasUser,(req,res)=>{
+  const profile=db.prepare(`SELECT * FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id);
+  const row=profile||{organisation_id:req.saas.organisation_id,business_type:'',industry_code:'custom',business_structure:'sole_trader',team_mode:'solo',phone:req.saas.phone||'',website:'',service_area:'',services:'[]',custom_sections_json:'[]',ai_setup_mode:'assist',brand_voice:'',approval_mode:'everything',ai_instructions:'',completed_at:null,workspace_modules_json:'[]',regulatory_monitor_enabled:1};
+  const industry=industryByCode(row.industry_code||'custom');
+  res.json({
+    ok:true,
+    profile:{
+      ...row,
+      services:safeJson(row.services,[]),
+      custom_sections:safeJson(row.custom_sections_json,[]),
+      workspace_modules:safeJson(row.workspace_modules_json,industry.modules||[])
+    },
+    industry,
+    organisation:{
+      name:req.saas.organisation_name,
+      legal_name:req.saas.legal_name,
+      identifier_type:req.saas.business_identifier_type,
+      identifier:req.saas.business_identifier,
+      address_unit:req.saas.address_unit,
+      address_street_number:req.saas.address_street_number,
+      address_street_name:req.saas.address_street_name,
+      address_suburb:req.saas.address_suburb,
+      address_state:req.saas.address_state,
+      address_postcode:req.saas.address_postcode,
+      address_formatted:req.saas.address_formatted,
+      address_source:req.saas.address_source
+    }
+  });
+});
+
+app.get('/api/saas/regulatory/sources',requireSaasUser,(req,res)=>{
+  const profile=db.prepare(`SELECT industry_code FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id);
+  const industry=industryByCode(profile?.industry_code||'custom');
+  const sources=industrySources(industry,req.saas.address_state||'');
+  const snapshots=db.prepare(`SELECT * FROM regulatory_source_snapshots WHERE organisation_id=? ORDER BY checked_at DESC`).all(req.saas.organisation_id);
+  res.json({ok:true,industry,sources,snapshots});
+});
+
+async function checkRegulatorySource(source){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),12000);
+  try{
+    const response=await fetch(source.url,{method:'GET',redirect:'follow',headers:{'user-agent':'SuperProAI-OfficeManager/1.0 regulatory-monitor'},signal:controller.signal});
+    const text=await response.text().catch(()=> '');
+    return {http_status:response.status,check_status:response.ok?'reachable':'http_error',content_hash:text?sha256(text.slice(0,250000)):null,note:response.ok?'Official source reached successfully.':'Official source returned HTTP '+response.status};
+  }catch(err){
+    return {http_status:null,check_status:'unreachable',content_hash:null,note:String(err?.name==='AbortError'?'Official source check timed out.':(err?.message||'Official source could not be reached.')).slice(0,500)};
+  }finally{clearTimeout(timer)}
+}
+
+app.post('/api/saas/regulatory/check',requireSaasUser,async(req,res)=>{
+  const parsed=z.object({industry_code:z.string().trim().max(80).optional()}).safeParse(req.body||{});
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid industry selection.'});
+  const saved=db.prepare(`SELECT industry_code FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id);
+  const industry=industryByCode(parsed.data.industry_code||saved?.industry_code||'custom');
+  const sources=industrySources(industry,req.saas.address_state||'');
+  const checkedAt=new Date().toISOString(),results=[];
+  for(const source of sources){
+    const prev=db.prepare(`SELECT * FROM regulatory_source_snapshots WHERE organisation_id=? AND source_id=?`).get(req.saas.organisation_id,source.id);
+    const result=await checkRegulatorySource(source);
+    const changed=Boolean(prev?.content_hash&&result.content_hash&&prev.content_hash!==result.content_hash);
+    db.prepare(`INSERT INTO regulatory_source_snapshots (id,organisation_id,source_id,source_name,source_url,content_hash,http_status,check_status,changed,checked_at,note) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(organisation_id,source_id) DO UPDATE SET source_name=excluded.source_name,source_url=excluded.source_url,content_hash=excluded.content_hash,http_status=excluded.http_status,check_status=excluded.check_status,changed=excluded.changed,checked_at=excluded.checked_at,note=excluded.note`).run(prev?.id||crypto.randomUUID(),req.saas.organisation_id,source.id,source.name,source.url,result.content_hash,result.http_status,result.check_status,changed?1:0,checkedAt,result.note);
+    results.push({...source,...result,changed,checked_at:checkedAt});
+  }
+  saasAudit(req,'regulatory.sources_checked','organisation',req.saas.organisation_id,{industry_code:industry.code,sources:results.map(x=>({id:x.id,status:x.check_status,changed:x.changed}))});
+  const changedCount=results.filter(x=>x.changed).length;
+  res.json({ok:true,industry,results,message:changedCount?changedCount+' official source page'+(changedCount===1?' has':'s have')+' changed since the previous check. Review the official source before treating it as a new obligation.':'Official sources checked. No page-content changes were detected against the stored snapshots.'});
+});
+
+app.get('/api/saas/releases/latest',requireSaasUser,(req,res)=>{
+  const row=db.prepare(`SELECT * FROM product_release_events ORDER BY released_at DESC LIMIT 1`).get();
+  if(!row)return res.json({ok:true,release:null});
+  res.json({ok:true,release:{...row,details:safeJson(row.details_json,[])}});
+});
+
+app.get('/api/saas/announcements',requireSaasUser,(req,res)=>{
+  const now=new Date().toISOString();
+  const rows=db.prepare(`
+    SELECT a.*, CASE WHEN r.user_id IS NULL THEN 0 ELSE 1 END AS read
+    FROM platform_announcements a
+    LEFT JOIN platform_announcement_reads r ON r.announcement_id=a.id AND r.user_id=?
+    WHERE a.status IN ('published','active','resolved')
+      AND (a.publish_at IS NULL OR a.publish_at<=?)
+      AND (a.audience='all' OR a.audience=? OR a.audience='trial_and_paid')
+    ORDER BY COALESCE(a.starts_at,a.publish_at,a.created_at) DESC
+    LIMIT 100
+  `).all(req.saas.user_id,now,req.subscription?.status==='trialing'?'trial':'paid');
+  res.json({ok:true,announcements:rows,unread:rows.filter(x=>!x.read).length});
+});
+
+app.post('/api/saas/announcements/:id/read',requireSaasUser,(req,res)=>{
+  const row=db.prepare(`SELECT id FROM platform_announcements WHERE id=?`).get(req.params.id);
+  if(!row)return res.status(404).json({ok:false,error:'Announcement not found.'});
+  db.prepare(`INSERT INTO platform_announcement_reads (announcement_id,user_id,read_at) VALUES (?,?,?) ON CONFLICT(announcement_id,user_id) DO UPDATE SET read_at=excluded.read_at`).run(req.params.id,req.saas.user_id,new Date().toISOString());
+  res.json({ok:true});
+});
+
+function announcementReference(){return 'SP-UPD-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomBytes(2).toString('hex').toUpperCase()}
+
+app.post('/api/admin/platform-announcements',requireAdmin,(req,res)=>{
+  const parsed=z.object({
+    kind:z.enum(['notice','maintenance','incident','degraded_service','release','resolved']).default('notice'),
+    status:z.enum(['draft','published','active','resolved']).default('published'),
+    severity:z.enum(['info','notice','warning','critical']).default('info'),
+    title:z.string().trim().min(3).max(180),
+    message:z.string().trim().min(5).max(5000),
+    before_summary:z.string().trim().max(3000).optional().or(z.literal('')),
+    after_summary:z.string().trim().max(3000).optional().or(z.literal('')),
+    starts_at:z.string().trim().max(60).optional().or(z.literal('')),
+    expected_end_at:z.string().trim().max(60).optional().or(z.literal('')),
+    publish_at:z.string().trim().max(60).optional().or(z.literal('')),
+    audience:z.enum(['all','trial','paid','trial_and_paid']).default('all'),
+    notify_in_app:z.boolean().default(true),
+    notify_email:z.boolean().default(false)
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the announcement details.'});
+  const d=parsed.data,id=crypto.randomUUID(),now=new Date().toISOString(),reference=announcementReference();
+  db.prepare(`INSERT INTO platform_announcements (id,reference_code,kind,status,severity,title,message,before_summary,after_summary,starts_at,expected_end_at,resolved_at,publish_at,audience,notify_in_app,notify_email,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,reference,d.kind,d.status,d.severity,d.title,d.message,d.before_summary||null,d.after_summary||null,d.starts_at||null,d.expected_end_at||null,d.kind==='resolved'?now:null,d.publish_at||now,d.audience,d.notify_in_app?1:0,d.notify_email?1:0,'admin',now,now);
+  if(d.notify_email){
+    const users=db.prepare(`SELECT DISTINCT u.id,u.email FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisation_subscriptions s ON s.organisation_id=m.organisation_id WHERE u.status='active' AND u.email IS NOT NULL AND u.email<>''`).all();
+    const insert=db.prepare(`INSERT OR IGNORE INTO platform_announcement_deliveries (id,announcement_id,user_id,email,status,attempts,created_at,updated_at) VALUES (?,?,?,?, 'queued',0,?,?)`);
+    const tx=db.transaction(()=>{for(const user of users)insert.run(crypto.randomUUID(),id,user.id,user.email,now,now)});tx();
+  }
+  res.status(201).json({ok:true,announcement:{id,reference_code:reference,...d,publish_at:d.publish_at||now},email_delivery:d.notify_email?'queued':'not_requested'});
+});
+
+app.post('/api/admin/platform-announcements/:id/resolve',requireAdmin,(req,res)=>{
+  const row=db.prepare(`SELECT * FROM platform_announcements WHERE id=?`).get(req.params.id);
+  if(!row)return res.status(404).json({ok:false,error:'Announcement not found.'});
+  const now=new Date().toISOString(),after=String(req.body?.after_summary||'').trim().slice(0,3000);
+  db.prepare(`UPDATE platform_announcements SET status='resolved',kind='resolved',resolved_at=?,after_summary=COALESCE(NULLIF(?,''),after_summary),updated_at=? WHERE id=?`).run(now,after,now,row.id);
+  res.json({ok:true,resolved_at:now});
+});
+
 app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{

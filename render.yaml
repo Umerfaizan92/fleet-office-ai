@@ -6,7 +6,7 @@ services:
     # Persistent SQLite requires a paid web-service plan.
     plan: 0.5c-512mb
     numInstances: 1
-    buildCommand: npm ci && npm run validate:final && npm run quality:check && npm run smoke:test
+    buildCommand: npm ci && npm run validate:final && npm run quality:check && npm run integration:test && npm run smoke:test
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeployTrigger: off
@@ -42,6 +42,8 @@ services:
       - key: SESSION_TTL_DAYS
         value: "365"
       - key: AI_TOOL_SHARED_SECRET
+        generateValue: true
+      - key: INTEGRATION_ENCRYPTION_KEY
         generateValue: true
       - key: SAAS_VERIFICATION_TEST_MODE
         value: "0"

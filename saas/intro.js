@@ -129,6 +129,8 @@
   function setQuick(items=[]){const box=$('#quick-prompts');box.innerHTML=items.slice(0,3).map(x=>`<button type="button">${escape(x)}</button>`).join('');box.querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent))}
   async function ask(question){
     const q=String(question||'').trim();if(!q)return;
+    // True barge-in: any new customer turn immediately silences current AI audio.
+    stopSpeech();
     primeSpeech();addMessage('user',q);input.value='';resize();
     const wait=addMessage('ai','Thinking through the product…');wait.querySelector('p').classList.add('typing');
     try{
@@ -170,7 +172,7 @@
   function initRecognition(){
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;
     const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;
-    r.onstart=()=>{listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
+    r.onstart=()=>{stopSpeech();listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
     r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;input.value=text;resize();if(e.results[e.results.length-1].isFinal)setTimeout(()=>ask(input.value),160)};
     r.onerror=e=>{setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not start. Try again or type your question.','limited')};
     r.onend=()=>{listening=false;$('#voice-input').classList.remove('listening');if(!input.value.trim())setVoiceStatus('Press the microphone to speak, or type your question.','ready')};return r;

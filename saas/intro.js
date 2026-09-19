@@ -388,10 +388,11 @@
   paintVoiceToggle();
   voiceOutput.onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_voice_replies',voiceReplies?'on':'off');paintVoiceToggle();if(!voiceReplies){stopSpeech();setVoiceStatus('Spoken replies are off. Text replies will continue.','limited')}else{primeSpeech();setVoiceStatus('Spoken replies are on. Super Pro AI server voice is preferred; the device voice is used only as a fallback.','ready')}};
 
-  let recognitionSessionText='',recognitionSubmitTimer=null,recognitionSubmitting=false;
+  let recognitionSessionText='',recognitionSubmitTimer=null,recognitionNoSpeechTimer=null,recognitionSubmitting=false,recognitionActive=false;
   function initRecognition(){
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;
     const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=true;r.maxAlternatives=3;
+    const clearRecognitionTimers=()=>{clearTimeout(recognitionSubmitTimer);clearTimeout(recognitionNoSpeechTimer);recognitionSubmitTimer=null;recognitionNoSpeechTimer=null};
     const scheduleSubmit=()=>{
       clearTimeout(recognitionSubmitTimer);
       recognitionSubmitTimer=setTimeout(()=>{
@@ -401,12 +402,20 @@
       },2400);
     };
     r.onstart=()=>{
-      stopSpeech();listening=true;recognitionSubmitting=false;recognitionSessionText='';
-      clearTimeout(recognitionSubmitTimer);
+      stopSpeech();listening=true;recognitionActive=true;recognitionSubmitting=false;recognitionSessionText='';
+      clearRecognitionTimers();
       $('#voice-input').classList.add('listening');
-      setVoiceStatus(`Listening in ${r.lang}… speak naturally. I will wait through normal pauses.`,'listening');
+      setVoiceStatus(`Listening in ${r.lang}… speak naturally. I will stop automatically if there is no speech.`,'listening');
+      // Never leave browser recognition blinking forever on a silent attempt.
+      recognitionNoSpeechTimer=setTimeout(()=>{
+        if(recognitionActive&&!recognitionSessionText.trim()){
+          setVoiceStatus('No speech detected. Microphone stopped — press it again when you are ready.','ready');
+          try{r.stop()}catch{}
+        }
+      },7000);
     };
     r.onresult=e=>{
+      clearTimeout(recognitionNoSpeechTimer);recognitionNoSpeechTimer=null;
       let full='';
       for(let i=0;i<e.results.length;i++)full+=(full?' ':'')+String(e.results[i][0]?.transcript||'').trim();
       recognitionSessionText=full.trim();
@@ -415,23 +424,25 @@
       if(last?.isFinal)scheduleSubmit();else clearTimeout(recognitionSubmitTimer);
     };
     r.onerror=e=>{
-      clearTimeout(recognitionSubmitTimer);
+      clearRecognitionTimers();
       if(e.error==='no-speech'){
-        setVoiceStatus('I did not catch speech yet. Tap the microphone and start speaking when “Listening” appears.','limited');
+        setVoiceStatus('No speech detected. Microphone stopped — press it again when you are ready.','ready');
       }else{
         setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not continue. Try again or type your question.','limited');
       }
     };
     r.onend=async()=>{
-      clearTimeout(recognitionSubmitTimer);
-      listening=false;$('#voice-input').classList.remove('listening');
+      clearRecognitionTimers();
+      listening=false;recognitionActive=false;$('#voice-input').classList.remove('listening');
       const heard=recognitionSessionText.trim();
       recognitionSessionText='';recognitionSubmitting=false;
       if(heard){
         input.value=heard;resize();
         setVoiceStatus('Heard: “'+heard.slice(0,90)+(heard.length>90?'…':'')+'”','ready');
         await ask(heard);
-      }else if(!input.value.trim())setVoiceStatus('Press the microphone to speak, or type your question.','ready');
+      }else if(!input.value.trim()&&!String($('#voice-status')?.textContent||'').includes('No speech detected')){
+        setVoiceStatus('Press the microphone to speak, or type your question.','ready');
+      }
     };
     return r;
   }
@@ -462,11 +473,11 @@
     }
     if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
     stopSpeech();
-    let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null;
+    let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null,noSpeechTimer=null;
     let speechStarted=false,silenceSince=0,voicedFrames=0,noiseFloor=.003;
     const cleanupMonitor=()=>{
-      if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);
-      monitorTimer=null;hardStopTimer=null;
+      if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);if(noSpeechTimer)clearTimeout(noSpeechTimer);
+      monitorTimer=null;hardStopTimer=null;noSpeechTimer=null;
       try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null
     };
     try{
@@ -479,6 +490,14 @@
         listening=true;$('#voice-input').classList.add('listening');
         setVoiceStatus('Listening… speak naturally. Normal pauses will not cut you off.','listening');
         const startedAt=Date.now();
+        // Independent safety timer: if the analyser is unavailable or the room is
+        // completely silent, the mic must still stop instead of blinking forever.
+        noSpeechTimer=setTimeout(()=>{
+          if(mediaRecorder?.state==='recording'&&!speechStarted){
+            setVoiceStatus('No speech detected. Microphone stopped — press it again when you are ready.','ready');
+            mediaRecorder.stop();
+          }
+        },7000);
         try{
           const AC=window.AudioContext||window.webkitAudioContext;
           if(AC){
@@ -498,7 +517,7 @@
               if(rms>threshold){
                 voicedFrames++;
                 if(voicedFrames>=2){
-                  if(!speechStarted)setVoiceStatus('I can hear you… keep speaking.','listening');
+                  if(!speechStarted){setVoiceStatus('I can hear you… keep speaking.','listening');if(noSpeechTimer){clearTimeout(noSpeechTimer);noSpeechTimer=null}}
                   speechStarted=true;silenceSince=0;
                 }
               }else{
@@ -508,8 +527,6 @@
                   // Allow natural thinking/breathing pauses. Two seconds is much
                   // safer for long multilingual questions than the old 950 ms.
                   if(now-silenceSince>2200)mediaRecorder.stop();
-                }else if(now-startedAt>15000){
-                  mediaRecorder.stop();
                 }
               }
             },80);
@@ -524,12 +541,15 @@
         mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
 
-        // Always give captured audio to the server first. The previous code
-        // discarded recordings when client-side VAD missed quiet/early speech,
-        // which is exactly how a first attempt could appear to hear nothing.
+        // A silent attempt should end cleanly. Do not chain into continuous
+        // browser recognition, otherwise the mic appears to run forever.
+        if(!speechStarted){
+          setVoiceStatus('No speech detected. Microphone stopped — press it again when you are ready.','ready');
+          return;
+        }
         if(blob.size<700){
-          setVoiceStatus('I did not receive enough microphone audio. Continuing with device recognition…','listening');
-          setTimeout(()=>startBrowserRecognitionFallback(),120);return
+          setVoiceStatus('I heard speech but the recording was too short. Please press the microphone and try once more.','limited');
+          return;
         }
 
         const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',$('#guide-language')?.value||'auto');
@@ -572,7 +592,21 @@
   // Stop any spoken AI reply on pointer-down, before the click event fires. This
   // makes the microphone button a reliable barge-in control even mid-sentence.
   $('#voice-input').addEventListener('pointerdown',()=>{primeSpeech();stopSpeech()});
-  $('#voice-input').onclick=()=>{primeSpeech();stopSpeech();const selected=$('#guide-language')?.value||'auto';if(selected==='auto'){autoListen();return}if(!recognition){setVoiceStatus('Browser speech recognition is unavailable. Select Auto language to use server transcription, or type your question.','limited');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(selected);recognition.start()}};
+  $('#voice-input').onclick=()=>{
+    primeSpeech();stopSpeech();
+    const selected=$('#guide-language')?.value||'auto';
+    // The same microphone button always stops an active input session, whether
+    // it is MediaRecorder or browser SpeechRecognition.
+    if(listening){
+      if(mediaRecorder?.state==='recording'){try{mediaRecorder.stop()}catch{}}
+      else if(recognitionActive){try{recognition.stop()}catch{}}
+      setVoiceStatus('Microphone stopped. Press it again when you are ready.','ready');
+      return;
+    }
+    if(selected==='auto'){autoListen();return}
+    if(!recognition){setVoiceStatus('Browser speech recognition is unavailable. Select Auto language to use server transcription, or type your question.','limited');return}
+    recognition.lang=speechLocale(selected);recognition.start();
+  };
   $('#voice-capability')?.addEventListener('click',()=>{document.querySelector('.guide-actions')?.scrollIntoView({behavior:'smooth',block:'nearest'});setTimeout(()=>$('#guide-language')?.focus(),350)});
   $('#talk-to-ai').onclick=()=>{$('#experience').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>recognition?$('#voice-input').focus():input.focus(),500)};
   $('#satisfied-yes').onclick=()=>{conversion.hidden=false;conversion.scrollIntoView({behavior:'smooth',block:'center'})};

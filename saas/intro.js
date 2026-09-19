@@ -22,7 +22,7 @@
   let voiceReplies=localStorage.getItem('superpro_voice_replies')!=='off';
   let conversationLanguage=localStorage.getItem('superpro_conversation_language')||'auto';
   let recognition=null, listening=false, lastTopic='', lastLanguage=conversationLanguage==='auto'?'en':conversationLanguage, availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
-  let speechRun=0, speechHeartbeat=null, speechPrimed=false;
+  let speechRun=0, speechHeartbeat=null, speechPrimed=false, micWarmUntil=0;
   const escape=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const speechSupported='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
   const recognitionSupported=Boolean(window.SpeechRecognition||window.webkitSpeechRecognition);
@@ -222,7 +222,7 @@
 
   function initRecognition(){
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;
-    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;
+    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;r.maxAlternatives=3;
     r.onstart=()=>{stopSpeech();listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
     r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;input.value=text;resize();if(e.results[e.results.length-1].isFinal)setTimeout(()=>ask(input.value),160)};
     r.onerror=e=>{setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not start. Try again or type your question.','limited')};
@@ -248,6 +248,8 @@
   }
 
   async function autoListen(){
+    // Warm the microphone before recording. Some Chrome/Windows audio devices
+    // deliver silence during the first few hundred ms after activation.
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
       if(startBrowserRecognitionFallback())return;
       setVoiceStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','limited');return;
@@ -257,6 +259,7 @@
     const cleanupMonitor=()=>{if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);monitorTimer=null;hardStopTimer=null;try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null};
     try{
       mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      if(Date.now()>micWarmUntil){setVoiceStatus('Microphone ready… start speaking.','listening');await new Promise(resolve=>setTimeout(resolve,650));micWarmUntil=Date.now()+30000}
       const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
       mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);
       mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
@@ -266,17 +269,18 @@
           const AC=window.AudioContext||window.webkitAudioContext;
           if(AC){
             audioContext=new AC();sourceNode=audioContext.createMediaStreamSource(mediaStream);analyser=audioContext.createAnalyser();analyser.fftSize=1024;sourceNode.connect(analyser);
-            const samples=new Uint8Array(analyser.fftSize),startedAt=Date.now();
+            const samples=new Uint8Array(analyser.fftSize),startedAt=Date.now(),noiseSamples=[];let threshold=0.012;
             monitorTimer=setInterval(()=>{
               if(mediaRecorder?.state!=='recording')return;
               analyser.getByteTimeDomainData(samples);let sum=0;
               for(const v of samples){const n=(v-128)/128;sum+=n*n}
               const rms=Math.sqrt(sum/samples.length),now=Date.now();
-              if(rms>0.025){speechStarted=true;silenceSince=0;setVoiceStatus('I can hear you…','listening')}
+              if(!speechStarted&&now-startedAt<450){noiseSamples.push(rms);const floor=noiseSamples.reduce((a,b)=>a+b,0)/noiseSamples.length;threshold=Math.min(.035,Math.max(.008,floor*2.4))}
+              if(rms>threshold){speechStarted=true;silenceSince=0;setVoiceStatus('I can hear you…','listening')}
               else if(speechStarted){
                 if(!silenceSince)silenceSince=now;
                 if(now-silenceSince>950)mediaRecorder.stop();
-              }else if(now-startedAt>5000)mediaRecorder.stop();
+              }else if(now-startedAt>8000)mediaRecorder.stop();
             },100);
           }
         }catch{}
@@ -285,7 +289,12 @@
       mediaRecorder.onstop=async()=>{
         cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
-        if(!speechStarted||blob.size<900){setVoiceStatus('I did not detect clear speech. Switching to device recognition…','limited');startBrowserRecognitionFallback();return}
+        if(!speechStarted||blob.size<900){
+          // Do not make the customer press the microphone twice. Automatically
+          // continue listening through browser recognition on the same attempt.
+          setVoiceStatus('I did not catch that clearly. Still listening… please continue.','listening');
+          setTimeout(()=>startBrowserRecognitionFallback(),100);return
+        }
         const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',($('#guide-language')?.value||'auto')==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):$('#guide-language').value);
         setVoiceStatus('Understanding what you said…','listening');
         try{

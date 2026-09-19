@@ -67,10 +67,15 @@ for(const token of ['localized-browser-fallback','superpro_ai_memory_current','c
 for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/callback/','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
 for(const token of ['freeAiModeEnabled','geminiProviderConfig','if (freeAiModeEnabled()) return gemini','if (freeAiModeEnabled()) return null'])if(!shim.includes(token))failures.push('ai-provider-shim.js missing '+token);
 for(const token of ['startBrowserRecognitionFallback','findLanguageVoice','splitSpeech','speechHeartbeat','guide-voice'])if(!intro.includes(token))failures.push('intro.js missing '+token);
-for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')",'superpro-public-20260919-4'])if(!sw.includes(token))failures.push('sw.js missing '+token);
+for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')","const CACHE='superpro-public-"])if(!sw.includes(token))failures.push('sw.js missing '+token);
 
 const env=read('.env.example');
 for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-2.5-flash','GEMINI_STT_MODEL=gemini-2.5-flash','GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);
+for(const token of ['/api/saas/content/ai-spec','generateAiText','local-content-fallback'])if(!server.includes(token))failures.push('server.js missing '+token);
+const app=read('saas/app.js'),ops=read('saas/ai-operations.js');
+for(const token of ['/api/saas/content/ai-spec','/api/saas/voice/transcribe','/api/saas/voice/speech'])if(!app.includes(token))failures.push('app.js missing '+token);
+for(const token of ['/api/saas/ai/status','startBrowserRecognitionFallback','/api/saas/voice/transcribe'])if(!ops.includes(token))failures.push('ai-operations.js missing '+token);
+if(/voiceTest=.*if\(voiceStyle\)/s.test(app))failures.push('app.js contains unsafe copilot voice initialization ordering');
 
 if(failures.length){
   console.error('CURRENT FINAL VALIDATION FAILED');

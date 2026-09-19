@@ -145,9 +145,26 @@
     speechHeartbeat=setInterval(()=>{if(run===speechRun&&voiceReplies&&window.speechSynthesis.paused)window.speechSynthesis.resume?.()},5000);next();return true
   }
   async function speak(text,lang=lastLanguage){
-    if(!voiceReplies)return;stopSpeech();
-    try{const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});if(response.ok){const blob=await response.blob();serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.onplay=()=>setVoiceStatus(`Speaking naturally in ${speechLocale(lang)} using Super Pro AI voice.`,'speaking');serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};serverAudio.onerror=()=>speakBrowser(text,lang);await serverAudio.play();return}}catch{}
-    await speakBrowser(text,lang)
+    if(!voiceReplies)return false;stopSpeech();
+    const locale=speechLocale(lang);
+    // Non-English replies must never silently disappear when cloud TTS is
+    // quota-limited. Start a native-locale browser voice if the server cannot
+    // return playable audio, and treat play() rejection as a real fallback.
+    try{
+      const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});
+      if(response.ok){
+        const blob=await response.blob();
+        if(!blob.size)throw new Error('Empty server voice');
+        serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);
+        let fallbackStarted=false;
+        const fallback=async()=>{if(fallbackStarted)return;fallbackStarted=true;if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudio=null;await speakBrowser(text,lang)};
+        serverAudio.onplay=()=>setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking');
+        serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
+        serverAudio.onerror=()=>{fallback()};
+        try{await serverAudio.play();return true}catch{await fallback();return true}
+      }
+    }catch{}
+    return await speakBrowser(text,lang)
   }
 
 
@@ -166,7 +183,11 @@
       if(selectedLanguage==='auto'&&conversationLanguage==='auto'&&detectedLanguage!=='en')lockConversationLanguage(detectedLanguage);
       const language=selectedLanguage==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):selectedLanguage;
       const result=await (window.GDSProductGuide.answerAsync?.(q,'public',lastTopic,language)||Promise.resolve(window.GDSProductGuide.answer(q,'public',lastTopic)));
-      lastTopic=result.topic||lastTopic;lastLanguage=result.language||window.GDSProductGuide.detectLanguage?.(q)||'en';
+      lastTopic=result.topic||lastTopic;
+      // A locked/selected conversation language owns both reply and TTS locale.
+      // Do not let provider metadata switch an Urdu conversation back to English.
+      const selectedNow=$('#guide-language')?.value||'auto';
+      lastLanguage=selectedNow!=='auto'?selectedNow:(conversationLanguage!=='auto'?conversationLanguage:(result.language||window.GDSProductGuide.detectLanguage?.(q)||'en'));
       wait.remove();addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions);satisfaction.hidden=false;await speak(result.text,lastLanguage);
     }catch(e){
       wait.remove();

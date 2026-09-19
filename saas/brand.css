@@ -1,0 +1,20 @@
+/* Super Pro AI Office Manager v12 visual layer. Visual branding only; security identifiers remain unchanged. */
+:root{--sp-gold:#efc86a;--sp-gold2:#b88a36;--sp-ink:#080b10;--sp-panel:#11161e}
+.sp-glyph,.sp-auth-mark,.sp-workspace-mark{font-size:.68rem!important;font-weight:950!important;letter-spacing:-.04em!important;background:linear-gradient(145deg,#ffe49b,#d3a445 55%,#8f6423)!important;color:#0b0e12!important;box-shadow:0 0 0 1px rgba(255,218,128,.35),0 10px 35px rgba(224,174,70,.18)!important;position:relative;overflow:hidden}
+.sp-glyph:after,.sp-auth-mark:after,.sp-workspace-mark:after{content:"";position:absolute;inset:2px;border:1px solid rgba(12,14,18,.28);clip-path:polygon(50% 0,100% 28%,88% 100%,12% 100%,0 28%)}
+.sp-workspace-mark{display:grid!important;place-items:center!important;width:40px!important;height:40px!important;border-radius:12px!important}
+.sp-auth-mark{display:grid!important;place-items:center!important}
+.sp-shield{font-size:.78rem!important;letter-spacing:-.06em!important}
+/* premium gold interaction language across the product */
+a,button,[role="button"],.feature-card,.panel,.industry-rail>*{transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease,color .18s ease,background .18s ease}
+a:hover,button:hover,[role="button"]:hover{border-color:rgba(239,200,106,.68)!important}
+.feature-card:hover,.industry-rail>*:hover,.panel.interactive:hover{border-color:rgba(239,200,106,.55)!important;box-shadow:0 14px 38px rgba(184,138,54,.10)!important}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--sp-gold)!important;outline-offset:3px!important}
+.superpro-newsletter{margin:34px auto 0;max-width:1180px;padding:28px;border:1px solid rgba(239,200,106,.25);border-radius:24px;background:linear-gradient(145deg,rgba(239,200,106,.07),rgba(17,22,30,.96));display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:center}
+.superpro-newsletter h2{margin:.45rem 0 .7rem}.superpro-newsletter p{color:#9ea8b7;line-height:1.65}.superpro-newsletter form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.superpro-newsletter input,.superpro-newsletter button{min-height:48px;border-radius:12px;border:1px solid #29313d;background:#0c1118;color:#f5f7fb;padding:0 14px}.superpro-newsletter input[name="email"],.superpro-newsletter button,.superpro-newsletter small,.superpro-newsletter #product-newsletter-message{grid-column:1/-1}.superpro-newsletter button{background:linear-gradient(135deg,#efc86a,#c79940);color:#0b0e12;font-weight:900;cursor:pointer}.superpro-newsletter small{color:#7f8998}.superpro-newsletter #product-newsletter-message{min-height:1.1em;color:#efc86a;margin:0}
+.sp-language-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(239,200,106,.28);border-radius:999px;color:#efc86a;font-size:.74rem;font-weight:800}
+@media(max-width:760px){.superpro-newsletter{grid-template-columns:1fr;margin-inline:14px;padding:20px}.superpro-newsletter form{grid-template-columns:1fr}.superpro-newsletter input,.superpro-newsletter button{grid-column:1}}
+
+.superpro-newsletter .newsletter-secondary{background:#11161e;color:#d9dee7;border-color:#313947;font-weight:750}
+
+.superpro-newsletter .newsletter-consent{grid-column:1/-1;display:flex;gap:9px;align-items:flex-start;color:#aab3c0;font-size:.82rem;line-height:1.45}.superpro-newsletter .newsletter-consent input{min-height:auto;margin-top:3px;width:16px;height:16px}

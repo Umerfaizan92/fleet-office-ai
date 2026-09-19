@@ -1,0 +1,32 @@
+{
+  "id": "/saas/",
+  "name": "Super Pro AI Office Manager",
+  "short_name": "Super Pro AI",
+  "start_url": "/saas/",
+  "scope": "/saas/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
+  "description": "AI-assisted operating system for service businesses.",
+  "icons": [
+    {
+      "src": "/saas/superpro-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/saas/superpro-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/saas/superpro-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

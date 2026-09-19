@@ -1,0 +1,22 @@
+SUPER PRO AI OFFICE MANAGER — V15 CHANGELOG
+
+Baseline: v14 final package. v14 and earlier core functionality is protected.
+
+Added / strengthened in v15:
+- Reliable public Product Guide spoken replies after async AI responses.
+- Browser voice-load waiting and same-language voice matching.
+- Long reply speech chunking, resume watchdog and failed-start retry.
+- Persistent Auto/Female/Male preference with language match taking priority.
+- Live non-obstructive voice capability/status control.
+- Interactive Desktop & laptop, Mobile & tablet and Secure by default install cards.
+- Direct beforeinstallprompt flow, appinstalled handling and already-installed detection.
+- iPhone/iPad Add to Home Screen guidance and desktop/Android fallback instructions.
+- 192×192 and 512×512 PWA icons.
+- v15 public cache with obsolete cache cleanup; private routes remain uncached.
+- v15 independent checker and expanded final validation.
+
+Still not falsely claimed:
+- A device cannot synthesize a language for which it has no compatible browser/system voice; in that case text remains available and wrong-language audio is intentionally suppressed.
+- PWA install availability is controlled by the browser/platform; v15 provides direct install when the browser exposes it and accurate fallback instructions otherwise.
+- No provider integration is called live until real credential/authorization readiness succeeds.
+- No guaranteed search ranking, AI citation, legal compliance, security certification or autonomous consequential decision is claimed.

@@ -17,7 +17,29 @@ function enhanceShell(){
   const reg=$('#register-form'),login=$('#login-form'); if(reg&&!reg.querySelector('.auth-alt-action'))reg.insertAdjacentHTML('beforeend','<p class="auth-alt-action">Already have an account? <button type="button" data-auth-switch="login">Sign in securely</button></p>'); if(login&&!login.querySelector('.auth-alt-action'))login.insertAdjacentHTML('beforeend','<p class="auth-alt-action">Don\'t have an account? <button type="button" data-auth-switch="register">Join workspace</button></p>');
   const visual=$('.auth-visual'); if(visual&&!visual.querySelector('.office-preview'))visual.querySelector('.auth-copy')?.insertAdjacentHTML('afterend','<div class="office-preview"><div class="office-preview-bar"><span><i></i> Live operations desk</span><small>Workspace preview</small></div><div class="office-preview-grid"><article><span class="preview-label">INCOMING</span><b>Customer call</b><small>AI receptionist · ready for approval</small><span class="preview-status live">Live</span></article><article><span class="preview-label">TODAY</span><b>4 jobs scheduled</b><small>2 allocated · 2 awaiting team</small><span class="preview-status">Operations</span></article><article><span class="preview-label">WORKFORCE</span><b>Team ready</b><small>Compliance, skills and availability checked</small><span class="preview-status good">Ready</span></article></div></div>');
   const nav=$('.workspace-nav'); if(nav)nav.innerHTML='<span class="nav-label">START HERE</span><button data-view="dashboard" class="active" type="button"><span class="nav-step">01</span><span>Command centre</span></button><button data-view="onboarding" type="button"><span class="nav-step">02</span><span>Business setup</span></button><span class="nav-label">RUN THE BUSINESS</span><button data-view="workforce" type="button"><span class="nav-step">03</span><span>People & workforce</span></button><button data-view="jobs" type="button"><span class="nav-step">04</span><span>Jobs & allocation</span><span class="nav-badge" id="nav-jobs">0</span></button><button data-view="finance" type="button"><span class="nav-step">05</span><span>Expenses & profit</span></button><button data-view="assistant" type="button"><span class="nav-step">06</span><span>AI Operations</span></button><span class="nav-label">GROW & CONNECT</span><button data-view="video" type="button"><span class="nav-step">07</span><span>Content studio</span></button><button data-view="integrations" type="button"><span class="nav-step">08</span><span>Connections</span></button><span class="nav-label">TRUST & ACCOUNT</span><button data-view="governance" type="button"><span class="nav-step">09</span><span>Trust & governance</span></button><button data-view="support" type="button"><span class="nav-step">10</span><span>Help & complaints</span></button><button data-view="manual" type="button"><span class="nav-step">11</span><span>Digital user manual</span></button><button data-view="billing" type="button"><span class="nav-step">12</span><span>Plans & billing</span></button>';
-  const main=$('main.content-wrap'); if(main&&!$('#billing-view'))main.insertAdjacentHTML('beforeend','<section id="billing-view" class="view" hidden><div class="page-heading"><div><p class="kicker">PLANS & BILLING</p><h1>Your 14-day launch trial</h1><p>Test the operating system before activating a paid subscription. Billing remains disabled until a payment provider and final pricing are approved.</p></div><span class="status-pill neutral" id="trial-status-pill">Trial active</span></div><div class="trial-hero panel"><div><span class="panel-kicker">CURRENT ACCESS</span><h2 id="trial-plan-name">Trial</h2><p id="trial-copy">Loading trial status…</p></div><div class="trial-count"><strong id="trial-days">14</strong><span>days remaining</span></div><div class="trial-progress"><span id="trial-progress-bar"></span></div></div><div class="pricing-grid"><article class="pricing-card"><span class="pricing-tag">ESSENTIAL</span><h2>Starter · A$99</h2><p>For solo operators and small service teams.</p><ul><li>CRM & enquiries</li><li>Quotes, bookings and jobs</li><li>Core workforce records</li><li>Approval-controlled AI</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article><article class="pricing-card featured"><span class="pricing-tag">RECOMMENDED</span><h2>Operations · A$199</h2><p>For growing teams that need workforce, compliance and automation.</p><ul><li>Everything in Starter</li><li>Job pool & eligibility</li><li>Compliance & onboarding</li><li>AI Operations workflows</li></ul><button class="primary-button" type="button" disabled>Payment provider required</button></article><article class="pricing-card"><span class="pricing-tag">ADVANCED</span><h2>Scale · A$349</h2><p>For larger multi-team service businesses.</p><ul><li>Everything in Operations</li><li>Advanced permissions</li><li>Higher usage limits</li><li>Priority integrations</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article></div><article class="panel billing-safety"><span class="feature-icon"><svg><use href="#i-shield"/></svg></span><div><h2>No surprise billing</h2><p>No charge occurs until an approved payment processor, final AUD pricing, GST treatment and customer consent are connected.</p></div></article></section>');
+  const main=$('main.content-wrap'); if(main&&!$('#billing-view'))main.insertAdjacentHTML('beforeend','<section id="billing-view" class="view" hidden><div class="page-heading"><div><p class="kicker">PLANS & BILLING</p><h1>Your 14-day launch trial</h1><p>Test the operating system before activating a paid subscription. Billing remains disabled until a payment provider and final pricing are approved.</p></div><span class="status-pill neutral" id="trial-status-pill">Trial active</span></div><div class="trial-hero panel"><div><span class="panel-kicker">CURRENT ACCESS</span><h2 id="trial-plan-name">Trial</h2><p id="trial-copy">Loading trial status…</p></div><div class="trial-count"><strong id="trial-days">14</strong><span>days remaining</span></div><div class="trial-progress"><span id="trial-progress-bar"></span></div></div><div class="pricing-grid"><article class="pricing-card"><span class="pricing-tag">ESSENTIAL</span><h2>Starter · A$99</h2><p>For solo operators and small service teams.</p><ul><li>CRM & enquiries</li><li>Quotes, bookings and jobs</li><li>Core workforce records</li><li>Approval-controlled AI</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article><article class="pricing-card featured"><span class="pricing-tag">RECOMMENDED</span><h2>Operations · A$199</h2><p>For growing teams that need workforce, compliance and automation.</p><ul><li>Everything in Starter</li><li>Job pool & eligibility</li><li>Compliance & onboarding</li><li>AI Operations workflows</li></ul><button class="primary-button" type="button" disabled>Payment provider required</button></article><article class="pricing-card"><span class="pricing-tag">ADVANCED</span><h2>Scale · A$349</h2><p>For larger multi-team service businesses.</p><ul><li>Everything in Operations</li><li>Advanced permissions</li><li>Higher usage limits</li><li>Priority integrations</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article></div><article class="panel billing-safety"><span class="feature-icon"><svg><use href="#i-shield"/></svg></span><div><h2>No surprise billing</h2><p>No charge occurs until an approved payment processor, final AUD pricing, GST treatment and customer consent are connected.</p></div></article>
+  <article class="panel" id="account-lifecycle-panel">
+    <div class="panel-head"><div><span class="panel-kicker">ACCOUNT & DATA SAFETY</span><h2>Your workspace stays yours</h2></div><span class="status-pill good" id="account-preservation-status">Preserved</span></div>
+    <p>Your account and business data are not deleted automatically because a trial ends or billing changes. Deletion can only be started by the workspace owner and requires a separate verification step.</p>
+    <div class="readiness-list">
+      <div><span class="check-dot done"><svg><use href="#i-check"></use></svg></span><span><b>Indefinite preservation</b><small>Account and workspace data remain stored unless you explicitly complete deletion or deletion is legally required.</small></span></div>
+      <div><span class="check-dot done"><svg><use href="#i-check"></use></svg></span><span><b>Owner-controlled deletion</b><small>Email verification, typed confirmation and a 7-day cancellation window are required.</small></span></div>
+      <div><span class="check-dot done"><svg><use href="#i-check"></use></svg></span><span><b>Tenant isolation</b><small>Your SaaS workspace records are scoped to your organisation and protected by authenticated server routes.</small></span></div>
+    </div>
+    <div id="account-deletion-state" class="connection-note">Loading account lifecycle…</div>
+    <div class="button-row">
+      <button id="start-account-deletion" class="secondary-button" type="button">Request account deletion</button>
+      <button id="cancel-account-deletion" class="secondary-button" type="button" hidden>Cancel scheduled deletion</button>
+    </div>
+    <div id="account-deletion-confirm" class="panel" hidden style="margin-top:14px">
+      <h3>Confirm permanent deletion request</h3>
+      <p>A security code has been sent to your verified email. Nothing is deleted yet.</p>
+      <label>Verification code<input id="account-deletion-code" inputmode="numeric" maxlength="6" placeholder="6-digit code"></label>
+      <label>Type <b>DELETE MY ACCOUNT</b><input id="account-deletion-text" autocomplete="off" placeholder="DELETE MY ACCOUNT"></label>
+      <div class="button-row"><button id="confirm-account-deletion" class="danger-button" type="button">Schedule deletion</button><button id="close-account-deletion" class="secondary-button" type="button">Cancel</button></div>
+      <small>After confirmation, a 7-day cancellation window starts. Your account and data remain intact during that window.</small>
+    </div>
+  </article></section>');
   const footer=$('.app-footer'); if(footer&&!$('#flow-nav'))footer.insertAdjacentHTML('beforebegin','<div id="flow-nav" class="flow-nav"><button id="flow-prev" class="secondary-button compact" type="button">← Previous</button><div><small>GUIDED WORKSPACE</small><b id="flow-position">Step 1 of 8</b></div><button id="flow-next" class="primary-button compact" type="button">Next →</button></div>');
 }
 enhanceShell();
@@ -59,7 +81,7 @@ async function boot(){
   $('#org-name-side').textContent=d.organisation.name;$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
 
   const loaders=[
-    ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription]
+    ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription],['account lifecycle',loadAccountLifecycle]
   ];
   let failed=[];
   const first=await Promise.allSettled(loaders.map(([,fn])=>fn()));
@@ -80,6 +102,51 @@ async function boot(){
 $('#register-form').onsubmit=e=>{e.preventDefault();location.href='create-account.html'};
 const registerPassword=$('#register-form')?.elements.password,registerConfirm=$('#register-form')?.elements.confirm_password;function updatePasswordMatch(){const hint=$('#password-match');if(!hint||!registerConfirm)return;if(!registerConfirm.value){hint.textContent='Both passwords must match.';hint.classList.remove('error-text','success-text');return}const ok=registerPassword.value===registerConfirm.value;hint.textContent=ok?'Passwords match.':'Passwords do not match.';hint.classList.toggle('success-text',ok);hint.classList.toggle('error-text',!ok)}registerPassword?.addEventListener('input',updatePasswordMatch);registerConfirm?.addEventListener('input',updatePasswordMatch);
 $('#login-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);if(!b.mfa_code)delete b.mfa_code;try{await api('/api/saas/login',{method:'POST',body:JSON.stringify(b)});location.href='workspace.html#dashboard'}catch(x){if(x.payload?.mfa_required){e.target.querySelector('.mfa-details')?.setAttribute('open','');e.target.elements.mfa_code?.focus()}note(x.message,true)}};$('#logout').onclick=async()=>{try{await api('/api/saas/logout',{method:'POST'})}finally{location.href='/saas/'}};
+async function loadAccountLifecycle(){
+  const state=$('#account-deletion-state'),start=$('#start-account-deletion'),cancel=$('#cancel-account-deletion'),box=$('#account-deletion-confirm');
+  if(!state)return;
+  try{
+    const d=await api('/api/saas/account/lifecycle');
+    const pending=d.deletion_request;
+    $('#account-preservation-status').textContent=d.account?.preserved_indefinitely?'Preserved':'Review';
+    if(pending?.status==='scheduled'){
+      const when=pending.eligible_after?new Date(pending.eligible_after).toLocaleString():'after the cancellation window';
+      state.textContent='Deletion is scheduled for '+when+'. Your data remains intact until then.';
+      start.hidden=true;cancel.hidden=false;if(box)box.hidden=true;
+    }else if(pending?.status==='pending_verification'){
+      state.textContent='A deletion verification request is waiting for confirmation. No deletion is scheduled yet.';
+      start.hidden=false;cancel.hidden=true;
+    }else{
+      state.textContent='No deletion is scheduled. Your account and data remain preserved.';
+      start.hidden=false;cancel.hidden=true;if(box)box.hidden=true;
+    }
+  }catch(err){state.textContent='Account lifecycle status could not be loaded: '+err.message}
+}
+let accountDeletionRequestId='';
+$('#start-account-deletion')?.addEventListener('click',async()=>{
+  const button=$('#start-account-deletion');button.disabled=true;
+  try{
+    const d=await api('/api/saas/account/deletion/start',{method:'POST',body:JSON.stringify({})});
+    accountDeletionRequestId=d.request_id;
+    $('#account-deletion-confirm').hidden=false;
+    $('#account-deletion-state').textContent=d.message;
+    $('#account-deletion-code')?.focus();
+  }catch(err){note(err.message,true)}
+  finally{button.disabled=false}
+});
+$('#confirm-account-deletion')?.addEventListener('click',async()=>{
+  const code=String($('#account-deletion-code')?.value||'').trim(),confirmText=String($('#account-deletion-text')?.value||'').trim();
+  if(!accountDeletionRequestId){note('Start a new deletion request first.',true);return}
+  try{
+    const d=await api('/api/saas/account/deletion/confirm',{method:'POST',body:JSON.stringify({request_id:accountDeletionRequestId,code,confirm_text:confirmText})});
+    note(d.message);accountDeletionRequestId='';$('#account-deletion-confirm').hidden=true;await loadAccountLifecycle();
+  }catch(err){note(err.message,true)}
+});
+$('#cancel-account-deletion')?.addEventListener('click',async()=>{
+  if(!confirm('Cancel the scheduled account deletion and keep this workspace and all data?'))return;
+  try{const d=await api('/api/saas/account/deletion/cancel',{method:'POST',body:JSON.stringify({})});note(d.message);await loadAccountLifecycle()}catch(err){note(err.message,true)}
+});
+$('#close-account-deletion')?.addEventListener('click',()=>{$('#account-deletion-confirm').hidden=true;accountDeletionRequestId=''});
 async function loadDashboard(){const d=await api('/api/saas/dashboard'),m=d.metrics;$('#m-workers').textContent=m.workers;$('#m-ready').textContent=m.ready;$('#m-attention').textContent=m.attention;$('#m-jobs').textContent=m.jobs;$('#m-expiring').textContent=m.expiring;$('#nav-jobs').textContent=m.jobs;$('#briefing').textContent=m.attention||m.jobs||m.expiring?`${m.attention} worker${m.attention===1?'':'s'} need compliance attention, ${m.jobs} job${m.jobs===1?'':'s'} await allocation, and ${m.expiring} document${m.expiring===1?'':'s'} expire within 30 days.`:'No immediate workforce or allocation risks detected. Your operational foundation is clear.'}
 
 let industryRegistryCache=[];

@@ -152,12 +152,16 @@ async function loadDashboard(){const d=await api('/api/saas/dashboard'),m=d.metr
 let industryRegistryCache=[];
 let selectedIndustryCode='custom';
 function applyIndustryModules(modules=[]){
-  if(!Array.isArray(modules)||!modules.length)return;
-  const allowed=new Set(modules);
+  // Industry packs recommend and customise the workspace; they must never hide
+  // core customer functionality. Every subscribed/trial workspace keeps access
+  // to every core page, while recommended areas are highlighted contextually.
+  const recommended=new Set(Array.isArray(modules)?modules:[]);
   document.querySelectorAll('.workspace-nav [data-view]').forEach(button=>{
+    button.hidden=false;
     const view=button.dataset.view;
-    const always=['dashboard','onboarding','manual','billing','governance','support'].includes(view);
-    button.hidden=!always&&!allowed.has(view);
+    const isRecommended=recommended.has(view)||['dashboard','onboarding','governance','support','manual','billing'].includes(view);
+    button.classList.toggle('industry-recommended',isRecommended);
+    button.dataset.industryRecommended=isRecommended?'1':'0';
   });
 }
 function industrySearchText(row){return [row.label,row.group,row.anzsic,...(row.keywords||[]),...(row.specialties||[])].join(' ').toLowerCase()}

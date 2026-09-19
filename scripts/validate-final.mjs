@@ -30,7 +30,7 @@ function localAssetRefs(file){
   const html=read(file),refs=[];
   for(const m of html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["'][^>]*>/gi)){
     const raw=m[1];
-    if(!raw||raw.startsWith('http:')||raw.startsWith('https:')||raw.startsWith('//')||raw.startsWith('#')||raw.startsWith('data:'))continue;
+    if(!raw||raw.startsWith('http:')||raw.startsWith('https:')||raw.startsWith('//')||raw.startsWith('#')||raw.startsWith('data:')||raw.includes('__PUBLIC_BASE_URL__'))continue;
     const clean=raw.split('?')[0].split('#')[0];
     if(!/\.(?:js|css|html|webmanifest|png|svg|ico)$/i.test(clean))continue;
     const rel=clean.startsWith('/')?clean.replace(/^\//,''):path.posix.normalize(path.posix.join(path.posix.dirname(file),clean));
@@ -64,7 +64,7 @@ for(const token of ['app.js','ai-operations.js','workspace-extras.js','common.js
 if((workspace.match(/id="integration-self-service"/g)||[]).length!==1)failures.push('workspace.html must contain exactly one Connections hub');
 for(const token of ['office.js','office-extras.js','office-records.js','office-insights.js','office-theme.css','office-layout.css','../saas/experience.css'])if(!office.includes(token))failures.push('office/index.html missing '+token);
 for(const token of ['localized-browser-fallback','superpro_ai_memory_current','conversation_id:conversationId','knowledgeContext','detectLanguage'])if(!guide.includes(token))failures.push('product-guide.js missing '+token);
-for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/callback/','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
+for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/:provider/callback','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
 for(const token of ['freeAiModeEnabled','geminiProviderConfig','if (freeAiModeEnabled()) return gemini','if (freeAiModeEnabled()) return null'])if(!shim.includes(token))failures.push('ai-provider-shim.js missing '+token);
 for(const token of ['startBrowserRecognitionFallback','findLanguageVoice','splitSpeech','speechHeartbeat','guide-voice'])if(!intro.includes(token))failures.push('intro.js missing '+token);
 for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')","const CACHE='superpro-public-"])if(!sw.includes(token))failures.push('sw.js missing '+token);

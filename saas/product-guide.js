@@ -200,7 +200,15 @@
       const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion,context,language:detected,conversation_id:conversationId(context)})});
       const d=await r.json().catch(()=>({}));
       if(r.ok&&d.text){
-        const result={...local,text:plainText(d.text),language:detected,source:d.source||'server-guidance'};
+        const result={...local,text:plainText(d.text),language:d.language||detected,source:d.source||'server-guidance',provider:d.provider||'',model:d.model||'',configuration_required:Boolean(d.configuration_required)};
+        // A server-side local fallback is useful as an explicit degraded mode,
+        // but it must not masquerade as a successful live AI answer.
+        if(result.configuration_required||/^local-/.test(result.source)){
+          result.degraded=true;
+          result.text=detected==='en'
+            ? 'Live AI is temporarily unavailable, so I cannot reliably answer that question yet. Please try again shortly or check the AI provider configuration.'
+            : (emergencyLanguageReply[detected]||result.text);
+        }
         remember(context,q,result.text,result);return result;
       }
     }catch{}

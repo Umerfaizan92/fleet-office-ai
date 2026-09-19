@@ -2702,15 +2702,45 @@ app.post('/api/saas/voice/speech-stream',requireSaasUser,voiceReplyLimiter,(req,
 
 const voiceInputUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ok=/^(audio\/|video\/webm)/i.test(String(file.mimetype||''));cb(ok?null:new Error('Unsupported microphone audio format.'),ok)}});
 async function transcribeWithGemini(file,requested='auto'){
-  const key=geminiApiKey();if(!key)throw new Error('Gemini free transcription is not configured.');
-  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim() :'gemini-3.5-transcribe';
-  const mime=file.mimetype||'audio/webm';const prompt=requested==='auto'
-    ? 'Transcribe the speech exactly. Preserve the language and writing style used by the speaker. For Urdu, Hindi or Punjabi spoken in Roman/Latin form, return a natural Roman-script transcription when that is what was spoken. Return transcript text only, with no labels, explanation, timestamps or markdown.'
-    : `Transcribe the speech exactly in language code ${requested}. Return transcript text only, with no labels, explanation, timestamps or markdown.`;
-  const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'x-goog-api-key':key,'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inlineData:{mimeType:mime,data:file.buffer.toString('base64')}}]}],generationConfig:{temperature:0}})});
-  const data=await response.json().catch(()=>({}));const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p?.text||'').join('').trim();
-  if(!response.ok||!text){console.warn('[VOICE STT GEMINI] provider error',response.status,JSON.stringify(data).slice(0,400));throw new Error('Gemini free transcription could not be completed.');}
-  return {text,language:requested==='auto'?detectGuideLanguage(text):requested,source:'gemini-free-transcription'};
+  const key=geminiApiKey();if(!key)throw new Error('Gemini transcription is not configured.');
+  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim():'gemini-3.5-transcribe';
+  const mime=file.mimetype||'audio/webm';
+  const input=[{type:'audio',data:file.buffer.toString('base64'),mime_type:mime}];
+  const generationConfig={};
+  if(requested&&requested!=='auto'){
+    generationConfig.transcription_config={language_codes:[requested]};
+  }
+  let lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const response=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{
+        method:'POST',
+        headers:{'x-goog-api-key':key,'content-type':'application/json'},
+        body:JSON.stringify({model,input,...(Object.keys(generationConfig).length?{generation_config:generationConfig}:{})})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok){
+        const detail=data?.error?.message||data?.error?.status||('HTTP '+response.status);
+        console.warn('[VOICE STT GEMINI] provider error',response.status,String(detail).slice(0,400));
+        lastError=new Error('Gemini transcription provider failed: '+detail);
+        if((response.status===429||response.status>=500)&&attempt===0){await new Promise(r=>setTimeout(r,450));continue}
+        throw lastError;
+      }
+      const text=(data?.steps||[])
+        .filter(step=>step?.type==='model_output')
+        .flatMap(step=>step?.content||[])
+        .filter(part=>part?.type==='text')
+        .map(part=>String(part.text||''))
+        .join(' ')
+        .trim();
+      if(!text)return {text:'',language:requested==='auto'?'auto':requested,source:'gemini-3.5-transcribe',no_speech:true};
+      return {text,language:requested==='auto'?detectGuideLanguage(text):requested,source:'gemini-3.5-transcribe',no_speech:false};
+    }catch(err){
+      lastError=err;
+      if(attempt===0){await new Promise(r=>setTimeout(r,450));continue}
+    }
+  }
+  throw lastError||new Error('Gemini transcription could not be completed.');
 }
 async function transcribeWithOpenAi(file,requested='auto'){
   const cfg=openAiSpeechConfig();if(!cfg)throw new Error('OpenAI transcription is not configured.');
@@ -2731,9 +2761,9 @@ async function transcribeVoice(req,res){
       if(openAiSpeechConfig()){try{result=await transcribeWithOpenAi(req.file,requested)}catch(err){console.warn('[VOICE STT] OpenAI fallback failed:',err.message)}}
       if(!result&&geminiApiKey())result=await transcribeWithGemini(req.file,requested);
     }
-    if(!result)return res.status(503).json({ok:false,error:'Server speech recognition is unavailable; browser recognition can be used.',fallback:'browser'});
+    if(!result)return res.status(503).json({ok:false,error:'Server speech recognition is unavailable.',fallback:'none'});
     return res.json({ok:true,...result});
-  }catch(err){console.warn('[VOICE STT] failed:',err.message);return res.status(502).json({ok:false,error:'Voice transcription could not be completed.',fallback:'browser'});}
+  }catch(err){console.warn('[VOICE STT] failed:',err.message);return res.status(502).json({ok:false,error:'Voice transcription could not be completed. Please try the microphone again.',fallback:'none'});}
 }
 app.post('/api/product-guide/transcribe',productGuideLimiter,voiceInputUpload.single('audio'),transcribeVoice);
 app.post('/api/saas/voice/transcribe',requireSaasUser,voiceReplyLimiter,voiceInputUpload.single('audio'),transcribeVoice);

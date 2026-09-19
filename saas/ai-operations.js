@@ -50,10 +50,15 @@
     try{const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});if(response.ok){const blob=await response.blob();serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.onplay=()=>setStatus(`Speaking naturally in ${speechLocale(lang)} using server AI voice.`,'AI voice');serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setStatus('Voice reply finished. Ask another question whenever you are ready.','AI voice')};serverAudio.onerror=()=>speakBrowser(text,lang);await serverAudio.play();return}}catch{}
     await speakBrowser(text,lang)
   }
+  function startBrowserRecognitionFallback(){
+    if(!recognition){setStatus('Server transcription is unavailable and this browser does not expose speech recognition. Choose a language or type your question.','Voice input unavailable');return false}
+    const lang=languageValue()==='auto'?(lastLanguage||'en'):languageValue();recognition.lang=speechLocale(lang);
+    try{setStatus('Server transcription unavailable. Switching to device recognition in '+recognition.lang+'…','Device recognition');recognition.start();return true}catch{setStatus('Device speech recognition could not start. Tap the microphone again or type your question.','Voice input');return false}
+  }
   async function autoListen(){
-    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){setStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','Voice input unavailable');return}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){if(startBrowserRecognitionFallback())return;setStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','Voice input unavailable');return}
     if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
-    stopSpeech();let chunks=[];try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};mediaRecorder.onstart=()=>{listening=true;$('#spai-mic')?.classList.add('listening');setStatus('Listening with automatic language detection… speak naturally.','AI transcription')};mediaRecorder.onstop=async()=>{listening=false;$('#spai-mic')?.classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});if(!blob.size)return setStatus('No speech was captured. Try again.','Voice input');const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');setStatus('Detecting language and transcribing…','AI transcription');try{const r=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||'Transcription failed.');const input=$('#spai-input');input.value=d.text;lastLanguage=d.language||detectLanguage(d.text);resize();setStatus(`Detected ${lastLanguage.toUpperCase()} · transcription ready.`,'AI transcription');await ask(d.text)}catch(e){setStatus(e.message||'Voice transcription failed.','Voice input')}};mediaRecorder.start();setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},15000)}catch(e){mediaStream?.getTracks().forEach(t=>t.stop());setStatus(e?.name==='NotAllowedError'?'Microphone permission is blocked. Allow microphone access and try again.':'Microphone could not start.','Voice input')}
+    stopSpeech();let chunks=[];try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};mediaRecorder.onstart=()=>{listening=true;$('#spai-mic')?.classList.add('listening');setStatus('Listening with automatic language detection… speak naturally.','AI transcription')};mediaRecorder.onstop=async()=>{listening=false;$('#spai-mic')?.classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});if(!blob.size)return setStatus('No speech was captured. Try again.','Voice input');const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');setStatus('Detecting language and transcribing…','AI transcription');try{const r=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||'Transcription failed.');const input=$('#spai-input');input.value=d.text;lastLanguage=d.language||detectLanguage(d.text);resize();setStatus(`Detected ${lastLanguage.toUpperCase()} · transcription ready.`,'AI transcription');await ask(d.text)}catch(e){setStatus('Server transcription failed. Switching to device recognition…','Device recognition');setTimeout(()=>startBrowserRecognitionFallback(),120)}};mediaRecorder.start();setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},15000)}catch(e){mediaStream?.getTracks().forEach(t=>t.stop());if(e?.name==='NotAllowedError'){setStatus('Microphone permission is blocked. Allow microphone access and try again.','Voice input');return}setStatus('Server microphone capture failed. Switching to device recognition…','Device recognition');startBrowserRecognitionFallback()}
   }
 
   function addMessage(role,text,label=''){
@@ -73,7 +78,20 @@
   }
   function paintProviderStatus(source){
     const pill=$('#assistant-view .page-heading .status-pill');if(!pill)return;
-    if(source==='configured-ai-provider'){pill.className='status-pill good';pill.innerHTML='<span></span> AI provider connected'}else{pill.className='status-pill neutral';pill.innerHTML='<span></span> Expanded product memory active'}
+    if(source==='configured-ai-provider'){pill.className='status-pill good';pill.innerHTML='<span></span> AI provider connected'}else{pill.className='status-pill neutral';pill.innerHTML='<span></span> Built-in guidance active'}
+  }
+  async function refreshProviderStatus(){
+    try{
+      const r=await fetch('/api/saas/ai/status',{credentials:'same-origin',cache:'no-store'}),d=await r.json().catch(()=>({}));
+      if(!r.ok)return;
+      const pill=$('#assistant-view .page-heading .status-pill');
+      if(pill){
+        if(d.ai?.configured){pill.className='status-pill good';pill.innerHTML='<span></span> '+String(d.ai.provider||'AI').toUpperCase()+' connected'}
+        else{pill.className='status-pill neutral';pill.innerHTML='<span></span> Built-in guidance · provider not connected'}
+      }
+      const source=d.ai?.configured?`${String(d.ai.provider||'AI').toUpperCase()} · ${d.ai.model||'model ready'}`:(d.ai?.free_mode?'Free mode · add Gemini key for live AI':'Live AI not configured');
+      setStatus(d.message||'AI status checked.',source);
+    }catch{}
   }
 
   function initRecognition(){
@@ -105,7 +123,7 @@
     $('#spai-form').onsubmit=e=>{e.preventDefault();ask($('#spai-input').value)};$('#spai-input').addEventListener('input',resize);$('#spai-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#spai-form').requestSubmit()}});$('#spai-quick').querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
     recognition=initRecognition();$('#spai-mic').onclick=()=>{stopSpeech();if(languageValue()==='auto'){autoListen();return}if(!recognition){setStatus('This browser does not expose speech recognition. Automatic server transcription may still be available; choose Auto language or type your question.','Voice input unavailable');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(languageValue());try{recognition.start()}catch{setStatus('Microphone recognition is already starting.','Voice input')}}};
     if(speechSupported){refreshVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshVoices)}else{$('#spai-speaker').disabled=true;setStatus('This browser does not expose spoken reply playback. Text and supported microphone input remain available.','Text mode')}
-    restoreConversation();window.dispatchEvent(new CustomEvent('superpro:ai-operations-v16-ready',{detail:{version:VERSION}}));return true
+    restoreConversation();refreshProviderStatus();window.dispatchEvent(new CustomEvent('superpro:ai-operations-ready',{detail:{version:VERSION}}));return true
   }
 
   let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>80)clearInterval(timer)},100);

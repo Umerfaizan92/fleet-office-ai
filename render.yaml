@@ -1,0 +1,225 @@
+services:
+  - type: web
+    name: super-pro-ai-office-manager
+    runtime: node
+    plan: free
+    branch: audit-production-2026-09-19
+    buildCommand: npm ci && npm run validate:final && npm run quality:check
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: DATABASE_PATH
+        value: "./data/super-pro.sqlite"
+      - key: UPLOAD_DIR
+        value: "./data/uploads"
+      - key: MAX_FILE_MB
+        value: "25"
+      - key: MAX_FILES
+        value: "10"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SAAS_SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true
+      - key: SESSION_TTL_DAYS
+        value: "365"
+      - key: AI_TOOL_SHARED_SECRET
+        generateValue: true
+      - key: SAAS_VERIFICATION_TEST_MODE
+        value: "0"
+      - key: SAAS_VERIFY_FROM
+        sync: false
+      - key: TRIAL_DAYS
+        value: "14"
+      - key: POST_TRIAL_RESTRICT_DAYS
+        value: "30"
+      - key: ARCHIVE_RETENTION_DAYS
+        value: "365"
+      - key: FINAL_RESTORE_WINDOW_DAYS
+        value: "14"
+      - key: ABR_GUID
+        sync: false
+      - key: TELNYX_VERIFY_PROFILE_ID
+        sync: false
+      - key: FREE_AI_MODE
+        value: "1"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-2.5-flash"
+      - key: GEMINI_STT_MODEL
+        value: "gemini-2.5-flash"
+      - key: GEMINI_TTS_MODEL
+        value: "gemini-2.5-flash-preview-tts"
+      - key: GEMINI_TTS_AUTO_VOICE
+        value: "Kore"
+      - key: GEMINI_TTS_MALE_VOICE
+        value: "Puck"
+      - key: GEMINI_TTS_FEMALE_VOICE
+        value: "Aoede"
+      - key: AI_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_PROVIDER_API_KEY
+        sync: false
+      - key: AI_PROVIDER_MODEL
+        sync: false
+      - key: AI_CHECKER_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_CHECKER_API_KEY
+        sync: false
+      - key: AI_CHECKER_MODEL
+        sync: false
+      - key: AI_TTS_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_TTS_API_KEY
+        sync: false
+      - key: AI_TTS_MODEL
+        sync: false
+      - key: AI_TTS_VOICE
+        sync: false
+      - key: AI_TTS_MALE_VOICE
+        sync: false
+      - key: AI_TTS_FEMALE_VOICE
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: "gpt-5.6-luna"
+      - key: AI_STT_MODEL
+        value: "gpt-4o-mini-transcribe"
+      - key: TELNYX_API_KEY
+        sync: false
+      - key: TELNYX_CONNECTION_ID
+        sync: false
+      - key: TELNYX_PHONE_NUMBER
+        sync: false
+      - key: TELNYX_FROM_NUMBER
+        sync: false
+      - key: TELNYX_TTS_VOICE
+        sync: false
+      - key: TELNYX_AI_ASSISTANT_ID
+        sync: false
+      - key: TELNYX_PUBLIC_KEY
+        sync: false
+      - key: BUSINESS_PRIMARY_NUMBER
+        sync: false
+      - key: BUSINESS_WHATSAPP_NUMBER
+        sync: false
+      - key: OWNER_PRIVATE_TRANSFER_NUMBER
+        sync: false
+      - key: VOICE_ENQUIRY_NOTIFY_TO
+        sync: false
+      - key: VOICE_ENQUIRY_ALERT_PHONE
+        sync: false
+      - key: NOTIFY_TO
+        sync: false
+      - key: SUPPORT_ESCALATION_EMAIL
+        sync: false
+      - key: SUPPORT_ESCALATION_PHONE
+        sync: false
+      - key: SUPPORT_INBOX_EMAIL
+        sync: false
+      - key: SUPPORT_MAX_FILE_MB
+        value: "25"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_REDIRECT_URI
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: TIKTOK_ACCESS_TOKEN
+        sync: false
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_REDIRECT_URI
+        sync: false
+      - key: TIKTOK_SCOPES
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: SNAPCHAT_CLIENT_ID
+        sync: false
+      - key: SNAPCHAT_CLIENT_SECRET
+        sync: false
+      - key: SNAPCHAT_REDIRECT_URI
+        sync: false
+      - key: SNAPCHAT_AUTHORIZE_URL
+        sync: false
+      - key: SNAPCHAT_TOKEN_URL
+        sync: false
+      - key: SNAPCHAT_SCOPES
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: X_CLIENT_SECRET
+        sync: false
+      - key: X_REDIRECT_URI
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYMENT_BANK_INSTRUCTIONS
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: KMS_KEY_ID
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_KMS_KEY_ID
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
+      - key: WEBSITE_PUBLIC_URL
+        sync: false
+      - key: WEBSITE_API_BASE_URL
+        sync: false
+      - key: WEBSITE_API_KEY
+        sync: false
+      - key: WEBSITE_WEBHOOK_SECRET
+        sync: false
+      - key: INDEXNOW_KEY
+        sync: false
+      - key: GOOGLE_SITE_VERIFICATION
+        sync: false
+      - key: BING_SITE_VERIFICATION
+        sync: false
+      - key: JOB_MEDIA_MAX_MB
+        value: "100"

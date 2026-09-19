@@ -35,7 +35,7 @@ add('memory:current-conversation',guide.includes('superpro_ai_memory_current')&&
 add('ai:central-provider',server.includes('generateAiText')&&shim.includes('resolveAiProviderConfig'));
 add('ai:strict-free-mode',shim.includes('if (freeAiModeEnabled()) return gemini')&&shim.includes('if (freeAiModeEnabled()) return null'));
 add('ai:gemini-free',shim.includes('generativelanguage.googleapis.com')&&server.includes('GEMINI_TTS_MODEL'));
-add('ai:operations-resilient',server.includes('local-operational-fallback')&&ops.includes('/api/saas/ai/threads'));
+add('ai:operations-resilient',server.includes('local-operational-fallback')&&server.includes('/api/saas/ai/threads')&&ops.includes('GDSProductGuide')&&ops.includes('answerAsync'));
 add('ai:content-studio-live',server.includes('/api/saas/content/ai-spec')&&app.includes('/api/saas/content/ai-spec'));
 add('ai:global-search-stt',app.includes('/api/saas/voice/transcribe')&&app.includes('automatic language detection'));
 add('ai:operations-status',ops.includes('/api/saas/ai/status')&&ops.includes('startBrowserRecognitionFallback'));
@@ -44,11 +44,11 @@ add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server
 add('voice:server-tts',server.includes('/api/saas/voice/speech')&&server.includes('makeGeminiSpeechAudio'));
 add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.includes('transcribeWithGemini'));
 add('voice:browser-fallback',intro.includes('startBrowserRecognitionFallback')&&app.includes('browserSpeak'));
-add('voice:barge-in',intro.includes('stopSpeech()')&&ops.includes('stopSpeech()'));
+add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&intro.includes('r.onstart=()=>{stopSpeech();')&&ops.includes('stopSpeech()'));
 add('voice:male-female-auto',intro.includes('Voice: Female')&&intro.includes('Voice: Male')&&server.includes('geminiVoiceChoice'));
 add('pwa:manifest',index.includes('manifest.webmanifest'));
 add('pwa:private-cache-exclusion',sw.includes("startsWith('/api/')")&&sw.includes("includes('workspace')")&&sw.includes("startsWith('/office/')"));
-add('connections:oauth',server.includes('/api/saas/integrations/oauth/callback/')&&server.includes('saveIntegrationConnection'));
+add('connections:oauth',server.includes('/api/saas/integrations/oauth/:provider/callback')&&server.includes('saveIntegrationConnection'));
 add('connections:no-customer-secrets',server.includes('customer_secret_entry:false'));
 add('security:sessions',server.includes('HttpOnly')&&server.includes('SameSite=Strict'));
 add('security:mfa',server.includes('/api/saas/mfa/setup')&&server.includes('/api/saas/mfa/verify'));

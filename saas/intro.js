@@ -20,8 +20,9 @@
 
   const log=$('#chat-log'), input=$('#chat-input'), form=$('#chat-form'), satisfaction=$('#satisfaction'), conversion=$('#conversion-panel');
   let voiceReplies=localStorage.getItem('superpro_voice_replies')!=='off';
-  let recognition=null, listening=false, lastTopic='', lastLanguage='en', availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
-  let speechRun=0, speechHeartbeat=null, speechPrimed=false;
+  let conversationLanguage=localStorage.getItem('superpro_conversation_language')||'auto';
+  let recognition=null, listening=false, lastTopic='', lastLanguage=conversationLanguage==='auto'?'en':conversationLanguage, availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
+  let speechRun=0, speechHeartbeat=null, speechPrimed=false, micWarmUntil=0;
   const escape=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const speechSupported='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
   const recognitionSupported=Boolean(window.SpeechRecognition||window.webkitSpeechRecognition);
@@ -58,6 +59,30 @@
     log.append(el);scrollChat();return el;
   }
 
+  function languageSwitch(text){
+    const t=String(text||'').toLowerCase().replace(/[’']/g,"'").trim();
+    const rules=[
+      ['ur',/(?:اردو|urdu).{0,32}(?:بات|بول|speak|talk)|(?:بات|بول|speak|talk).{0,32}(?:اردو|urdu)|(?:in|میں|mein)\s+(?:urdu|اردو)/i],
+      ['pa',/(?:ਪੰਜਾਬੀ|ਪੰਜਾਬੀ|punjabi).{0,32}(?:ਗੱਲ|ਬੋਲ|speak|talk)|(?:ਗੱਲ|ਬੋਲ|speak|talk).{0,32}(?:ਪੰਜਾਬੀ|punjabi)|(?:in|ਵਿੱਚ|vich)\s+(?:punjabi|ਪੰਜਾਬੀ)/i],
+      ['en',/(?:english|انگریزی).{0,32}(?:speak|talk|بات|بول)|(?:speak|talk|بات|بول).{0,32}(?:english|انگریزی)|(?:in|میں|mein)\s+english/i],
+      ['hi',/(?:हिंदी|hindi).{0,32}(?:बात|बोल|speak|talk)|(?:बात|बोल|speak|talk).{0,32}(?:हिंदी|hindi)/i],
+      ['ar',/(?:العربية|arabic).{0,32}(?:تحدث|تكلم|speak|talk)|(?:speak|talk).{0,32}(?:arabic|العربية)/i],
+      ['es',/(?:español|spanish).{0,32}(?:habla|speak|talk)|(?:speak|talk).{0,32}(?:spanish|español)/i],
+      ['fr',/(?:français|french).{0,32}(?:parle|speak|talk)|(?:speak|talk).{0,32}(?:french|français)/i]
+    ];
+    return rules.find(([,re])=>re.test(t))?.[0]||null;
+  }
+  function lockConversationLanguage(lang){
+    if(!lang||lang==='auto')return;
+    conversationLanguage=lang;lastLanguage=lang;
+    try{localStorage.setItem('superpro_conversation_language',lang)}catch{}
+    if(recognition)recognition.lang=speechLocale(lang);
+    const select=$('#guide-language');if(select&&select.value==='auto')select.dataset.detectedLanguage=lang;
+  }
+  function activeInputLanguage(){
+    const selected=$('#guide-language')?.value||'auto';
+    return selected==='auto'?(conversationLanguage!=='auto'?conversationLanguage:(lastLanguage||'en')):selected;
+  }
   function speechLocale(lang){return ({ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',es:'es-ES',fr:'fr-FR',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',en:'en-AU'})[lang]||'en-AU'}
   const femaleHints=/female|heera|sana|samantha|victoria|aria|jenny|zira|hazel|karen|tessa|susan|sonia|natasha|veena|ava|emma|olivia|neerja/i;
   const maleHints=/male|asad|david|mark|guy|ryan|george|daniel|james|ravi|hemant|imran|liam|aaron/i;
@@ -113,28 +138,62 @@
 
   async function speakBrowser(text,lang=lastLanguage){
     if(!speechSupported){setVoiceStatus('Spoken reply playback is not supported in this browser. The text reply is ready.','limited');return false}
-    await ensureVoicesReady();const locale=speechLocale(lang),found=findLanguageVoice(locale),voice=found.voice,chunks=splitSpeech(text);if(!chunks.length)return false;const run=++speechRun;let index=0,started=false,retryUsed=false,pref=voicePreference();
+    await ensureVoicesReady();const locale=speechLocale(lang),found=findLanguageVoice(locale),voice=found.voice,chunks=splitSpeech(text);if(!chunks.length)return false;const run=++speechRun;let index=0,started=false,retryUsed=false,everStarted=false,pref=voicePreference();
     const announce=()=>{if(voice){const preferenceNote=pref!=='auto'&&!found.matchedPreference?' · requested voice style not exposed by this device':'';setVoiceStatus(`Speaking in ${voice.lang||locale} using ${voice.name}${preferenceNote}`,'speaking')}else setVoiceStatus(`Speaking in ${locale} using this device's speech service.`,'speaking')};
     const failStatus=()=>setVoiceStatus(`This device could not play the ${locale} voice. The text reply is still available.`,'limited');
-    const next=()=>{if(run!==speechRun||!voiceReplies)return;if(index>=chunks.length){if(speechHeartbeat){clearInterval(speechHeartbeat);speechHeartbeat=null}setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');return}const u=new SpeechSynthesisUtterance(chunks[index++]);u.rate=.96;u.pitch=1;u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.onstart=()=>{started=true;retryUsed=false;announce()};u.onend=()=>{started=false;next()};u.onerror=e=>{started=false;if(run!==speechRun)return;const reason=String(e?.error||'').toLowerCase();if(!['interrupted','canceled'].includes(reason))failStatus()};try{window.speechSynthesis.resume?.();window.speechSynthesis.speak(u)}catch{failStatus();return}setTimeout(()=>{if(run!==speechRun||started||retryUsed||window.speechSynthesis.speaking||window.speechSynthesis.pending)return;retryUsed=true;index=Math.max(0,index-1);window.speechSynthesis.cancel();window.speechSynthesis.resume?.();next()},850)};
+    const next=()=>{if(run!==speechRun||!voiceReplies)return;if(index>=chunks.length){if(speechHeartbeat){clearInterval(speechHeartbeat);speechHeartbeat=null}setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');return}const u=new SpeechSynthesisUtterance(chunks[index++]);u.rate=.96;u.pitch=1;u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.onstart=()=>{started=true;everStarted=true;retryUsed=false;announce()};u.onend=()=>{started=false;next()};u.onerror=e=>{started=false;if(run!==speechRun)return;const reason=String(e?.error||'').toLowerCase();if(!['interrupted','canceled'].includes(reason))failStatus()};try{window.speechSynthesis.resume?.();window.speechSynthesis.speak(u)}catch{failStatus();return}setTimeout(()=>{if(run!==speechRun||started||retryUsed||window.speechSynthesis.speaking||window.speechSynthesis.pending)return;retryUsed=true;index=Math.max(0,index-1);window.speechSynthesis.cancel();window.speechSynthesis.resume?.();next()},850);
+      setTimeout(()=>{if(run===speechRun&&!everStarted&&!window.speechSynthesis.speaking){failStatus()}},2600)};
     speechHeartbeat=setInterval(()=>{if(run===speechRun&&voiceReplies&&window.speechSynthesis.paused)window.speechSynthesis.resume?.()},5000);next();return true
   }
   async function speak(text,lang=lastLanguage){
-    if(!voiceReplies)return;stopSpeech();
-    try{const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});if(response.ok){const blob=await response.blob();serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.onplay=()=>setVoiceStatus(`Speaking naturally in ${speechLocale(lang)} using Super Pro AI voice.`,'speaking');serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};serverAudio.onerror=()=>speakBrowser(text,lang);await serverAudio.play();return}}catch{}
-    await speakBrowser(text,lang)
+    if(!voiceReplies)return false;stopSpeech();
+    const locale=speechLocale(lang);
+    // Non-English replies must never silently disappear when cloud TTS is
+    // quota-limited. Start a native-locale browser voice if the server cannot
+    // return playable audio, and treat play() rejection as a real fallback.
+    try{
+      const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});
+      if(response.ok){
+        const blob=await response.blob();
+        if(!blob.size)throw new Error('Empty server voice');
+        serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.volume=1;serverAudio.muted=false;
+        let fallbackStarted=false;
+        const fallback=async()=>{if(fallbackStarted)return;fallbackStarted=true;if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudio=null;await speakBrowser(text,lang)};
+        serverAudio.onplay=()=>setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking');
+        serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
+        serverAudio.onerror=()=>{fallback()};
+        try{
+          const playPromise=serverAudio.play();
+          await Promise.race([playPromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('audio-start-timeout')),2200))]);
+          if(serverAudio.paused){await fallback();return true}
+          return true
+        }catch{try{serverAudio.pause()}catch{}await fallback();return true}
+      }
+    }catch{}
+    return await speakBrowser(text,lang)
   }
 
 
   function setQuick(items=[]){const box=$('#quick-prompts');box.innerHTML=items.slice(0,3).map(x=>`<button type="button">${escape(x)}</button>`).join('');box.querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent))}
   async function ask(question){
     const q=String(question||'').trim();if(!q)return;
+    // True barge-in: any new customer turn immediately silences current AI audio.
+    stopSpeech();
     primeSpeech();addMessage('user',q);input.value='';resize();
     const wait=addMessage('ai','Thinking through the product…');wait.querySelector('p').classList.add('typing');
     try{
-      const language=$('#guide-language')?.value||'auto';
+      const selectedLanguage=$('#guide-language')?.value||'auto';
+      const switched=languageSwitch(q);
+      if(switched)lockConversationLanguage(switched);
+      const detectedLanguage=window.GDSProductGuide.detectLanguage?.(q)||'en';
+      if(selectedLanguage==='auto'&&conversationLanguage==='auto'&&detectedLanguage!=='en')lockConversationLanguage(detectedLanguage);
+      const language=selectedLanguage==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):selectedLanguage;
       const result=await (window.GDSProductGuide.answerAsync?.(q,'public',lastTopic,language)||Promise.resolve(window.GDSProductGuide.answer(q,'public',lastTopic)));
-      lastTopic=result.topic||lastTopic;lastLanguage=result.language||window.GDSProductGuide.detectLanguage?.(q)||'en';
+      lastTopic=result.topic||lastTopic;
+      // A locked/selected conversation language owns both reply and TTS locale.
+      // Do not let provider metadata switch an Urdu conversation back to English.
+      const selectedNow=$('#guide-language')?.value||'auto';
+      lastLanguage=selectedNow!=='auto'?selectedNow:(conversationLanguage!=='auto'?conversationLanguage:(result.language||window.GDSProductGuide.detectLanguage?.(q)||'en'));
       wait.remove();addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions);satisfaction.hidden=false;await speak(result.text,lastLanguage);
     }catch(e){
       wait.remove();
@@ -169,8 +228,8 @@
 
   function initRecognition(){
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;
-    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;
-    r.onstart=()=>{listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
+    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;r.maxAlternatives=3;
+    r.onstart=()=>{stopSpeech();listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
     r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;input.value=text;resize();if(e.results[e.results.length-1].isFinal)setTimeout(()=>ask(input.value),160)};
     r.onerror=e=>{setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not start. Try again or type your question.','limited')};
     r.onend=()=>{listening=false;$('#voice-input').classList.remove('listening');if(!input.value.trim())setVoiceStatus('Press the microphone to speak, or type your question.','ready')};return r;
@@ -183,7 +242,7 @@
       return false;
     }
     const selected=$('#guide-language')?.value||'auto';
-    const lang=selected==='auto'?(lastLanguage&&lastLanguage!=='en'?lastLanguage:'en'):selected;
+    const lang=selected==='auto'?activeInputLanguage():selected;
     recognition.lang=speechLocale(lang);
     try{
       setVoiceStatus('Server transcription unavailable. Switching to device recognition in '+recognition.lang+'…','listening');
@@ -195,38 +254,74 @@
   }
 
   async function autoListen(){
+    // Warm the microphone before recording. Some Chrome/Windows audio devices
+    // deliver silence during the first few hundred ms after activation.
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
       if(startBrowserRecognitionFallback())return;
       setVoiceStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','limited');return;
     }
     if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
-    stopSpeech();let chunks=[];
+    stopSpeech();let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null,speechStarted=false,silenceSince=0;
+    const cleanupMonitor=()=>{if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);monitorTimer=null;hardStopTimer=null;try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null};
     try{
       mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      if(Date.now()>micWarmUntil){setVoiceStatus('Microphone ready… start speaking.','listening');await new Promise(resolve=>setTimeout(resolve,650));micWarmUntil=Date.now()+30000}
       const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
       mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);
       mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      mediaRecorder.onstart=()=>{listening=true;$('#voice-input').classList.add('listening');setVoiceStatus('Listening with automatic language detection… speak naturally.','listening')};
+      mediaRecorder.onstart=()=>{
+        listening=true;$('#voice-input').classList.add('listening');setVoiceStatus('Listening… start speaking. I will answer when you finish.','listening');
+        try{
+          const AC=window.AudioContext||window.webkitAudioContext;
+          if(AC){
+            audioContext=new AC();sourceNode=audioContext.createMediaStreamSource(mediaStream);analyser=audioContext.createAnalyser();analyser.fftSize=1024;sourceNode.connect(analyser);
+            const samples=new Uint8Array(analyser.fftSize),startedAt=Date.now(),noiseSamples=[];let threshold=0.012;
+            monitorTimer=setInterval(()=>{
+              if(mediaRecorder?.state!=='recording')return;
+              analyser.getByteTimeDomainData(samples);let sum=0;
+              for(const v of samples){const n=(v-128)/128;sum+=n*n}
+              const rms=Math.sqrt(sum/samples.length),now=Date.now();
+              if(!speechStarted&&now-startedAt<450){noiseSamples.push(rms);const floor=noiseSamples.reduce((a,b)=>a+b,0)/noiseSamples.length;threshold=Math.min(.035,Math.max(.008,floor*2.4))}
+              if(rms>threshold){speechStarted=true;silenceSince=0;setVoiceStatus('I can hear you…','listening')}
+              else if(speechStarted){
+                if(!silenceSince)silenceSince=now;
+                if(now-silenceSince>950)mediaRecorder.stop();
+              }else if(now-startedAt>8000)mediaRecorder.stop();
+            },100);
+          }
+        }catch{}
+        hardStopTimer=setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},12000);
+      };
       mediaRecorder.onstop=async()=>{
-        listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
+        cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
-        if(!blob.size){setVoiceStatus('No speech was captured. Switching to device recognition…','limited');startBrowserRecognitionFallback();return}
-        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');
-        setVoiceStatus('Detecting language and transcribing…','listening');
+        if(!speechStarted||blob.size<900){
+          // Do not make the customer press the microphone twice. Automatically
+          // continue listening through browser recognition on the same attempt.
+          setVoiceStatus('I did not catch that clearly. Still listening… please continue.','listening');
+          setTimeout(()=>startBrowserRecognitionFallback(),100);return
+        }
+        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',($('#guide-language')?.value||'auto')==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):$('#guide-language').value);
+        setVoiceStatus('Understanding what you said…','listening');
         try{
           const r=await fetch('/api/product-guide/transcribe',{method:'POST',credentials:'same-origin',body:fd});
           const d=await r.json().catch(()=>({}));
-          if(!r.ok||!d.text)throw new Error(d.error||'Transcription failed.');
-          input.value=d.text;lastLanguage=d.language||window.GDSProductGuide?.detectLanguage?.(d.text)||'en';resize();
-          setVoiceStatus('Detected '+lastLanguage.toUpperCase()+' · transcription ready.','ready');await ask(d.text);
+          if(!r.ok||!String(d.text||'').trim())throw new Error(d.error||'Transcription failed.');
+          const transcript=String(d.text).trim();
+          input.value=transcript;
+          const switched=languageSwitch(transcript),detected=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';
+          if(switched)lockConversationLanguage(switched);else if(($('#guide-language')?.value||'auto')==='auto'&&conversationLanguage==='auto'&&detected!=='en')lockConversationLanguage(detected);
+          lastLanguage=conversationLanguage!=='auto'?conversationLanguage:detected;resize();
+          setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
+          await ask(transcript);
         }catch(e){
           setVoiceStatus('Server transcription failed. Switching to device recognition…','listening');
           setTimeout(()=>startBrowserRecognitionFallback(),120);
         }
       };
-      mediaRecorder.start();setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},15000);
+      mediaRecorder.start(200);
     }catch(e){
-      mediaStream?.getTracks().forEach(t=>t.stop());
+      cleanupMonitor();mediaStream?.getTracks().forEach(t=>t.stop());
       if(e?.name==='NotAllowedError'){setVoiceStatus('Microphone permission was blocked. Allow microphone access and try again.','limited');return}
       setVoiceStatus('Server microphone capture failed. Switching to device recognition…','listening');startBrowserRecognitionFallback();
     }
@@ -238,7 +333,7 @@
     const select=document.createElement('select');select.id='guide-language';select.className='guide-language';select.title='Reply and voice-input language';select.setAttribute('aria-label','Reply language');select.innerHTML='<option value="auto">Auto language</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option><option value="pa">Punjabi</option><option value="ar">Arabic</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="es">Spanish</option><option value="fr">French</option>';
     const savedLanguage=localStorage.getItem('superpro_guide_language');if([...select.options].some(o=>o.value===savedLanguage))select.value=savedLanguage;
     guideHeader.prepend(voice);guideHeader.prepend(select);
-    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);lastLanguage=select.value==='auto'?'en':select.value;if(recognition)recognition.lang=speechLocale(lastLanguage);setVoiceStatus(select.value==='auto'?'Auto language is on. Typed text and microphone audio are detected automatically using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
+    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);if(select.value==='auto'){conversationLanguage='auto';localStorage.removeItem('superpro_conversation_language');lastLanguage='en'}else lockConversationLanguage(select.value);if(recognition)recognition.lang=speechLocale(activeInputLanguage());setVoiceStatus(select.value==='auto'?'Auto language is on. Typed text and microphone audio are detected automatically using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
     voice.onchange=()=>{localStorage.setItem('superpro_voice_preference',voice.value);setVoiceStatus(`Voice preference set to ${voice.selectedOptions[0].textContent.replace('Voice: ','')}. Language matching takes priority; gender preference is applied only when the device exposes a suitable named voice.`,'ready')};
   }
 

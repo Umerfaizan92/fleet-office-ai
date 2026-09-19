@@ -200,7 +200,18 @@
       const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion,context,language:detected,conversation_id:conversationId(context)})});
       const d=await r.json().catch(()=>({}));
       if(r.ok&&d.text){
-        const result={...local,text:plainText(d.text),language:detected,source:d.source||'server-guidance'};
+        const result={...local,text:plainText(d.text),language:d.language||detected,source:d.source||'server-guidance',provider:d.provider||'',model:d.model||'',configuration_required:Boolean(d.configuration_required)};
+        // Provider outages and free-tier quotas must never make the Product
+        // Guide unusable. The verified local knowledge engine is the durable
+        // availability layer; cloud AI only enhances it when healthy.
+        if(result.configuration_required||/^local-/.test(result.source)){
+          result.degraded=true;
+          result.provider_unavailable=true;
+          result.source='browser-product-knowledge';
+          result.text=detected==='en'
+            ? plainText(local.text)
+            : (emergencyLanguageReply[detected]||plainText(local.text));
+        }
         remember(context,q,result.text,result);return result;
       }
     }catch{}

@@ -2748,6 +2748,52 @@ app.post('/api/saas/ai/threads',requireSaasUser,async(req,res)=>{
     return res.status(201).json({ok:true,id,ai_response:fallback,source:'local-operational-fallback',configuration_required:!aiProviderStatus().configured,note:'Instruction saved. Built-in operational guidance was used because the live AI provider was unavailable.'});
   }
 });
+app.post('/api/saas/content/ai-spec',requireSaasUser,async(req,res)=>{
+  const parsed=z.object({
+    platform:z.string().trim().min(1).max(80),
+    goal:z.string().trim().min(1).max(120),
+    aspect_ratio:z.string().trim().max(20).optional(),
+    media_id:z.string().trim().max(500).optional(),
+    current_direction:z.string().max(5000).optional(),
+    language:z.string().trim().max(20).optional()
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the Content Studio AI request.'});
+  const language=parsed.data.language&&parsed.data.language!=='auto'?parsed.data.language:detectGuideLanguage(parsed.data.current_direction||'');
+  try{
+    const profile=db.prepare(`SELECT business_type,services,brand_voice,approval_mode,ai_instructions FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
+    const result=await generateAiText({
+      remember_conversation:false,
+      system:'You are Super Pro Content Studio. Create a practical social/video creative specification for a service business. Return JSON only with keys style_prompt, hook, pacing, caption_style, transition, captions, auto_reframe, auto_highlights, cta. transition must be one of auto, cut, fade, zoom, wipe, match, speed. Keep claims factual, do not invent trends, views, customer results or provider data. Use live/account-specific trend claims only if supplied in the request. Respect the requested language for prose fields.',
+      messages:[{role:'user',content:`Reply language: ${language}. Business context: ${JSON.stringify({business_type:profile.business_type||'',services:profile.services||'',brand_voice:profile.brand_voice||'',approval_mode:profile.approval_mode||'',ai_instructions:profile.ai_instructions||''})}\nPlatform: ${parsed.data.platform}\nGoal: ${parsed.data.goal}\nAspect ratio: ${parsed.data.aspect_ratio||'not specified'}\nMedia reference: ${parsed.data.media_id||'not specified'}\nExisting direction: ${parsed.data.current_direction||'none'}`}]
+    });
+    const raw=String(result.text||'').trim().replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,'');
+    const candidate=z.object({
+      style_prompt:z.string().min(10).max(5000),
+      hook:z.string().min(1).max(120),
+      pacing:z.string().min(1).max(80),
+      caption_style:z.string().min(1).max(120),
+      transition:z.enum(['auto','cut','fade','zoom','wipe','match','speed']).default('auto'),
+      captions:z.boolean().default(true),
+      auto_reframe:z.boolean().default(true),
+      auto_highlights:z.boolean().default(true),
+      cta:z.boolean().default(true)
+    }).safeParse(JSON.parse(raw));
+    if(!candidate.success)throw new Error('AI returned an invalid content specification.');
+    return res.json({ok:true,spec:candidate.data,source:'configured-ai-provider',provider:result.provider,model:result.model,language});
+  }catch(err){
+    console.warn('[CONTENT STUDIO AI] provider unavailable:',err.message);
+    const fallback={
+      style_prompt:`Create a ${parsed.data.platform} creative for ${parsed.data.goal.toLowerCase()}. Put the strongest truthful visual or result in the first 1–2 seconds, remove dead time, use platform-safe framing, concise captions, realistic colour/detail and a clear goal-matched call to action. Do not fabricate results, engagement, reviews or live trend claims.`,
+      hook:'Result first',
+      pacing:'AI auto',
+      caption_style:'AI platform-native',
+      transition:'auto',
+      captions:true,auto_reframe:true,auto_highlights:true,cta:true
+    };
+    return res.json({ok:true,spec:fallback,source:'local-content-fallback',configuration_required:!aiProviderStatus().configured,language});
+  }
+});
+
 app.get('/api/saas/video-renders',requireSaasUser,(req,res)=>res.json({ok:true,jobs:db.prepare(`SELECT * FROM video_render_jobs WHERE organisation_id=? ORDER BY updated_at DESC`).all(req.saas.organisation_id).map(j=>({...j,edit_spec:JSON.parse(j.edit_spec)}))}));
 app.post('/api/saas/video-renders',requireSaasUser,(req,res)=>{const parsed=z.object({quality:z.enum(['720p','1080p','4k']),edit_spec:z.object({platform:z.string().max(80).default('Multi-platform'),goal:z.string().max(120).default('More views'),aspect_ratio:z.enum(['9:16','16:9','1:1','4:5']),clips:z.array(z.object({media_id:z.string(),start_seconds:z.coerce.number().min(0),end_seconds:z.coerce.number().positive(),transition:z.enum(['auto','cut','fade','zoom','wipe','match','speed']).default('auto')})).min(1).max(100),pacing:z.string().max(80).default('AI auto'),hook:z.string().max(120).default('AI choose strongest'),caption_style:z.string().max(120).default('AI platform-native'),captions:z.boolean().default(true),music:z.boolean().default(false),logo:z.boolean().default(true),auto_reframe:z.boolean().default(true),auto_highlights:z.boolean().default(true),cta:z.boolean().default(true),style_prompt:z.string().max(5000)}).strict()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the render specification and clips.'});const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO video_render_jobs (id,organisation_id,status,quality,edit_spec,created_at,updated_at) VALUES (?,?,'draft',?,?,?,?)`).run(id,req.saas.organisation_id,parsed.data.quality,JSON.stringify(parsed.data.edit_spec),now,now);res.status(201).json({ok:true,id,status:'draft',rendered:false,note:'Professional edit specification saved. FFmpeg worker and licensed media services must be configured before rendering.'})});
 

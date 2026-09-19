@@ -15,8 +15,7 @@
     "smoke:test": "node scripts/smoke-test.mjs"
   },
   "engines": {
-    "node": ">=22"
-  },
+   "node": "22.22.0"  },
   "dependencies": {
     "better-sqlite3": "12.4.1",
     "cors": "^2.8.5",

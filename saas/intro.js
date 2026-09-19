@@ -20,7 +20,8 @@
 
   const log=$('#chat-log'), input=$('#chat-input'), form=$('#chat-form'), satisfaction=$('#satisfaction'), conversion=$('#conversion-panel');
   let voiceReplies=localStorage.getItem('superpro_voice_replies')!=='off';
-  let recognition=null, listening=false, lastTopic='', lastLanguage='en', availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
+  let conversationLanguage=localStorage.getItem('superpro_conversation_language')||'auto';
+  let recognition=null, listening=false, lastTopic='', lastLanguage=conversationLanguage==='auto'?'en':conversationLanguage, availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
   let speechRun=0, speechHeartbeat=null, speechPrimed=false;
   const escape=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const speechSupported='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -58,6 +59,30 @@
     log.append(el);scrollChat();return el;
   }
 
+  function languageSwitch(text){
+    const t=String(text||'').toLowerCase().replace(/[’']/g,"'").trim();
+    const rules=[
+      ['ur',/(?:اردو|urdu).{0,32}(?:بات|بول|speak|talk)|(?:بات|بول|speak|talk).{0,32}(?:اردو|urdu)|(?:in|میں|mein)\s+(?:urdu|اردو)/i],
+      ['pa',/(?:ਪੰਜਾਬੀ|ਪੰਜਾਬੀ|punjabi).{0,32}(?:ਗੱਲ|ਬੋਲ|speak|talk)|(?:ਗੱਲ|ਬੋਲ|speak|talk).{0,32}(?:ਪੰਜਾਬੀ|punjabi)|(?:in|ਵਿੱਚ|vich)\s+(?:punjabi|ਪੰਜਾਬੀ)/i],
+      ['en',/(?:english|انگریزی).{0,32}(?:speak|talk|بات|بول)|(?:speak|talk|بات|بول).{0,32}(?:english|انگریزی)|(?:in|میں|mein)\s+english/i],
+      ['hi',/(?:हिंदी|hindi).{0,32}(?:बात|बोल|speak|talk)|(?:बात|बोल|speak|talk).{0,32}(?:हिंदी|hindi)/i],
+      ['ar',/(?:العربية|arabic).{0,32}(?:تحدث|تكلم|speak|talk)|(?:speak|talk).{0,32}(?:arabic|العربية)/i],
+      ['es',/(?:español|spanish).{0,32}(?:habla|speak|talk)|(?:speak|talk).{0,32}(?:spanish|español)/i],
+      ['fr',/(?:français|french).{0,32}(?:parle|speak|talk)|(?:speak|talk).{0,32}(?:french|français)/i]
+    ];
+    return rules.find(([,re])=>re.test(t))?.[0]||null;
+  }
+  function lockConversationLanguage(lang){
+    if(!lang||lang==='auto')return;
+    conversationLanguage=lang;lastLanguage=lang;
+    try{localStorage.setItem('superpro_conversation_language',lang)}catch{}
+    if(recognition)recognition.lang=speechLocale(lang);
+    const select=$('#guide-language');if(select&&select.value==='auto')select.dataset.detectedLanguage=lang;
+  }
+  function activeInputLanguage(){
+    const selected=$('#guide-language')?.value||'auto';
+    return selected==='auto'?(conversationLanguage!=='auto'?conversationLanguage:(lastLanguage||'en')):selected;
+  }
   function speechLocale(lang){return ({ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',es:'es-ES',fr:'fr-FR',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',en:'en-AU'})[lang]||'en-AU'}
   const femaleHints=/female|heera|sana|samantha|victoria|aria|jenny|zira|hazel|karen|tessa|susan|sonia|natasha|veena|ava|emma|olivia|neerja/i;
   const maleHints=/male|asad|david|mark|guy|ryan|george|daniel|james|ravi|hemant|imran|liam|aaron/i;
@@ -134,7 +159,12 @@
     primeSpeech();addMessage('user',q);input.value='';resize();
     const wait=addMessage('ai','Thinking through the product…');wait.querySelector('p').classList.add('typing');
     try{
-      const language=$('#guide-language')?.value||'auto';
+      const selectedLanguage=$('#guide-language')?.value||'auto';
+      const switched=languageSwitch(q);
+      if(switched)lockConversationLanguage(switched);
+      const detectedLanguage=window.GDSProductGuide.detectLanguage?.(q)||'en';
+      if(selectedLanguage==='auto'&&conversationLanguage==='auto'&&detectedLanguage!=='en')lockConversationLanguage(detectedLanguage);
+      const language=selectedLanguage==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):selectedLanguage;
       const result=await (window.GDSProductGuide.answerAsync?.(q,'public',lastTopic,language)||Promise.resolve(window.GDSProductGuide.answer(q,'public',lastTopic)));
       lastTopic=result.topic||lastTopic;lastLanguage=result.language||window.GDSProductGuide.detectLanguage?.(q)||'en';
       wait.remove();addMessage('ai',result.text,'AI product guidance');setQuick(result.suggestions);satisfaction.hidden=false;await speak(result.text,lastLanguage);
@@ -185,7 +215,7 @@
       return false;
     }
     const selected=$('#guide-language')?.value||'auto';
-    const lang=selected==='auto'?(lastLanguage&&lastLanguage!=='en'?lastLanguage:'en'):selected;
+    const lang=selected==='auto'?activeInputLanguage():selected;
     recognition.lang=speechLocale(lang);
     try{
       setVoiceStatus('Server transcription unavailable. Switching to device recognition in '+recognition.lang+'…','listening');
@@ -235,14 +265,17 @@
         cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
         if(!speechStarted||blob.size<900){setVoiceStatus('I did not detect clear speech. Switching to device recognition…','limited');startBrowserRecognitionFallback();return}
-        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');
+        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',($('#guide-language')?.value||'auto')==='auto'?(conversationLanguage!=='auto'?conversationLanguage:'auto'):$('#guide-language').value);
         setVoiceStatus('Understanding what you said…','listening');
         try{
           const r=await fetch('/api/product-guide/transcribe',{method:'POST',credentials:'same-origin',body:fd});
           const d=await r.json().catch(()=>({}));
           if(!r.ok||!String(d.text||'').trim())throw new Error(d.error||'Transcription failed.');
           const transcript=String(d.text).trim();
-          input.value=transcript;lastLanguage=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';resize();
+          input.value=transcript;
+          const switched=languageSwitch(transcript),detected=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';
+          if(switched)lockConversationLanguage(switched);else if(($('#guide-language')?.value||'auto')==='auto'&&conversationLanguage==='auto'&&detected!=='en')lockConversationLanguage(detected);
+          lastLanguage=conversationLanguage!=='auto'?conversationLanguage:detected;resize();
           setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
           await ask(transcript);
         }catch(e){
@@ -264,7 +297,7 @@
     const select=document.createElement('select');select.id='guide-language';select.className='guide-language';select.title='Reply and voice-input language';select.setAttribute('aria-label','Reply language');select.innerHTML='<option value="auto">Auto language</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option><option value="pa">Punjabi</option><option value="ar">Arabic</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="es">Spanish</option><option value="fr">French</option>';
     const savedLanguage=localStorage.getItem('superpro_guide_language');if([...select.options].some(o=>o.value===savedLanguage))select.value=savedLanguage;
     guideHeader.prepend(voice);guideHeader.prepend(select);
-    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);lastLanguage=select.value==='auto'?'en':select.value;if(recognition)recognition.lang=speechLocale(lastLanguage);setVoiceStatus(select.value==='auto'?'Auto language is on. Typed text and microphone audio are detected automatically using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
+    select.onchange=()=>{localStorage.setItem('superpro_guide_language',select.value);if(select.value==='auto'){conversationLanguage='auto';localStorage.removeItem('superpro_conversation_language');lastLanguage='en'}else lockConversationLanguage(select.value);if(recognition)recognition.lang=speechLocale(activeInputLanguage());setVoiceStatus(select.value==='auto'?'Auto language is on. Typed text and microphone audio are detected automatically using the server transcription service when available.':`Voice input and replies set to ${select.selectedOptions[0].textContent}. Super Pro will prefer a matching installed voice and otherwise request this locale from the device speech service.`,'ready')};
     voice.onchange=()=>{localStorage.setItem('superpro_voice_preference',voice.value);setVoiceStatus(`Voice preference set to ${voice.selectedOptions[0].textContent.replace('Voice: ','')}. Language matching takes priority; gender preference is applied only when the device exposes a suitable named voice.`,'ready')};
   }
 

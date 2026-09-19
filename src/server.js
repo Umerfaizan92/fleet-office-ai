@@ -2611,7 +2611,8 @@ async function streamGeminiSpeech(req,res,max=3500){
   const model=meaningfulConfigValue(env.GEMINI_TTS_MODEL)?String(env.GEMINI_TTS_MODEL).trim():'gemini-3.1-flash-tts-preview';
   const prompt=`${speechInstructions(parsed.data.language,parsed.data.voice)}\n\nRead the following reply faithfully. Do not add, remove or translate content:\n${parsed.data.text}`;
   const controller=new AbortController();
-  req.on('close',()=>controller.abort());
+  req.on('aborted',()=>controller.abort());
+  res.on('close',()=>{if(!res.writableEnded)controller.abort()});
   try{
     const upstream=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,{
       method:'POST',

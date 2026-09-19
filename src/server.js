@@ -2576,7 +2576,7 @@ app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,(req,res)=>s
 const voiceInputUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ok=/^(audio\/|video\/webm)/i.test(String(file.mimetype||''));cb(ok?null:new Error('Unsupported microphone audio format.'),ok)}});
 async function transcribeWithGemini(file,requested='auto'){
   const key=geminiApiKey();if(!key)throw new Error('Gemini free transcription is not configured.');
-  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim():'gemini-2.5-flash';
+  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim():'gemini-3.5-flash-lite';
   const mime=file.mimetype||'audio/webm';const prompt=requested==='auto'
     ? 'Transcribe the speech exactly. Preserve the language and writing style used by the speaker. For Urdu, Hindi or Punjabi spoken in Roman/Latin form, return a natural Roman-script transcription when that is what was spoken. Return transcript text only, with no labels, explanation, timestamps or markdown.'
     : `Transcribe the speech exactly in language code ${requested}. Return transcript text only, with no labels, explanation, timestamps or markdown.`;

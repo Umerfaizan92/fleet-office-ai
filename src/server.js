@@ -2485,6 +2485,39 @@ app.post('/api/saas/account/deletion/cancel',requireSaasUser,(req,res)=>{
   saasAudit(req,'account.deletion_cancelled','organisation',req.saas.organisation_id,{request_id:row.id});
   res.json({ok:true,message:'Account deletion has been cancelled. Your account and data remain preserved.'});
 });
+
+function completeScheduledAccountDeletion(requestRow){
+  const organisationId=String(requestRow.organisation_id||'');
+  if(!organisationId)return false;
+  const memberIds=db.prepare(`SELECT user_id FROM memberships WHERE organisation_id=?`).all(organisationId).map(row=>row.user_id);
+  const completedAt=new Date().toISOString();
+  db.transaction(()=>{
+    // Revoke all sessions belonging to users of this workspace before removing
+    // tenant data. Users who also belong to another organisation are retained.
+    for(const userId of memberIds)db.prepare(`DELETE FROM user_sessions WHERE user_id=?`).run(userId);
+    db.prepare(`DELETE FROM organisations WHERE id=?`).run(organisationId);
+    for(const userId of memberIds){
+      const remaining=db.prepare(`SELECT COUNT(*) AS count FROM memberships WHERE user_id=?`).get(userId);
+      if(Number(remaining?.count||0)===0)db.prepare(`DELETE FROM users WHERE id=?`).run(userId);
+    }
+    db.prepare(`UPDATE account_deletion_requests SET status='completed',completed_at=?,last_message=? WHERE id=?`).run(completedAt,'Customer-confirmed deletion completed after the cancellation window.',requestRow.id);
+  })();
+  return true;
+}
+function processEligibleAccountDeletions(){
+  const now=new Date().toISOString();
+  const rows=db.prepare(`SELECT * FROM account_deletion_requests WHERE status='scheduled' AND eligible_after IS NOT NULL AND eligible_after<=? ORDER BY eligible_after LIMIT 25`).all(now);
+  for(const row of rows){
+    try{
+      if(completeScheduledAccountDeletion(row))console.log('[ACCOUNT] Completed customer-confirmed deletion request',row.id);
+    }catch(err){
+      console.error('[ACCOUNT] Failed scheduled deletion',row.id,err.message);
+      try{db.prepare(`UPDATE account_deletion_requests SET last_message=? WHERE id=?`).run(('Deletion completion failed and will retry: '+err.message).slice(0,800),row.id)}catch{}
+    }
+  }
+}
+setTimeout(processEligibleAccountDeletions,30*1000).unref?.();
+setInterval(processEligibleAccountDeletions,60*60*1000).unref?.();
 const productGuideLimiter=rateLimit({windowMs:60*1000,limit:180,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'AI guide is receiving unusually high traffic. Please retry shortly.'}});
 function detectGuideLanguage(text){
   const t=String(text||''),normalized=t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ').trim(),words=normalized.split(/\s+/).filter(Boolean),set=new Set(words);

@@ -278,7 +278,59 @@ $('.search-button')?.addEventListener('click',()=>openFinder());
 finder.querySelector('input').addEventListener('input',scheduleFinderSearch);
 finder.addEventListener('close',stopFinderVoice);
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#workspace').hidden){e.preventDefault();openFinder()}});
-(()=>{const mic=finder.querySelector('#finder-mic'),R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){mic.title='Voice input is not supported in this browser.';return}const recognition=new R();recognition.lang=navigator.language||'en-AU';recognition.interimResults=true;recognition.onstart=()=>{mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening…'};recognition.onresult=e=>{let spoken='';for(let i=e.resultIndex;i<e.results.length;i++)spoken+=e.results[i][0].transcript;finder.querySelector('input').value=spoken;scheduleFinderSearch()};recognition.onend=()=>{mic.classList.remove('listening');mic.textContent='🎙 Talk'};recognition.onerror=e=>{mic.classList.remove('listening');mic.textContent='🎙 Talk';$('#finder-status').textContent=e.error==='not-allowed'?'Microphone permission is blocked.':'Voice input could not start.'};mic.onclick=()=>recognition.start()})();
+(()=>{
+  const mic=finder.querySelector('#finder-mic'),R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  let recorder=null,stream=null,listening=false,recognition=null;
+  const finish=()=>{listening=false;mic.classList.remove('listening');mic.textContent='🎙 Talk'};
+  function browserFallback(){
+    if(!R){finish();$('#finder-status').textContent='Server transcription is unavailable and this browser has no speech recognition. Type your request instead.';return}
+    if(!recognition){
+      recognition=new R();recognition.interimResults=true;recognition.continuous=false;recognition.lang=navigator.language||'en-AU';
+      recognition.onstart=()=>{listening=true;mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening with device recognition…'};
+      recognition.onresult=e=>{let spoken='';for(let i=e.resultIndex;i<e.results.length;i++)spoken+=e.results[i][0].transcript;finder.querySelector('input').value=spoken.trim();scheduleFinderSearch()};
+      recognition.onend=finish;
+      recognition.onerror=e=>{finish();$('#finder-status').textContent=e.error==='not-allowed'?'Microphone permission is blocked.':'Voice recognition could not start.'};
+    }
+    try{recognition.start()}catch{finish()}
+  }
+  async function start(){
+    if(listening){if(recorder?.state==='recording')recorder.stop();else try{recognition?.stop()}catch{};return}
+    stopFinderVoice();
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){browserFallback();return}
+    let chunks=[];
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
+      recorder=new MediaRecorder(stream,preferred?{mimeType:preferred}:undefined);
+      recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+      recorder.onstart=()=>{listening=true;mic.classList.add('listening');mic.textContent='Listening…';$('#finder-status').textContent='Listening with automatic language detection…'};
+      recorder.onstop=async()=>{
+        finish();stream?.getTracks().forEach(t=>t.stop());
+        const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
+        if(!blob.size){browserFallback();return}
+        const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');
+        $('#finder-status').textContent='Detecting language and transcribing…';
+        try{
+          const r=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});
+          const d=await r.json().catch(()=>({}));
+          if(!r.ok||!d.text)throw new Error(d.error||'Transcription failed.');
+          finder.querySelector('input').value=d.text;
+          $('#finder-status').textContent=`Detected ${String(d.language||'auto').toUpperCase()} · searching…`;
+          scheduleFinderSearch();
+        }catch(err){
+          $('#finder-status').textContent='Server transcription unavailable. Switching to device recognition…';
+          setTimeout(browserFallback,120);
+        }
+      };
+      recorder.start();setTimeout(()=>{if(recorder?.state==='recording')recorder.stop()},15000);
+    }catch(err){
+      stream?.getTracks().forEach(t=>t.stop());finish();
+      if(err?.name==='NotAllowedError'){$('#finder-status').textContent='Microphone permission is blocked.';return}
+      browserFallback();
+    }
+  }
+  mic.onclick=start;
+})();
 $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashboard');note('Review the command centre for current activity and attention items.');});
 
 // Content Studio source library — local workspace organisation layer

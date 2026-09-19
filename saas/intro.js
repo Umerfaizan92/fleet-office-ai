@@ -258,7 +258,7 @@
 
   async function streamServerSpeech(text,lang,run){
     const ctx=await ensurePlaybackContext();
-    if(!ctx||run!==speechRun||!ReadableStream)return {ok:false,reason:'stream playback unavailable'};
+    if(!ctx||run!==speechRun||typeof ReadableStream==='undefined')return {ok:false,reason:'stream playback unavailable'};
     const controller=new AbortController();
     let firstAudio=false,firstTimer=setTimeout(()=>{if(!firstAudio)controller.abort('first-audio-timeout')},7000);
     try{

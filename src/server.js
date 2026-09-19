@@ -4035,7 +4035,6 @@ app.post('/api/admin/ai-quality/check',requireAdmin,async(req,res)=>{
   const parsed=z.object({task_type:z.string().trim().min(2).max(100),hypothesis:z.string().max(2000).optional(),maker_output:z.string().trim().min(2).max(50000),threshold:z.coerce.number().min(0.5).max(1).default(0.8)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Provide a maker output and quality threshold.'});
   const text=parsed.data.maker_output;const checks=[['non_empty',text.length>=20],['no_secret_claim',!/api[_ -]?key\s*[:=]\s*\S+/i.test(text)],['no_success_fabrication',!/successfully (sent|published|paid|transferred)/i.test(text)],['approval_boundary',!/automatically (pay|fire|hire|publish|send|transfer)/i.test(text)||/approval|authoris|human/i.test(text)],['clear_structure',text.split(/\n|\.|\?|!/).filter(Boolean).length>=2]];
   const passed=checks.filter(x=>x[1]).length;let score=passed/checks.length;let status=score>=parsed.data.threshold?'pass':'review';let providerReview=null;
-  let providerReview=null;
   if(resolveAiProviderConfig()){
     try{
       const ai=await generateAiText({

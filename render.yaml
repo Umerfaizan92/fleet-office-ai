@@ -2,7 +2,7 @@ services:
   - type: web
     name: super-pro-ai-office-manager
     runtime: node
-    plan: starter
+    plan: free
     branch: audit-production-2026-09-19
     buildCommand: npm ci && npm run validate:final && npm run quality:check
     startCommand: npm start
@@ -12,9 +12,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_PATH
-        value: /var/data/super-pro.sqlite
+        value: ./data/super-pro.sqlite
       - key: UPLOAD_DIR
-        value: /var/data/uploads
+        value: ./data/uploads
       - key: SAAS_VERIFICATION_TEST_MODE
         value: "0"
       - key: FREE_AI_MODE
@@ -55,7 +55,3 @@ services:
         sync: false
       - key: ABR_GUID
         sync: false
-    disk:
-      name: super-pro-data
-      mountPath: /var/data
-      sizeGB: 5

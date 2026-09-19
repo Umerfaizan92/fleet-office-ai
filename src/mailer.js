@@ -247,3 +247,39 @@ export async function sendVoiceEnquiryNotification(env, { to, enquiry }) {
   if (error) throw new Error(`Voice enquiry email failed: ${error.message || JSON.stringify(error)}`);
   return { sent: true, email_id: data?.id || null };
 }
+
+
+export async function sendPlatformAnnouncementEmail(env, { to, announcement }) {
+  if (!usableEnvValue(env.RESEND_API_KEY) || !to) return { sent:false, reason:'announcement_email_not_configured' };
+  const resend = new Resend(env.RESEND_API_KEY);
+  const from =
+    normaliseSender(env.PLATFORM_NOTICE_FROM, 'Super Pro AI Office Manager Updates') ||
+    normaliseSender(env.SAAS_VERIFY_FROM, 'Super Pro AI Office Manager Updates') ||
+    normaliseSender(env.NOTIFY_FROM, 'Super Pro AI Office Manager Updates') ||
+    'Super Pro AI Office Manager Updates <security@fleetparlour.com.au>';
+
+  const lines = [
+    'SUPER PRO AI OFFICE MANAGER — PLATFORM NOTICE',
+    '',
+    `Reference: ${announcement.reference_code}`,
+    `Type: ${String(announcement.kind||'notice').replaceAll('_',' ')}`,
+    `Severity: ${announcement.severity||'info'}`,
+    `Title: ${announcement.title}`,
+    '',
+    announcement.message
+  ];
+  if (announcement.starts_at) lines.push('', `Starts: ${announcement.starts_at}`);
+  if (announcement.expected_end_at) lines.push(`Expected completion: ${announcement.expected_end_at}`);
+  if (announcement.before_summary) lines.push('', 'BEFORE', announcement.before_summary);
+  if (announcement.after_summary) lines.push('', 'NOW', announcement.after_summary);
+  lines.push('', 'You can also review this notice from the notification bell after signing in.');
+
+  const { data, error } = await resend.emails.send({
+    from,
+    to:[to],
+    subject:`[${announcement.reference_code}] ${announcement.title}`,
+    text:lines.join('\n')
+  });
+  if (error) throw new Error(`Platform notice email failed: ${error.message || JSON.stringify(error)}`);
+  return { sent:true, email_id:data?.id||null };
+}

@@ -35,7 +35,7 @@ add('memory:current-conversation',guide.includes('superpro_ai_memory_current')&&
 add('ai:central-provider',server.includes('generateAiText')&&shim.includes('resolveAiProviderConfig'));
 add('ai:strict-free-mode',shim.includes('if (freeAiModeEnabled()) return gemini')&&shim.includes('if (freeAiModeEnabled()) return null'));
 add('ai:gemini-free',shim.includes('generativelanguage.googleapis.com')&&server.includes('GEMINI_TTS_MODEL'));
-add('ai:operations-resilient',server.includes('local-operational-fallback')&&server.includes('/api/saas/ai/threads')&&ops.includes('/api/saas/ai/threads'));
+add('ai:operations-resilient',server.includes('local-operational-fallback')&&server.includes('/api/saas/ai/threads')&&ops.includes('GDSProductGuide')&&ops.includes('answerAsync'));
 add('ai:content-studio-live',server.includes('/api/saas/content/ai-spec')&&app.includes('/api/saas/content/ai-spec'));
 add('ai:global-search-stt',app.includes('/api/saas/voice/transcribe')&&app.includes('automatic language detection'));
 add('ai:operations-status',ops.includes('/api/saas/ai/status')&&ops.includes('startBrowserRecognitionFallback'));

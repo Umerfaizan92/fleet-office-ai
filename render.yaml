@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: super-pro-ai-office-manager
+    runtime: node
+    plan: starter
+    branch: audit-production-2026-09-19
+    buildCommand: npm ci && npm run validate:final && npm run quality:check
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/super-pro.sqlite
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: SAAS_VERIFICATION_TEST_MODE
+        value: "0"
+      - key: FREE_AI_MODE
+        value: "1"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SAAS_SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TELNYX_API_KEY
+        sync: false
+      - key: TELNYX_CONNECTION_ID
+        sync: false
+      - key: TELNYX_PHONE_NUMBER
+        sync: false
+      - key: TELNYX_FROM_NUMBER
+        sync: false
+      - key: TELNYX_AI_ASSISTANT_ID
+        sync: false
+      - key: TELNYX_PUBLIC_KEY
+        sync: false
+      - key: BUSINESS_PRIMARY_NUMBER
+        sync: false
+      - key: OWNER_PRIVATE_TRANSFER_NUMBER
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SAAS_VERIFY_FROM
+        sync: false
+      - key: ABR_GUID
+        sync: false
+    disk:
+      name: super-pro-data
+      mountPath: /var/data
+      sizeGB: 5

@@ -1303,6 +1303,28 @@ export function createDb(databasePath) {
       ON account_recovery_challenges(expires_at);
     CREATE INDEX IF NOT EXISTS idx_recovery_user
       ON account_recovery_challenges(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS account_deletion_requests (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT,
+      requested_by_user_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending_verification',
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      eligible_after TEXT,
+      requested_at TEXT NOT NULL,
+      confirmed_at TEXT,
+      cancelled_at TEXT,
+      completed_at TEXT,
+      last_message TEXT,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE SET NULL,
+      FOREIGN KEY(requested_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_account_deletion_org
+      ON account_deletion_requests(organisation_id, requested_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_account_deletion_status
+      ON account_deletion_requests(status, eligible_after);
   `);
 
   // v16.5 industry-aware workspace and official-source monitoring.

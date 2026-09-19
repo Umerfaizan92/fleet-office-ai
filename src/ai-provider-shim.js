@@ -189,13 +189,13 @@ function syntheticChatResponse(text, provider, model) {
     superpro_provider:provider
   }), { status:200, headers:{ 'content-type':'application/json' } });
 }
-async function callOpenAI(base,key,model,messages,id) {
+async function callOpenAI(base,key,model,messages,id,options={}) {
   const instructions = `${PRODUCT_SYSTEM}\n\nAPPLICATION INSTRUCTIONS\n${systemText(messages)}`;
   const input = [...historyFor(id), ...currentMessages(messages)];
   const response = await nativeFetch(`${openAiBase(base)}/responses`, {
     method:'POST',
     headers:{ Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
-    body:JSON.stringify({ model, instructions, input, max_output_tokens:900, store:false }),
+    body:JSON.stringify({ model, instructions, input, max_output_tokens:Number(options.max_output_tokens||900), store:false }),
     signal:providerSignal()
   });
   const data = await response.json().catch(()=>({}));
@@ -206,18 +206,22 @@ async function callOpenAI(base,key,model,messages,id) {
   }
   return text;
 }
-async function callGemini(base,key,model,messages,id) {
+async function callGemini(base,key,model,messages,id,options={}) {
   const instructions = `${PRODUCT_SYSTEM}\n\nAPPLICATION INSTRUCTIONS\n${systemText(messages)}`;
   const all = [...historyFor(id), ...currentMessages(messages)];
   const contents = all.map(m => ({ role:m.role === 'assistant' ? 'model' : 'user', parts:[{ text:m.content }] }));
   const cleanModel = String(model || '').replace(/^models\//, '');
+  const thinkingLevel=String(options.thinking_level||'medium');
   const response = await nativeFetch(`${geminiRoot(base)}/models/${encodeURIComponent(cleanModel)}:generateContent`, {
     method:'POST',
     headers:{ 'x-goog-api-key':key, 'Content-Type':'application/json' },
     body:JSON.stringify({
       system_instruction:{ parts:[{ text:instructions }] },
       contents,
-      generationConfig:{ maxOutputTokens:900, temperature:0.3 }
+      generationConfig:{
+        maxOutputTokens:Number(options.max_output_tokens||900),
+        thinkingConfig:{thinkingLevel}
+      }
     }),
     signal:providerSignal()
   });
@@ -229,12 +233,12 @@ async function callGemini(base,key,model,messages,id) {
   }
   return text;
 }
-async function callGeneric(base,key,model,messages,id) {
+async function callGeneric(base,key,model,messages,id,options={}) {
   const history = historyFor(id);
   const body = {
     model,
     temperature:0.3,
-    max_tokens:900,
+    max_tokens:Number(options.max_output_tokens||900),
     messages:[
       { role:'system', content:`${PRODUCT_SYSTEM}\n\nAPPLICATION INSTRUCTIONS\n${systemText(messages)}` },
       ...history,
@@ -249,11 +253,11 @@ async function callGeneric(base,key,model,messages,id) {
   if (!text) throw new Error('Compatible provider returned no text.');
   return text;
 }
-async function callProvider(base,key,model,messages,id) {
+async function callProvider(base,key,model,messages,id,options={}) {
   const host = (()=>{try{return new URL(base).hostname.toLowerCase()}catch{return ''}})();
-  if (host === 'api.openai.com' || host.endsWith('.openai.com')) return callOpenAI(base,key,model,messages,id);
-  if (host === 'generativelanguage.googleapis.com') return callGemini(base,key,model,messages,id);
-  return callGeneric(base,key,model,messages,id);
+  if (host === 'api.openai.com' || host.endsWith('.openai.com')) return callOpenAI(base,key,model,messages,id,options);
+  if (host === 'generativelanguage.googleapis.com') return callGemini(base,key,model,messages,id,options);
+  return callGeneric(base,key,model,messages,id,options);
 }
 function secondaryConfig(primary={}) {
   // Strict free mode must never fall through to OpenAI or another paid
@@ -261,7 +265,7 @@ function secondaryConfig(primary={}) {
   if (freeAiModeEnabled()) return null;
   const candidates = [
     completeProvider(env.AI_CHECKER_PROVIDER_BASE_URL,env.AI_CHECKER_API_KEY,env.AI_CHECKER_MODEL) ? { base:env.AI_CHECKER_PROVIDER_BASE_URL, key:env.AI_CHECKER_API_KEY, model:env.AI_CHECKER_MODEL } : null,
-    meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-2.5-flash' } : null,
+    meaningfulConfigValue(env.GEMINI_API_KEY)||meaningfulConfigValue(env.GOOGLE_AI_API_KEY) ? { base:'https://generativelanguage.googleapis.com/v1beta', key:meaningfulConfigValue(env.GEMINI_API_KEY)?env.GEMINI_API_KEY:env.GOOGLE_AI_API_KEY, model:meaningfulConfigValue(env.GEMINI_MODEL)?env.GEMINI_MODEL:'gemini-3.5-flash' } : null,
     meaningfulConfigValue(env.OPENAI_API_KEY) ? { base:'https://api.openai.com/v1', key:env.OPENAI_API_KEY, model:meaningfulConfigValue(env.OPENAI_MODEL)?env.OPENAI_MODEL:'gpt-5.6-luna' } : null
   ].filter(Boolean).filter(x=>completeProvider(x.base,x.key,x.model));
   return candidates.find(x => !(x.base === primary.base && x.key === primary.key && x.model === primary.model)) || null;
@@ -275,22 +279,41 @@ export function aiProviderStatus() {
   return { configured:true, provider, model:primary.model, source:primary.source };
 }
 
-export async function generateAiText({ messages=[], system='', conversation_id=null, remember_conversation=true }={}) {
+function answerLooksComplete(text){
+  const t=String(text||'').trim();
+  if(!t)return false;
+  return /[.!?؟۔…。！？]["'”’)}\]]*$/.test(t);
+}
+
+export async function generateAiText({ messages=[], system='', conversation_id=null, remember_conversation=true, thinking_level='medium', max_output_tokens=900, ensure_complete=false }={}) {
   const primary = resolveAiProviderConfig();
   if (!primary) throw new Error('AI provider is not configured. Add a Gemini API key for free-first mode, or configure another AI provider.');
   const prepared = system ? [{role:'system',content:String(system)}, ...messages] : messages;
   const id = conversation_id || conversationId(prepared);
   const currentUser = [...prepared].reverse().find(m=>m?.role==='user')?.content || '';
-  try {
-    const text = await callProvider(primary.base,primary.key,primary.model,prepared,id);
+  const options={thinking_level,max_output_tokens};
+
+  const finish=async(provider,providerName,source)=>{
+    let text=await callProvider(provider.base,provider.key,provider.model,prepared,id,options);
+    if(ensure_complete&&!answerLooksComplete(text)){
+      const repair=[
+        ...prepared,
+        {role:'assistant',content:text},
+        {role:'user',content:'Your previous answer was cut off. Rewrite the complete answer from the beginning in the same requested language and format. Keep it concise, finish every sentence, do not mention truncation, and do not add unrelated information.'}
+      ];
+      text=await callProvider(provider.base,provider.key,provider.model,repair,id,{thinking_level:'minimal',max_output_tokens:Math.max(2048,Number(max_output_tokens||0))});
+      if(!answerLooksComplete(text))throw new Error('AI provider returned an incomplete answer twice.');
+    }
     if(remember_conversation)remember(id,String(currentUser),text);
-    return { text, provider:aiProviderStatus().provider, model:primary.model, source:primary.source };
+    return {text,provider:providerName,model:provider.model,source};
+  };
+
+  try {
+    return await finish(primary,aiProviderStatus().provider,primary.source);
   } catch (primaryError) {
     const secondary=secondaryConfig(primary);
     if(!secondary)throw primaryError;
-    const text=await callProvider(secondary.base,secondary.key,secondary.model,prepared,id);
-    if(remember_conversation)remember(id,String(currentUser),text);
-    return { text, provider:'secondary', model:secondary.model, source:'secondary-fallback' };
+    return await finish(secondary,'secondary','secondary-fallback');
   }
 }
 

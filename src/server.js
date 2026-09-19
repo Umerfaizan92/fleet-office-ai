@@ -2053,24 +2053,20 @@ const ARCHIVE_RETENTION_DAYS=Math.max(30,Number(env.ARCHIVE_RETENTION_DAYS||183)
 const FINAL_RESTORE_WINDOW_DAYS=Math.max(1,Number(env.FINAL_RESTORE_WINDOW_DAYS||14));
 const DAY_MS=86400000;
 function subscriptionLifecycle(subscription,nowMs=Date.now()){
-  if(!subscription)return {state:'unknown',access:'restricted'};
-  if(subscription.payment_status==='paid'||subscription.status==='active')return {state:'active',access:'full'};
+  if(!subscription)return {state:'unknown',access:'restricted',preserved:true,automatic_deletion:false};
+  if(subscription.payment_status==='paid'||subscription.status==='active')return {state:'active',access:'full',preserved:true,automatic_deletion:false};
   const trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;
-  // Legacy/imported workspaces may not yet have a trial end. Never misclassify them as deletion-due.
-  if(!trialEnd)return {state:'trialing',access:'full',trial_ends_at:null,countdown_ms:null};
-  if(trialEnd&&nowMs<trialEnd)return {state:'trialing',access:'full',trial_ends_at:new Date(trialEnd).toISOString(),countdown_ms:Math.max(0,trialEnd-nowMs)};
-  const restrictEnd=trialEnd+POST_TRIAL_RESTRICT_DAYS*DAY_MS;
-  const retentionEnd=restrictEnd+ARCHIVE_RETENTION_DAYS*DAY_MS;
-  const restoreEnd=retentionEnd+FINAL_RESTORE_WINDOW_DAYS*DAY_MS;
-  if(nowMs<restrictEnd)return {state:'restricted',access:'read_only',restricted_until:new Date(restrictEnd).toISOString(),countdown_ms:restrictEnd-nowMs};
-  if(nowMs<retentionEnd)return {state:'archived',access:'read_only',retention_ends_at:new Date(retentionEnd).toISOString(),countdown_ms:retentionEnd-nowMs};
-  if(nowMs<restoreEnd)return {state:'restore_window',access:'read_only',restore_window_ends_at:new Date(restoreEnd).toISOString(),countdown_ms:restoreEnd-nowMs};
-  return {state:'deletion_due',access:'read_only',deletion_due_at:new Date(restoreEnd).toISOString(),countdown_ms:0};
+  // Customer accounts and data are preserved indefinitely. Trial or billing
+  // status may affect write access in future commercial policy, but it must
+  // never trigger automatic account/data deletion.
+  if(!trialEnd)return {state:'trialing',access:'full',trial_ends_at:null,countdown_ms:null,preserved:true,automatic_deletion:false};
+  if(nowMs<trialEnd)return {state:'trialing',access:'full',trial_ends_at:new Date(trialEnd).toISOString(),countdown_ms:Math.max(0,trialEnd-nowMs),preserved:true,automatic_deletion:false};
+  return {state:'preserved',access:'read_only',trial_ended_at:new Date(trialEnd).toISOString(),countdown_ms:0,preserved:true,automatic_deletion:false};
 }
 function syncSubscriptionLifecycle(organisationId){
   const sub=db.prepare(`SELECT * FROM organisation_subscriptions WHERE organisation_id=?`).get(organisationId);if(!sub)return {subscription:null,lifecycle:{state:'unknown',access:'restricted'}};
   const life=subscriptionLifecycle(sub),now=new Date().toISOString();
-  const fields={status:life.state==='trialing'?'trialing':life.state==='active'?'active':life.state,payment_status:sub.payment_status||'unpaid',restricted_at:life.state==='restricted'?(sub.restricted_at||now):sub.restricted_at,archive_started_at:life.state==='archived'?(sub.archive_started_at||now):sub.archive_started_at,retention_ends_at:life.retention_ends_at||sub.retention_ends_at,restore_window_ends_at:life.restore_window_ends_at||sub.restore_window_ends_at,deletion_due_at:life.deletion_due_at||sub.deletion_due_at,updated_at:now};
+  const fields={status:life.state==='trialing'?'trialing':life.state==='active'?'active':life.state,payment_status:sub.payment_status||'unpaid',restricted_at:life.state==='preserved'?(sub.restricted_at||now):sub.restricted_at,archive_started_at:null,retention_ends_at:null,restore_window_ends_at:null,deletion_due_at:null,updated_at:now};
   db.prepare(`UPDATE organisation_subscriptions SET status=@status,payment_status=@payment_status,restricted_at=@restricted_at,archive_started_at=@archive_started_at,retention_ends_at=@retention_ends_at,restore_window_ends_at=@restore_window_ends_at,deletion_due_at=@deletion_due_at,updated_at=@updated_at WHERE organisation_id=@organisation_id`).run({...fields,organisation_id:organisationId});
   return {subscription:{...sub,...fields},lifecycle:life};
 }
@@ -2455,6 +2451,39 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
 });
 
 app.post('/api/saas/logout',requireSaasUser,(req,res)=>{const raw=cookieValue(req,sessionCookieName);db.prepare(`DELETE FROM user_sessions WHERE token_hash=?`).run(sha256(raw));res.setHeader('Set-Cookie',`${sessionCookieName}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`);res.json({ok:true})});
+app.get('/api/saas/account/lifecycle',requireSaasUser,(req,res)=>{
+  const pending=db.prepare(`SELECT id,status,requested_at,confirmed_at,eligible_after,expires_at,last_message FROM account_deletion_requests WHERE organisation_id=? AND status IN ('pending_verification','scheduled') ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);
+  res.json({ok:true,account:{status:'active',automatic_deletion:false,preserved_indefinitely:true},subscription:req.subscription_lifecycle,deletion_request:pending||null});
+});
+app.post('/api/saas/account/deletion/start',requireSaasUser,async(req,res)=>{
+  if(String(req.saas.role||'').toLowerCase()!=='owner')return res.status(403).json({ok:false,error:'Only the workspace owner can request deletion of the business account.'});
+  const user=db.prepare(`SELECT * FROM users WHERE id=? AND status='active'`).get(req.saas.user_id);if(!user)return res.status(404).json({ok:false,error:'Account not found.'});
+  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=? WHERE organisation_id=? AND status IN ('pending_verification','scheduled')`).run(new Date().toISOString(),req.saas.organisation_id);
+  const id=crypto.randomUUID(),code=otpCode(),now=new Date(),expires=new Date(now.getTime()+10*60*1000);
+  db.prepare(`INSERT INTO account_deletion_requests (id,organisation_id,requested_by_user_id,status,code_hash,expires_at,requested_at,last_message) VALUES (?,?,?,?,?,?,?,?)`).run(id,req.saas.organisation_id,req.saas.user_id,'pending_verification',otpHash(id,code),expires.toISOString(),now.toISOString(),'Deletion verification started');
+  const delivery=await sendSaasVerificationEmail(env,{to:user.email,code,businessName:req.saas.organisation_name||'Super Pro AI Office Manager'}).catch(err=>({sent:false,reason:err.message}));
+  logVerificationDelivery({purpose:'account_deletion',subjectId:id,userId:user.id,channel:'email',destination:user.email,provider:'resend',messageId:delivery.email_id,status:delivery.sent?'sent':'failed',reason:delivery.reason});
+  if(!delivery.sent)return res.status(503).json({ok:false,error:'Deletion verification email could not be sent. Your account has not been scheduled for deletion.',request_id:id});
+  res.status(202).json({ok:true,request_id:id,expires_at:expires.toISOString(),destination:maskEmail(user.email),message:'A verification code was sent to your verified email. No account or data deletion is scheduled until you confirm the code.'});
+});
+app.post('/api/saas/account/deletion/confirm',requireSaasUser,(req,res)=>{
+  if(String(req.saas.role||'').toLowerCase()!=='owner')return res.status(403).json({ok:false,error:'Only the workspace owner can confirm deletion.'});
+  const parsed=z.object({request_id:z.string().uuid(),code:z.string().regex(/^\d{6}$/),confirm_text:z.literal('DELETE MY ACCOUNT')}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter the six-digit code and type DELETE MY ACCOUNT exactly to confirm.'});
+  const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE id=? AND organisation_id=? AND status='pending_verification'`).get(parsed.data.request_id,req.saas.organisation_id);
+  if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'This deletion verification request expired. Start again.'});
+  const expected=otpHash(row.id,parsed.data.code);if(expected.length!==row.code_hash.length||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(row.code_hash)))return res.status(401).json({ok:false,error:'The deletion verification code is incorrect.'});
+  const confirmedAt=new Date(),eligibleAfter=new Date(confirmedAt.getTime()+7*DAY_MS);
+  db.prepare(`UPDATE account_deletion_requests SET status='scheduled',confirmed_at=?,eligible_after=?,last_message=? WHERE id=?`).run(confirmedAt.toISOString(),eligibleAfter.toISOString(),'Customer confirmed deletion; seven-day cancellation window active.',row.id);
+  saasAudit(req,'account.deletion_scheduled','organisation',req.saas.organisation_id,{eligible_after:eligibleAfter.toISOString(),automatic:false});
+  res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 7-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date.'});
+});
+app.post('/api/saas/account/deletion/cancel',requireSaasUser,(req,res)=>{
+  const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE organisation_id=? AND status='scheduled' ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'No scheduled deletion request was found.'});
+  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=?`).run(new Date().toISOString(),'Customer cancelled account deletion.',row.id);
+  saasAudit(req,'account.deletion_cancelled','organisation',req.saas.organisation_id,{request_id:row.id});
+  res.json({ok:true,message:'Account deletion has been cancelled. Your account and data remain preserved.'});
+});
 const productGuideLimiter=rateLimit({windowMs:60*1000,limit:180,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'AI guide is receiving unusually high traffic. Please retry shortly.'}});
 function detectGuideLanguage(text){
   const t=String(text||''),normalized=t.toLowerCase().replace(/[^a-zà-ÿ]+/g,' ').trim(),words=normalized.split(/\s+/).filter(Boolean),set=new Set(words);
@@ -2494,7 +2523,7 @@ app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prep
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
-app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:ARCHIVE_RETENTION_DAYS,final_restore_window_days:FINAL_RESTORE_WINDOW_DAYS,automatic_deletion:false},note:'Expired unpaid workspaces become read-only. Data deletion is never automatic in this build; deletion_due requires controlled operator/legal-policy review.'})});
+app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
 app.get('/api/saas/billing/providers',requireSaasUser,(req,res)=>res.json({ok:true,providers:[{id:'stripe',name:'Stripe',ready:Boolean(env.STRIPE_SECRET_KEY)},{id:'paypal',name:'PayPal',ready:Boolean(env.PAYPAL_CLIENT_ID&&env.PAYPAL_CLIENT_SECRET)},{id:'bank',name:'Direct bank',ready:Boolean(env.PAYMENT_BANK_INSTRUCTIONS)}],customer_secret_entry:false}));
 app.post('/api/saas/mfa/setup',requireSaasUser,(req,res)=>{const secret=base32Encode(crypto.randomBytes(20));db.prepare(`UPDATE users SET mfa_secret=?,mfa_enabled=0,updated_at=? WHERE id=?`).run(secret,new Date().toISOString(),req.saas.user_id);res.json({ok:true,secret,otpauth_uri:`otpauth://totp/${encodeURIComponent(`Super Pro AI Office Manager:${req.saas.email}`)}?secret=${secret}&issuer=${encodeURIComponent('Super Pro AI Office Manager')}`})});
 app.post('/api/saas/mfa/verify',requireSaasUser,(req,res)=>{const parsed=z.object({code:z.string().regex(/^\d{6}$/)}).safeParse(req.body),user=db.prepare(`SELECT mfa_secret FROM users WHERE id=?`).get(req.saas.user_id);if(!parsed.success||!user?.mfa_secret||!validTotp(user.mfa_secret,parsed.data.code))return res.status(400).json({ok:false,error:'Invalid authentication code.'});db.prepare(`UPDATE users SET mfa_enabled=1,updated_at=? WHERE id=?`).run(new Date().toISOString(),req.saas.user_id);res.json({ok:true,mfa_enabled:true})});

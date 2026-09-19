@@ -2258,6 +2258,20 @@ async function deliverRegistrationCodes(row,emailCode,smsCode){
 
 app.use('/api/saas',(req,res,next)=>{res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('Pragma','no-cache');if(!['GET','HEAD','OPTIONS'].includes(req.method)){const origin=req.get('origin');if(origin){try{const u=new URL(origin);const expectedHost=req.get('host');if(u.host!==expectedHost)return res.status(403).json({ok:false,error:'Cross-origin request blocked.'});}catch{return res.status(403).json({ok:false,error:'Invalid request origin.'});}}}next();});
 
+app.get('/api/saas/industry-registry',requireSaasUser,(req,res)=>{
+  const state=String(req.saas?.address_state||'').trim().toUpperCase();
+  const industries=INDUSTRY_REGISTRY.map(row=>({
+    ...row,
+    sources:industrySources(row,state)
+  }));
+  res.json({
+    ok:true,
+    industries,
+    count:industries.length,
+    general_sources:GENERAL_REGULATORY_SOURCES
+  });
+});
+
 app.get('/api/saas/verification-provider/status',verificationLookupLimiter,async(req,res)=>{
   try{
     const profile=await getTelnyxVerifyProfile();

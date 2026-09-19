@@ -44,11 +44,11 @@ add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server
 add('voice:server-tts',server.includes('/api/saas/voice/speech')&&server.includes('makeGeminiSpeechAudio'));
 add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.includes('transcribeWithGemini'));
 add('voice:browser-fallback',intro.includes('startBrowserRecognitionFallback')&&app.includes('browserSpeak'));
-add('voice:barge-in',intro.includes('stopSpeech()')&&ops.includes('stopSpeech()'));
+add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&intro.includes('r.onstart=()=>{stopSpeech();')&&ops.includes('stopSpeech()'));
 add('voice:male-female-auto',intro.includes('Voice: Female')&&intro.includes('Voice: Male')&&server.includes('geminiVoiceChoice'));
 add('pwa:manifest',index.includes('manifest.webmanifest'));
 add('pwa:private-cache-exclusion',sw.includes("startsWith('/api/')")&&sw.includes("includes('workspace')")&&sw.includes("startsWith('/office/')"));
-add('connections:oauth',server.includes('/api/saas/integrations/oauth/callback/')&&server.includes('saveIntegrationConnection'));
+add('connections:oauth',server.includes('/api/saas/integrations/oauth/:provider/callback')&&server.includes('saveIntegrationConnection'));
 add('connections:no-customer-secrets',server.includes('customer_secret_entry:false'));
 add('security:sessions',server.includes('HttpOnly')&&server.includes('SameSite=Strict'));
 add('security:mfa',server.includes('/api/saas/mfa/setup')&&server.includes('/api/saas/mfa/verify'));

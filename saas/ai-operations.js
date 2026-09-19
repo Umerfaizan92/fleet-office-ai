@@ -46,9 +46,17 @@
     heartbeat=setInterval(()=>{if(run===speechRun&&voiceReplies&&speechSynthesis.paused)speechSynthesis.resume?.()},5000);next();return true
   }
   async function speak(text,lang=lastLanguage){
-    if(!voiceReplies)return;stopSpeech();
-    try{const response=await fetch('/api/saas/voice/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});if(response.ok){const blob=await response.blob();serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.onplay=()=>setStatus(`Speaking naturally in ${speechLocale(lang)} using server AI voice.`,'AI voice');serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setStatus('Voice reply finished. Ask another question whenever you are ready.','AI voice')};serverAudio.onerror=()=>speakBrowser(text,lang);await serverAudio.play();return}}catch{}
-    await speakBrowser(text,lang)
+    if(!voiceReplies)return;
+    const runtime=window.SuperProAIClient;
+    if(runtime){
+      await runtime.ensurePlaybackContext?.();
+      return runtime.speak(text,lang,{
+        voice:voicePreference(),
+        onStatus:(message,state)=>setStatus(message,state==='speaking'?'AI voice':'Voice')
+      });
+    }
+    stopSpeech();
+    return speakBrowser(text,lang);
   }
   function startBrowserRecognitionFallback(){
     if(!recognition){setStatus('Server transcription is unavailable and this browser does not expose speech recognition. Choose a language or type your question.','Voice input unavailable');return false}
@@ -56,9 +64,27 @@
     try{setStatus('Server transcription unavailable. Switching to device recognition in '+recognition.lang+'…','Device recognition');recognition.start();return true}catch{setStatus('Device speech recognition could not start. Tap the microphone again or type your question.','Voice input');return false}
   }
   async function autoListen(){
-    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){if(startBrowserRecognitionFallback())return;setStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','Voice input unavailable');return}
-    if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
-    stopSpeech();let chunks=[];try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};mediaRecorder.onstart=()=>{listening=true;$('#spai-mic')?.classList.add('listening');setStatus('Listening with automatic language detection… speak naturally.','AI transcription')};mediaRecorder.onstop=async()=>{listening=false;$('#spai-mic')?.classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});if(!blob.size)return setStatus('No speech was captured. Try again.','Voice input');const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');setStatus('Detecting language and transcribing…','AI transcription');try{const r=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.error||'Transcription failed.');const input=$('#spai-input');input.value=d.text;lastLanguage=d.language||detectLanguage(d.text);resize();setStatus(`Detected ${lastLanguage.toUpperCase()} · transcription ready.`,'AI transcription');await ask(d.text)}catch(e){setStatus('Server transcription failed. Switching to device recognition…','Device recognition');setTimeout(()=>startBrowserRecognitionFallback(),120)}};mediaRecorder.start();setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},15000)}catch(e){mediaStream?.getTracks().forEach(t=>t.stop());if(e?.name==='NotAllowedError'){setStatus('Microphone permission is blocked. Allow microphone access and try again.','Voice input');return}setStatus('Server microphone capture failed. Switching to device recognition…','Device recognition');startBrowserRecognitionFallback()}
+    const runtime=window.SuperProAIClient;
+    if(runtime){
+      if(runtime.isListening?.()){runtime.stopListening?.();return}
+      stopSpeech();
+      try{
+        const result=await runtime.listen({
+          language:languageValue(),
+          onStatus:(message,state)=>setStatus(message,state==='transcribing'?'AI transcription':'Voice input'),
+          onListening:(active)=>{listening=active;$('#spai-mic')?.classList.toggle('listening',active)}
+        });
+        if(result?.text){
+          const input=$('#spai-input');input.value=result.text;
+          lastLanguage=result.language||detectLanguage(result.text);resize();
+          setStatus(`Detected ${lastLanguage.toUpperCase()} · transcription ready.`,'AI transcription');
+          await ask(result.text);
+        }
+      }catch(e){setStatus(e.message||'Voice transcription failed. Please try again.','Voice input')}
+      return;
+    }
+    if(startBrowserRecognitionFallback())return;
+    setStatus('Voice input is unavailable on this browser/device.','Voice input unavailable');
   }
 
   function addMessage(role,text,label=''){
@@ -121,7 +147,7 @@
     $('#spai-speaker').onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_workspace_voice',voiceReplies?'on':'off');const b=$('#spai-speaker');b.textContent=voiceReplies?'🔊':'🔇';b.classList.toggle('active',voiceReplies);b.setAttribute('aria-pressed',String(voiceReplies));if(!voiceReplies){stopSpeech();setStatus('Spoken replies are off. Text answers remain active.','Voice off')}else setStatus('Spoken replies are on. Server AI voice is preferred; the device voice is used only as a fallback.','Voice on')};
     $('#spai-clear').onclick=()=>{stopSpeech();window.GDSProductGuide?.memory?.clear?.('workspace');$('#spai-log').innerHTML='<div class="spai-msg ai"><span class="spai-avatar">AI</span><div class="spai-bubble" dir="auto"><b>Fresh conversation</b><p dir="auto">Conversation memory on this device has been cleared. Ask a new Super Pro question whenever you are ready.</p></div></div>';lastTopic='';setStatus('Fresh conversation ready.','Memory cleared')};
     $('#spai-form').onsubmit=e=>{e.preventDefault();ask($('#spai-input').value)};$('#spai-input').addEventListener('input',resize);$('#spai-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#spai-form').requestSubmit()}});$('#spai-quick').querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
-    recognition=initRecognition();$('#spai-mic').onclick=()=>{stopSpeech();if(languageValue()==='auto'){autoListen();return}if(!recognition){setStatus('This browser does not expose speech recognition. Automatic server transcription may still be available; choose Auto language or type your question.','Voice input unavailable');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(languageValue());try{recognition.start()}catch{setStatus('Microphone recognition is already starting.','Voice input')}}};
+    recognition=initRecognition();$('#spai-mic').onclick=()=>{stopSpeech();const runtime=window.SuperProAIClient;if(runtime?.isListening?.()){runtime.stopListening();return}if(runtime){autoListen();return}if(languageValue()==='auto'){autoListen();return}if(!recognition){setStatus('This browser does not expose speech recognition. Automatic server transcription may still be available; choose Auto language or type your question.','Voice input unavailable');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(languageValue());try{recognition.start()}catch{setStatus('Microphone recognition is already starting.','Voice input')}}};
     if(speechSupported){refreshVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshVoices)}else{$('#spai-speaker').disabled=true;setStatus('This browser does not expose spoken reply playback. Text and supported microphone input remain available.','Text mode')}
     restoreConversation();refreshProviderStatus();window.dispatchEvent(new CustomEvent('superpro:ai-operations-ready',{detail:{version:VERSION}}));return true
   }

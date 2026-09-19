@@ -202,33 +202,57 @@
       setVoiceStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','limited');return;
     }
     if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
-    stopSpeech();let chunks=[];
+    stopSpeech();let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null,speechStarted=false,silenceSince=0;
+    const cleanupMonitor=()=>{if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);monitorTimer=null;hardStopTimer=null;try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null};
     try{
       mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
       const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
       mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);
       mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      mediaRecorder.onstart=()=>{listening=true;$('#voice-input').classList.add('listening');setVoiceStatus('Listening with automatic language detection… speak naturally.','listening')};
+      mediaRecorder.onstart=()=>{
+        listening=true;$('#voice-input').classList.add('listening');setVoiceStatus('Listening… start speaking. I will answer when you finish.','listening');
+        try{
+          const AC=window.AudioContext||window.webkitAudioContext;
+          if(AC){
+            audioContext=new AC();sourceNode=audioContext.createMediaStreamSource(mediaStream);analyser=audioContext.createAnalyser();analyser.fftSize=1024;sourceNode.connect(analyser);
+            const samples=new Uint8Array(analyser.fftSize),startedAt=Date.now();
+            monitorTimer=setInterval(()=>{
+              if(mediaRecorder?.state!=='recording')return;
+              analyser.getByteTimeDomainData(samples);let sum=0;
+              for(const v of samples){const n=(v-128)/128;sum+=n*n}
+              const rms=Math.sqrt(sum/samples.length),now=Date.now();
+              if(rms>0.025){speechStarted=true;silenceSince=0;setVoiceStatus('I can hear you…','listening')}
+              else if(speechStarted){
+                if(!silenceSince)silenceSince=now;
+                if(now-silenceSince>950)mediaRecorder.stop();
+              }else if(now-startedAt>5000)mediaRecorder.stop();
+            },100);
+          }
+        }catch{}
+        hardStopTimer=setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},12000);
+      };
       mediaRecorder.onstop=async()=>{
-        listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
+        cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
-        if(!blob.size){setVoiceStatus('No speech was captured. Switching to device recognition…','limited');startBrowserRecognitionFallback();return}
+        if(!speechStarted||blob.size<900){setVoiceStatus('I did not detect clear speech. Switching to device recognition…','limited');startBrowserRecognitionFallback();return}
         const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language','auto');
-        setVoiceStatus('Detecting language and transcribing…','listening');
+        setVoiceStatus('Understanding what you said…','listening');
         try{
           const r=await fetch('/api/product-guide/transcribe',{method:'POST',credentials:'same-origin',body:fd});
           const d=await r.json().catch(()=>({}));
-          if(!r.ok||!d.text)throw new Error(d.error||'Transcription failed.');
-          input.value=d.text;lastLanguage=d.language||window.GDSProductGuide?.detectLanguage?.(d.text)||'en';resize();
-          setVoiceStatus('Detected '+lastLanguage.toUpperCase()+' · transcription ready.','ready');await ask(d.text);
+          if(!r.ok||!String(d.text||'').trim())throw new Error(d.error||'Transcription failed.');
+          const transcript=String(d.text).trim();
+          input.value=transcript;lastLanguage=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';resize();
+          setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
+          await ask(transcript);
         }catch(e){
           setVoiceStatus('Server transcription failed. Switching to device recognition…','listening');
           setTimeout(()=>startBrowserRecognitionFallback(),120);
         }
       };
-      mediaRecorder.start();setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},15000);
+      mediaRecorder.start(200);
     }catch(e){
-      mediaStream?.getTracks().forEach(t=>t.stop());
+      cleanupMonitor();mediaStream?.getTracks().forEach(t=>t.stop());
       if(e?.name==='NotAllowedError'){setVoiceStatus('Microphone permission was blocked. Allow microphone access and try again.','limited');return}
       setVoiceStatus('Server microphone capture failed. Switching to device recognition…','listening');startBrowserRecognitionFallback();
     }

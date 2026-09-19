@@ -1381,5 +1381,63 @@ export function createDb(databasePath) {
   const insertRelease = db.prepare(`INSERT OR IGNORE INTO product_release_events (id,version,title,summary,details_json,released_at) VALUES (?,?,?,?,?,?)`);
   for (const row of releaseRows) insertRelease.run(...row);
 
+
+  // Platform-wide customer notices: maintenance, incidents, releases and resolutions.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS platform_announcements (
+      id TEXT PRIMARY KEY,
+      reference_code TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL DEFAULT 'notice',
+      status TEXT NOT NULL DEFAULT 'draft',
+      severity TEXT NOT NULL DEFAULT 'info',
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      before_summary TEXT,
+      after_summary TEXT,
+      starts_at TEXT,
+      expected_end_at TEXT,
+      resolved_at TEXT,
+      publish_at TEXT,
+      audience TEXT NOT NULL DEFAULT 'all',
+      notify_in_app INTEGER NOT NULL DEFAULT 1,
+      notify_email INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS platform_announcement_reads (
+      announcement_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      read_at TEXT NOT NULL,
+      PRIMARY KEY(announcement_id,user_id),
+      FOREIGN KEY(announcement_id) REFERENCES platform_announcements(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS platform_announcement_deliveries (
+      id TEXT PRIMARY KEY,
+      announcement_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      sent_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(announcement_id,user_id),
+      FOREIGN KEY(announcement_id) REFERENCES platform_announcements(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_platform_announcements_status
+      ON platform_announcements(status,publish_at,starts_at);
+    CREATE INDEX IF NOT EXISTS idx_platform_announcement_reads_user
+      ON platform_announcement_reads(user_id,read_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_platform_announcement_deliveries_status
+      ON platform_announcement_deliveries(status,created_at);
+  `);
+
   return db;
 }

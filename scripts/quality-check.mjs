@@ -6,9 +6,9 @@ const exists=p=>fs.existsSync(path.join(root,p));
 const checks=[];const add=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 
 const required=[
-  'src/server.js','src/db.js','src/ai-provider-shim.js',
+  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manifest.webmanifest','saas/sw.js','saas/superpro-icon-192.png','saas/superpro-icon-512.png',
   'office/index.html','office/office.js','office/office-extras.js','office/office-records.js','office/office-insights.js',
@@ -23,7 +23,7 @@ const obsolete=[
 ];
 add('cleanup:no-obsolete-runtime-files',obsolete.every(f=>!exists(f)));
 
-const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
+const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),integrationManager=read('saas/integration-manager.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),integrationRuntime=read('src/integration-runtime.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
 add('brand:super-pro',index.includes('Super Pro AI Office Manager')&&office.includes('Super Pro AI Office Manager'));
 add('runtime:single-guide',index.includes('product-guide.js')&&!index.includes('guide-v16')&&!index.includes('guide-v17'));
 add('runtime:current-workspace-ai',workspace.includes('ai-operations.js')&&workspace.includes('workspace-extras.js'));
@@ -67,6 +67,10 @@ add('deployment:runtime-smoke-gate',render.includes('npm run smoke:test')&&exist
 add('pwa:manifest',index.includes('manifest.webmanifest'));
 add('pwa:private-cache-exclusion',sw.includes("startsWith('/api/')")&&sw.includes("includes('workspace')")&&sw.includes("startsWith('/office/')"));
 add('connections:oauth',server.includes('/api/saas/integrations/oauth/:provider/callback')&&server.includes('saveIntegrationConnection'));
+add('connections:token-lifecycle',integrationRuntime.includes('decryptBundle')&&integrationRuntime.includes('refreshToken')&&integrationRuntime.includes('testConnection')&&integrationRuntime.includes('revokeConnection')&&server.includes('loadIntegrationBundle'));
+add('connections:customer-management',workspace.includes('integration-manager.js')&&integrationManager.includes('Test connection')&&integrationManager.includes('Save selection')&&integrationManager.includes('Disconnect'));
+add('connections:tenant-resource-selection',server.includes('/api/saas/integrations/self-service/:provider/resources')&&server.includes('integration.resources_selected'));
+add('connections:runtime-tests',read('package.json').includes('integration:test')&&read('render.yaml').includes('npm run integration:test'));
 add('connections:no-customer-secrets',server.includes('customer_secret_entry:false'));
 add('security:cors-production-closed',server.includes("const allowUnlistedOrigins = env.NODE_ENV !== 'production'")&&!server.includes('allowedOrigins.length === 0 ||'));
 add('config:all-runtime-env-documented',read('.env.example').includes('META_ACCESS_TOKEN=')&&read('.env.example').includes('INSTAGRAM_ACCESS_TOKEN=')&&read('.env.example').includes('YOUTUBE_API_KEY=')&&render.includes('META_ACCESS_TOKEN')&&render.includes('INSTAGRAM_ACCESS_TOKEN')&&render.includes('YOUTUBE_API_KEY'));

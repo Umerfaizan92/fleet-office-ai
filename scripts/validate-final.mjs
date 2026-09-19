@@ -64,7 +64,7 @@ for(const token of ['app.js','ai-operations.js','workspace-extras.js','common.js
 if((workspace.match(/id="integration-self-service"/g)||[]).length!==1)failures.push('workspace.html must contain exactly one Connections hub');
 for(const token of ['office.js','office-extras.js','office-records.js','office-insights.js','office-theme.css','office-layout.css','../saas/experience.css'])if(!office.includes(token))failures.push('office/index.html missing '+token);
 for(const token of ['localized-browser-fallback','superpro_ai_memory_current','conversation_id:conversationId','knowledgeContext','detectLanguage'])if(!guide.includes(token))failures.push('product-guide.js missing '+token);
-for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/:provider/callback','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
+for(const token of ['/api/product-guide/answer','/api/product-guide/speech','/api/product-guide/speech-stream','/api/product-guide/transcribe','/api/saas/voice/speech','/api/saas/voice/transcribe','/api/saas/ai/status','/api/saas/ai/threads','local-operational-fallback','/api/saas/integrations/oauth/:provider/callback','/api/admin/ai-quality/check'])if(!server.includes(token))failures.push('server.js missing '+token);
 for(const token of ['freeAiModeEnabled','geminiProviderConfig','if (freeAiModeEnabled()) return gemini','if (freeAiModeEnabled()) return null'])if(!shim.includes(token))failures.push('ai-provider-shim.js missing '+token);
 for(const token of ['startBrowserRecognitionFallback','findLanguageVoice','splitSpeech','speechHeartbeat','guide-voice'])if(!intro.includes(token))failures.push('intro.js missing '+token);
 for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/office/')","const CACHE='superpro-public-"])if(!sw.includes(token))failures.push('sw.js missing '+token);
@@ -73,7 +73,7 @@ for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/
 for(const token of ['plan: 0.5c-512mb','numInstances: 1','mountPath: /var/data','value: "/var/data/super-pro.sqlite"','value: "/var/data/uploads"'])if(!render.includes(token))failures.push('render.yaml missing production persistence token '+token);
 if(intro.includes('setTimeout(resolve,650)')||!intro.includes('Start the recorder immediately'))failures.push('intro.js still contains first-attempt microphone warm-up delay');
 if(!intro.includes('decodeAudioData')||!intro.includes('ensurePlaybackContext'))failures.push('intro.js missing unlocked Web Audio playback path');
-if(!index.includes('intro.js?v=25')||!sw.includes('intro.js?v=25')||!sw.includes('superpro-public-20260919-10'))failures.push('public voice cache version was not bumped');
+if(!index.includes('intro.js?v=26')||!sw.includes('intro.js?v=26')||!sw.includes('superpro-public-20260919-11'))failures.push('public voice cache version was not bumped');
 
 const env=read('.env.example');
 for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-flash','GEMINI_STT_MODEL=gemini-3.5-transcribe','GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);

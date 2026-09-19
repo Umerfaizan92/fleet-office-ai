@@ -388,13 +388,52 @@
   paintVoiceToggle();
   voiceOutput.onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_voice_replies',voiceReplies?'on':'off');paintVoiceToggle();if(!voiceReplies){stopSpeech();setVoiceStatus('Spoken replies are off. Text replies will continue.','limited')}else{primeSpeech();setVoiceStatus('Spoken replies are on. Super Pro AI server voice is preferred; the device voice is used only as a fallback.','ready')}};
 
+  let recognitionSessionText='',recognitionSubmitTimer=null,recognitionSubmitting=false;
   function initRecognition(){
     const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;
-    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=false;r.maxAlternatives=3;
-    r.onstart=()=>{stopSpeech();listening=true;$('#voice-input').classList.add('listening');setVoiceStatus(`Listening in ${r.lang}… speak naturally.`,'listening')};
-    r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;input.value=text;resize();if(e.results[e.results.length-1].isFinal)setTimeout(()=>ask(input.value),160)};
-    r.onerror=e=>{setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not start. Try again or type your question.','limited')};
-    r.onend=()=>{listening=false;$('#voice-input').classList.remove('listening');if(!input.value.trim())setVoiceStatus('Press the microphone to speak, or type your question.','ready')};return r;
+    const r=new R();r.lang=speechLocale($('#guide-language')?.value==='auto'?'en':$('#guide-language')?.value);r.interimResults=true;r.continuous=true;r.maxAlternatives=3;
+    const scheduleSubmit=()=>{
+      clearTimeout(recognitionSubmitTimer);
+      recognitionSubmitTimer=setTimeout(()=>{
+        if(!listening||recognitionSubmitting||!recognitionSessionText.trim())return;
+        recognitionSubmitting=true;
+        try{r.stop()}catch{}
+      },2400);
+    };
+    r.onstart=()=>{
+      stopSpeech();listening=true;recognitionSubmitting=false;recognitionSessionText='';
+      clearTimeout(recognitionSubmitTimer);
+      $('#voice-input').classList.add('listening');
+      setVoiceStatus(`Listening in ${r.lang}… speak naturally. I will wait through normal pauses.`,'listening');
+    };
+    r.onresult=e=>{
+      let full='';
+      for(let i=0;i<e.results.length;i++)full+=(full?' ':'')+String(e.results[i][0]?.transcript||'').trim();
+      recognitionSessionText=full.trim();
+      input.value=recognitionSessionText;resize();
+      const last=e.results[e.results.length-1];
+      if(last?.isFinal)scheduleSubmit();else clearTimeout(recognitionSubmitTimer);
+    };
+    r.onerror=e=>{
+      clearTimeout(recognitionSubmitTimer);
+      if(e.error==='no-speech'){
+        setVoiceStatus('I did not catch speech yet. Tap the microphone and start speaking when “Listening” appears.','limited');
+      }else{
+        setVoiceStatus(e.error==='not-allowed'?'Microphone permission was blocked. Allow microphone access or type your question.':'Voice input could not continue. Try again or type your question.','limited');
+      }
+    };
+    r.onend=async()=>{
+      clearTimeout(recognitionSubmitTimer);
+      listening=false;$('#voice-input').classList.remove('listening');
+      const heard=recognitionSessionText.trim();
+      recognitionSessionText='';recognitionSubmitting=false;
+      if(heard){
+        input.value=heard;resize();
+        setVoiceStatus('Heard: “'+heard.slice(0,90)+(heard.length>90?'…':'')+'”','ready');
+        await ask(heard);
+      }else if(!input.value.trim())setVoiceStatus('Press the microphone to speak, or type your question.','ready');
+    };
+    return r;
   }
 
 
@@ -416,55 +455,83 @@
   }
 
   async function autoListen(){
-    // Capture immediately on the first attempt; silence detection handles device startup noise.
+    // Capture the first word immediately and allow normal conversational pauses.
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
       if(startBrowserRecognitionFallback())return;
       setVoiceStatus('Automatic language microphone mode is not supported in this browser. Choose a language or type your question.','limited');return;
     }
     if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return}
-    stopSpeech();let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null,speechStarted=false,silenceSince=0;
-    const cleanupMonitor=()=>{if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);monitorTimer=null;hardStopTimer=null;try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null};
+    stopSpeech();
+    let chunks=[],audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,hardStopTimer=null;
+    let speechStarted=false,silenceSince=0,voicedFrames=0,noiseFloor=.003;
+    const cleanupMonitor=()=>{
+      if(monitorTimer)clearInterval(monitorTimer);if(hardStopTimer)clearTimeout(hardStopTimer);
+      monitorTimer=null;hardStopTimer=null;
+      try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}audioContext=null
+    };
     try{
-      mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-      // Start the recorder immediately. Do not insert a microphone warm-up delay:
-      // customers often begin speaking as soon as permission is granted, and any
-      // pre-recording wait clips the first words on the first attempt.
-      setVoiceStatus('Microphone ready — listening now.','listening');
+      mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+      setVoiceStatus('Microphone ready — listening now. Start speaking normally.','listening');
       const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
       mediaRecorder=new MediaRecorder(mediaStream,preferred?{mimeType:preferred}:undefined);
       mediaRecorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
       mediaRecorder.onstart=()=>{
-        listening=true;$('#voice-input').classList.add('listening');setVoiceStatus('Listening… start speaking. I will answer when you finish.','listening');
+        listening=true;$('#voice-input').classList.add('listening');
+        setVoiceStatus('Listening… speak naturally. Normal pauses will not cut you off.','listening');
+        const startedAt=Date.now();
         try{
           const AC=window.AudioContext||window.webkitAudioContext;
           if(AC){
             audioContext=new AC();sourceNode=audioContext.createMediaStreamSource(mediaStream);analyser=audioContext.createAnalyser();analyser.fftSize=1024;sourceNode.connect(analyser);
-            const samples=new Uint8Array(analyser.fftSize),startedAt=Date.now(),noiseSamples=[];let threshold=0.012;
+            const samples=new Uint8Array(analyser.fftSize);
             monitorTimer=setInterval(()=>{
               if(mediaRecorder?.state!=='recording')return;
               analyser.getByteTimeDomainData(samples);let sum=0;
               for(const v of samples){const n=(v-128)/128;sum+=n*n}
               const rms=Math.sqrt(sum/samples.length),now=Date.now();
-              if(!speechStarted&&now-startedAt<450){noiseSamples.push(rms);const floor=noiseSamples.reduce((a,b)=>a+b,0)/noiseSamples.length;threshold=Math.min(.035,Math.max(.008,floor*2.4))}
-              if(rms>threshold){speechStarted=true;silenceSince=0;setVoiceStatus('I can hear you…','listening')}
-              else if(speechStarted){
-                if(!silenceSince)silenceSince=now;
-                if(now-silenceSince>950)mediaRecorder.stop();
-              }else if(now-startedAt>8000)mediaRecorder.stop();
-            },100);
+
+              // Learn only genuine low-level room noise. Never treat the user's
+              // first words as the calibration baseline.
+              if(!speechStarted&&rms<.012)noiseFloor=(noiseFloor*.88)+(rms*.12);
+              const threshold=Math.min(.018,Math.max(.0055,noiseFloor*2.05));
+
+              if(rms>threshold){
+                voicedFrames++;
+                if(voicedFrames>=2){
+                  if(!speechStarted)setVoiceStatus('I can hear you… keep speaking.','listening');
+                  speechStarted=true;silenceSince=0;
+                }
+              }else{
+                voicedFrames=Math.max(0,voicedFrames-1);
+                if(speechStarted){
+                  if(!silenceSince)silenceSince=now;
+                  // Allow natural thinking/breathing pauses. Two seconds is much
+                  // safer for long multilingual questions than the old 950 ms.
+                  if(now-silenceSince>2200)mediaRecorder.stop();
+                }else if(now-startedAt>15000){
+                  mediaRecorder.stop();
+                }
+              }
+            },80);
           }
         }catch{}
-        hardStopTimer=setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},12000);
+        // Long questions must not be cut at 12 seconds. 45 seconds gives enough
+        // room for a detailed customer question while still bounding one capture.
+        hardStopTimer=setTimeout(()=>{if(mediaRecorder?.state==='recording')mediaRecorder.stop()},45000);
       };
       mediaRecorder.onstop=async()=>{
-        cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');mediaStream?.getTracks().forEach(t=>t.stop());
+        cleanupMonitor();listening=false;$('#voice-input').classList.remove('listening');
+        mediaStream?.getTracks().forEach(t=>t.stop());
         const blob=new Blob(chunks,{type:mediaRecorder.mimeType||'audio/webm'});
-        if(!speechStarted||blob.size<900){
-          // Do not make the customer press the microphone twice. Automatically
-          // continue listening through browser recognition on the same attempt.
-          setVoiceStatus('I did not catch that clearly. Still listening… please continue.','listening');
-          setTimeout(()=>startBrowserRecognitionFallback(),100);return
+
+        // Always give captured audio to the server first. The previous code
+        // discarded recordings when client-side VAD missed quiet/early speech,
+        // which is exactly how a first attempt could appear to hear nothing.
+        if(blob.size<700){
+          setVoiceStatus('I did not receive enough microphone audio. Continuing with device recognition…','listening');
+          setTimeout(()=>startBrowserRecognitionFallback(),120);return
         }
+
         const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',$('#guide-language')?.value||'auto');
         setVoiceStatus('Understanding what you said…','listening');
         try{
@@ -478,11 +545,12 @@
           setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
           await ask(transcript);
         }catch(e){
-          setVoiceStatus('Server transcription failed. Switching to device recognition…','listening');
-          setTimeout(()=>startBrowserRecognitionFallback(),120);
+          setVoiceStatus('Server transcription failed. Continuing with device recognition…','listening');
+          setTimeout(()=>startBrowserRecognitionFallback(),150);
         }
       };
-      mediaRecorder.start(200);
+      // Small timeslices protect long recordings without delaying first-word capture.
+      mediaRecorder.start(120);
     }catch(e){
       cleanupMonitor();mediaStream?.getTracks().forEach(t=>t.stop());
       if(e?.name==='NotAllowedError'){setVoiceStatus('Microphone permission was blocked. Allow microphone access and try again.','limited');return}

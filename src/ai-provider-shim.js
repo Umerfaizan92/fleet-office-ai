@@ -32,7 +32,7 @@ function geminiProviderConfig() {
   return {
     base:'https://generativelanguage.googleapis.com/v1beta',
     key:String(key).trim(),
-    model:meaningfulConfigValue(env.GEMINI_MODEL)?String(env.GEMINI_MODEL).trim():'gemini-2.5-flash',
+    model:meaningfulConfigValue(env.GEMINI_MODEL)?String(env.GEMINI_MODEL).trim():'gemini-3.5-flash',
     source:'gemini-free-first'
   };
 }

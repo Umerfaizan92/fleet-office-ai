@@ -71,9 +71,9 @@ for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/
 
 
 for(const token of ['plan: 0.5c-512mb','numInstances: 1','mountPath: /var/data','value: "/var/data/super-pro.sqlite"','value: "/var/data/uploads"'])if(!render.includes(token))failures.push('render.yaml missing production persistence token '+token);
-if(intro.includes('setTimeout(resolve,650)')||!intro.includes('Capture the first word immediately'))failures.push('intro.js still contains first-attempt microphone warm-up delay');
+if(intro.includes('setTimeout(resolve,650)')||!intro.includes('Capture the first word immediately')||!intro.includes('No speech detected. Microphone stopped'))failures.push('intro.js microphone capture/auto-stop protections are incomplete');
 if(!intro.includes('decodeAudioData')||!intro.includes('ensurePlaybackContext'))failures.push('intro.js missing unlocked Web Audio playback path');
-if(!index.includes('intro.js?v=27')||!sw.includes('intro.js?v=27')||!sw.includes('superpro-public-20260919-12'))failures.push('public voice cache version was not bumped');
+if(!index.includes('intro.js?v=28')||!sw.includes('intro.js?v=28')||!sw.includes('superpro-public-20260919-13'))failures.push('public voice cache version was not bumped');
 
 const env=read('.env.example');
 for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-flash','GEMINI_STT_MODEL=gemini-3.5-transcribe','GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);

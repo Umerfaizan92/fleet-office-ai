@@ -201,13 +201,16 @@
       const d=await r.json().catch(()=>({}));
       if(r.ok&&d.text){
         const result={...local,text:plainText(d.text),language:d.language||detected,source:d.source||'server-guidance',provider:d.provider||'',model:d.model||'',configuration_required:Boolean(d.configuration_required)};
-        // A server-side local fallback is useful as an explicit degraded mode,
-        // but it must not masquerade as a successful live AI answer.
+        // Provider outages and free-tier quotas must never make the Product
+        // Guide unusable. The verified local knowledge engine is the durable
+        // availability layer; cloud AI only enhances it when healthy.
         if(result.configuration_required||/^local-/.test(result.source)){
           result.degraded=true;
+          result.provider_unavailable=true;
+          result.source='browser-product-knowledge';
           result.text=detected==='en'
-            ? 'Live AI is temporarily unavailable, so I cannot reliably answer that question yet. Please try again shortly or check the AI provider configuration.'
-            : (emergencyLanguageReply[detected]||result.text);
+            ? plainText(local.text)
+            : (emergencyLanguageReply[detected]||plainText(local.text));
         }
         remember(context,q,result.text,result);return result;
       }

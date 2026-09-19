@@ -4402,6 +4402,70 @@ app.get('/api/saas/integrations/oauth/:provider/callback',async(req,res)=>{
   }catch(err){console.warn('[INTEGRATION OAUTH]',provider,err.message);db.prepare(`UPDATE organisation_integrations SET status='setup_ready',updated_at=? WHERE organisation_id=? AND provider=?`).run(new Date().toISOString(),state.o,provider);return fail(err.message||'Provider authorisation failed.');}
 });
 
+
+app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,async(req,res)=>{
+  const provider=req.params.provider;
+  const row=db.prepare(\`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?\`).get(req.saas.organisation_id,provider);
+  if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
+  if(['website','email_sms'].includes(provider)){
+    const ready=integrationReadiness(provider),now=new Date().toISOString(),settings={...integrationSettings(row),last_tested_at:now,last_test_status:ready?'pass':'fail'};
+    db.prepare(\`UPDATE organisation_integrations SET status=?,settings_json=?,updated_at=? WHERE organisation_id=? AND provider=?\`).run(ready?'connected':'not_connected',JSON.stringify(settings),now,req.saas.organisation_id,provider);
+    return res.status(ready?200:409).json({ok:ready,provider,status:ready?'connected':'not_connected',tested_at:now,message:ready?'Platform-managed '+(provider==='website'?'website':'email/SMS')+' connection is configured.':'This connector still needs its server-side provider configuration.'});
+  }
+  if(row.status!=='connected')return res.status(409).json({ok:false,error:'Authorise this provider before testing the connection.'});
+  let bundle;
+  try{bundle=loadIntegrationBundle(row)}catch(err){return res.status(409).json({ok:false,error:err.message})}
+  if(!bundle)return res.status(409).json({ok:false,error:'No encrypted provider token is stored. Re-authorise the provider.'});
+  try{
+    const result=await integrationRuntime.testConnection(provider,bundle);
+    const now=new Date().toISOString();
+    const resources=(result.resources||[]).slice(0,200);
+    const settings=persistIntegrationBundle(row,result.bundle,{last_tested_at:now,last_test_status:'pass',last_test_error:null,resources});
+    db.prepare(\`UPDATE organisation_integrations SET account_label=?,status='connected',updated_at=? WHERE organisation_id=? AND provider=?\`).run(result.identity?.label||row.account_label||'Authorised account',now,req.saas.organisation_id,provider);
+    saasAudit(req,'integration.connection_tested','integration',provider,{ok:true,refreshed:result.refreshed,resource_count:resources.length});
+    return res.json({ok:true,provider,status:'connected',account_label:result.identity?.label||row.account_label||null,identity:result.identity||null,resources,selected_resources:Array.isArray(settings.selected_resources)?settings.selected_resources:[],refreshed:result.refreshed,tested_at:now});
+  }catch(err){
+    const now=new Date().toISOString(),settings={...integrationSettings(row),last_tested_at:now,last_test_status:'fail',last_test_error:String(err?.message||err).slice(0,500)};
+    db.prepare(\`UPDATE organisation_integrations SET settings_json=?,updated_at=? WHERE organisation_id=? AND provider=?\`).run(JSON.stringify(settings),now,req.saas.organisation_id,provider);
+    saasAudit(req,'integration.connection_tested','integration',provider,{ok:false,error:String(err?.message||err).slice(0,200)});
+    return res.status(502).json({ok:false,error:'Provider connection test failed: '+String(err?.message||err),provider,tested_at:now});
+  }
+});
+
+app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUser,(req,res)=>{
+  const provider=req.params.provider;
+  const parsed=z.object({resource_ids:z.array(z.string().trim().min(1).max(300)).max(25)}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Choose valid provider resources.'});
+  const row=db.prepare(\`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?\`).get(req.saas.organisation_id,provider);
+  if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
+  if(row.status!=='connected')return res.status(409).json({ok:false,error:'Connect and test this provider before choosing resources.'});
+  const settings=integrationSettings(row),available=Array.isArray(settings.resources)?settings.resources:[];
+  const wanted=new Set(parsed.data.resource_ids);
+  const selected=available.filter(resource=>wanted.has(String(resource.id)));
+  if(selected.length!==wanted.size)return res.status(400).json({ok:false,error:'One or more selected resources are no longer available. Test the connection again.'});
+  settings.selected_resources=selected;
+  db.prepare(\`UPDATE organisation_integrations SET settings_json=?,updated_at=? WHERE organisation_id=? AND provider=?\`).run(JSON.stringify(settings),new Date().toISOString(),req.saas.organisation_id,provider);
+  saasAudit(req,'integration.resources_selected','integration',provider,{resources:selected.map(x=>({id:x.id,type:x.type,label:x.label}))});
+  res.json({ok:true,provider,selected_resources:selected});
+});
+
+app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,async(req,res)=>{
+  const provider=req.params.provider;
+  const row=db.prepare(\`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?\`).get(req.saas.organisation_id,provider);
+  if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
+  let remote={remote_revoked:false,reason:'no_remote_token'};
+  if(!['website','email_sms'].includes(provider)){
+    try{
+      const bundle=loadIntegrationBundle(row);
+      if(bundle)remote=await integrationRuntime.revokeConnection(provider,bundle);
+    }catch(err){remote={remote_revoked:false,reason:String(err?.message||err).slice(0,300)}}
+  }
+  const now=new Date().toISOString();
+  db.prepare(\`UPDATE organisation_integrations SET status='not_connected',account_label=NULL,settings_json='{}',connected_at=NULL,updated_at=? WHERE organisation_id=? AND provider=?\`).run(now,req.saas.organisation_id,provider);
+  saasAudit(req,'integration.disconnected','integration',provider,{remote_revoked:remote.remote_revoked,reason:remote.reason||null});
+  res.json({ok:true,provider,status:'not_connected',local_credentials_removed:true,remote_revoked:Boolean(remote.remote_revoked),remote_note:remote.reason||null});
+});
+
 app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,(req,res)=>{
   const parsed=z.object({account_label:z.string().trim().max(150).optional().or(z.literal('')),capabilities:z.array(z.string().max(80)).max(20).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the connection details.'});

@@ -76,7 +76,7 @@ if(!intro.includes('decodeAudioData')||!intro.includes('ensurePlaybackContext'))
 if(!index.includes('intro.js?v=23')||!sw.includes('intro.js?v=23')||!sw.includes('superpro-public-20260919-8'))failures.push('public voice cache version was not bumped');
 
 const env=read('.env.example');
-for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-2.5-flash','GEMINI_STT_MODEL=gemini-2.5-flash','GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);
+for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-flash','GEMINI_STT_MODEL=gemini-3.5-flash-lite','GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);
 for(const token of ['/api/saas/content/ai-spec','generateAiText','local-content-fallback'])if(!server.includes(token))failures.push('server.js missing '+token);
 if(!server.includes("const allowUnlistedOrigins = env.NODE_ENV !== 'production'")||server.includes('allowedOrigins.length === 0 ||'))failures.push('Production CORS must fail closed when ALLOWED_ORIGINS is omitted');
 const app=read('saas/app.js'),ops=read('saas/ai-operations.js');

@@ -37,7 +37,7 @@ add('ai:strict-free-mode',shim.includes('if (freeAiModeEnabled()) return gemini'
 add('ai:gemini-free',shim.includes('generativelanguage.googleapis.com')&&server.includes('GEMINI_TTS_MODEL'));
 add('ai:operations-resilient',server.includes('local-operational-fallback')&&server.includes('/api/saas/ai/threads')&&ops.includes('GDSProductGuide')&&ops.includes('answerAsync'));
 add('ai:content-studio-live',server.includes('/api/saas/content/ai-spec')&&app.includes('/api/saas/content/ai-spec'));
-add('ai:global-search-stt',app.includes('/api/saas/voice/transcribe')&&app.includes('automatic language detection'));
+add('ai:global-search-stt',app.includes('SuperProAIClient')&&workspaceAi.includes('/api/saas/voice/transcribe'));
 add('ai:operations-status',ops.includes('/api/saas/ai/status')&&ops.includes('startBrowserRecognitionFallback'));
 add('ai:copilot-init-safe',!app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"));
 add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server.includes("checkerBase=String(env.AI_CHECKER_PROVIDER_BASE_URL"));
@@ -52,7 +52,7 @@ add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.inc
 add('voice:browser-fallback',intro.includes('startBrowserRecognitionFallback')&&app.includes('browserSpeak'));
 add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&intro.includes('r.onstart=()=>{stopSpeech();')&&ops.includes('stopSpeech()'));
 add('voice:male-female-auto',intro.includes('Voice: Female')&&intro.includes('Voice: Male')&&server.includes('geminiVoiceChoice'));
-add('voice:first-attempt-capture',intro.includes('Start the recorder immediately')&&!intro.includes('setTimeout(resolve,650)')&&intro.includes('mediaRecorder.start(200)'));
+add('voice:first-attempt-capture',intro.includes('Capture the first word immediately')&&!intro.includes('setTimeout(resolve,650)')&&intro.includes('mediaRecorder.start(120)'));
 add('voice:audio-context-playback',intro.includes('decodeAudioData')&&intro.includes('ensurePlaybackContext'));
 add('voice:instant-mic-barge-in',intro.includes("addEventListener('pointerdown',()=>{primeSpeech();stopSpeech()})"));
 add('deployment:persistent-render',render.includes('plan: 0.5c-512mb')&&render.includes('mountPath: /var/data')&&render.includes('value: "/var/data/super-pro.sqlite"')&&render.includes('value: "/var/data/uploads"'));

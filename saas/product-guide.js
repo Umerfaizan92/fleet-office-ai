@@ -207,10 +207,12 @@
         if(result.configuration_required||/^local-/.test(result.source)){
           result.degraded=true;
           result.provider_unavailable=true;
-          result.source='browser-product-knowledge';
-          result.text=detected==='en'
-            ? plainText(local.text)
-            : (emergencyLanguageReply[detected]||plainText(local.text));
+          // Keep the server's verified localized fallback. Older builds
+          // discarded it and replaced every non-English answer with a generic
+          // “yes, I can speak this language” message, even when the customer
+          // had asked a specific product question.
+          result.source='server-localized-product-fallback';
+          result.text=plainText(d.text)||plainText(local.text);
         }
         remember(context,q,result.text,result);return result;
       }

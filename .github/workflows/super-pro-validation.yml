@@ -35,5 +35,8 @@ jobs:
       - name: Independent quality checker
         run: npm run quality:check
 
+      - name: Integration runtime tests
+        run: npm run integration:test
+
       - name: Runtime smoke test
         run: npm run smoke:test

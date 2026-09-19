@@ -138,10 +138,11 @@
 
   async function speakBrowser(text,lang=lastLanguage){
     if(!speechSupported){setVoiceStatus('Spoken reply playback is not supported in this browser. The text reply is ready.','limited');return false}
-    await ensureVoicesReady();const locale=speechLocale(lang),found=findLanguageVoice(locale),voice=found.voice,chunks=splitSpeech(text);if(!chunks.length)return false;const run=++speechRun;let index=0,started=false,retryUsed=false,pref=voicePreference();
+    await ensureVoicesReady();const locale=speechLocale(lang),found=findLanguageVoice(locale),voice=found.voice,chunks=splitSpeech(text);if(!chunks.length)return false;const run=++speechRun;let index=0,started=false,retryUsed=false,everStarted=false,pref=voicePreference();
     const announce=()=>{if(voice){const preferenceNote=pref!=='auto'&&!found.matchedPreference?' · requested voice style not exposed by this device':'';setVoiceStatus(`Speaking in ${voice.lang||locale} using ${voice.name}${preferenceNote}`,'speaking')}else setVoiceStatus(`Speaking in ${locale} using this device's speech service.`,'speaking')};
     const failStatus=()=>setVoiceStatus(`This device could not play the ${locale} voice. The text reply is still available.`,'limited');
-    const next=()=>{if(run!==speechRun||!voiceReplies)return;if(index>=chunks.length){if(speechHeartbeat){clearInterval(speechHeartbeat);speechHeartbeat=null}setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');return}const u=new SpeechSynthesisUtterance(chunks[index++]);u.rate=.96;u.pitch=1;u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.onstart=()=>{started=true;retryUsed=false;announce()};u.onend=()=>{started=false;next()};u.onerror=e=>{started=false;if(run!==speechRun)return;const reason=String(e?.error||'').toLowerCase();if(!['interrupted','canceled'].includes(reason))failStatus()};try{window.speechSynthesis.resume?.();window.speechSynthesis.speak(u)}catch{failStatus();return}setTimeout(()=>{if(run!==speechRun||started||retryUsed||window.speechSynthesis.speaking||window.speechSynthesis.pending)return;retryUsed=true;index=Math.max(0,index-1);window.speechSynthesis.cancel();window.speechSynthesis.resume?.();next()},850)};
+    const next=()=>{if(run!==speechRun||!voiceReplies)return;if(index>=chunks.length){if(speechHeartbeat){clearInterval(speechHeartbeat);speechHeartbeat=null}setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');return}const u=new SpeechSynthesisUtterance(chunks[index++]);u.rate=.96;u.pitch=1;u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.onstart=()=>{started=true;everStarted=true;retryUsed=false;announce()};u.onend=()=>{started=false;next()};u.onerror=e=>{started=false;if(run!==speechRun)return;const reason=String(e?.error||'').toLowerCase();if(!['interrupted','canceled'].includes(reason))failStatus()};try{window.speechSynthesis.resume?.();window.speechSynthesis.speak(u)}catch{failStatus();return}setTimeout(()=>{if(run!==speechRun||started||retryUsed||window.speechSynthesis.speaking||window.speechSynthesis.pending)return;retryUsed=true;index=Math.max(0,index-1);window.speechSynthesis.cancel();window.speechSynthesis.resume?.();next()},850);
+      setTimeout(()=>{if(run===speechRun&&!everStarted&&!window.speechSynthesis.speaking){failStatus()}},2600)};
     speechHeartbeat=setInterval(()=>{if(run===speechRun&&voiceReplies&&window.speechSynthesis.paused)window.speechSynthesis.resume?.()},5000);next();return true
   }
   async function speak(text,lang=lastLanguage){
@@ -155,13 +156,18 @@
       if(response.ok){
         const blob=await response.blob();
         if(!blob.size)throw new Error('Empty server voice');
-        serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);
+        serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio(serverAudioUrl);serverAudio.volume=1;serverAudio.muted=false;
         let fallbackStarted=false;
         const fallback=async()=>{if(fallbackStarted)return;fallbackStarted=true;if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudio=null;await speakBrowser(text,lang)};
         serverAudio.onplay=()=>setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking');
         serverAudio.onended=()=>{if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
         serverAudio.onerror=()=>{fallback()};
-        try{await serverAudio.play();return true}catch{await fallback();return true}
+        try{
+          const playPromise=serverAudio.play();
+          await Promise.race([playPromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('audio-start-timeout')),2200))]);
+          if(serverAudio.paused){await fallback();return true}
+          return true
+        }catch{try{serverAudio.pause()}catch{}await fallback();return true}
       }
     }catch{}
     return await speakBrowser(text,lang)

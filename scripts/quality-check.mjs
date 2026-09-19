@@ -42,6 +42,10 @@ add('ai:operations-status',ops.includes('/api/saas/ai/status')&&ops.includes('st
 add('ai:copilot-init-safe',!app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"));
 add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server.includes("checkerBase=String(env.AI_CHECKER_PROVIDER_BASE_URL"));
 add('voice:server-tts',server.includes('/api/saas/voice/speech')&&server.includes('makeGeminiSpeechAudio'));
+add('voice:streaming-tts',server.includes('/api/product-guide/speech-stream')&&server.includes('streamGenerateContent?alt=sse')&&intro.includes('streamServerSpeech'));
+add('account:preserved-indefinitely',server.includes("preserved_indefinitely:true")&&server.includes("automatic_deletion:false"));
+add('account:verified-self-deletion',server.includes('/api/saas/account/deletion/start')&&server.includes('/api/saas/account/deletion/confirm')&&server.includes('/api/saas/account/deletion/cancel')&&server.includes('processEligibleAccountDeletions'));
+add('account:workspace-controls',app.includes('start-account-deletion')&&app.includes('loadAccountLifecycle'));
 add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.includes('transcribeWithGemini'));
 add('voice:browser-fallback',intro.includes('startBrowserRecognitionFallback')&&app.includes('browserSpeak'));
 add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&intro.includes('r.onstart=()=>{stopSpeech();')&&ops.includes('stopSpeech()'));

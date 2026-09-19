@@ -12,10 +12,12 @@
     "quality:check": "node scripts/quality-check.mjs && node scripts/quality-ratchet.mjs",
     "audit:search": "node scripts/quality-check.mjs",
     "verify:manifest": "node scripts/verify-manifest.mjs",
-    "smoke:test": "node scripts/smoke-test.mjs"
+    "smoke:test": "node scripts/smoke-test.mjs",
+    "integration:test": "node scripts/test-integrations.mjs"
   },
   "engines": {
-   "node": "22.22.0"  },
+    "node": "22.22.0"
+  },
   "dependencies": {
     "better-sqlite3": "12.4.1",
     "cors": "^2.8.5",

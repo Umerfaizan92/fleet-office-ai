@@ -36,6 +36,10 @@ add('ai:central-provider',server.includes('generateAiText')&&shim.includes('reso
 add('ai:strict-free-mode',shim.includes('if (freeAiModeEnabled()) return gemini')&&shim.includes('if (freeAiModeEnabled()) return null'));
 add('ai:gemini-free',shim.includes('generativelanguage.googleapis.com')&&server.includes('GEMINI_TTS_MODEL'));
 add('ai:operations-resilient',server.includes('local-operational-fallback')&&ops.includes('/api/saas/ai/threads'));
+add('ai:content-studio-live',server.includes('/api/saas/content/ai-spec')&&app.includes('/api/saas/content/ai-spec'));
+add('ai:global-search-stt',app.includes('/api/saas/voice/transcribe')&&app.includes('automatic language detection'));
+add('ai:operations-status',ops.includes('/api/saas/ai/status')&&ops.includes('startBrowserRecognitionFallback'));
+add('ai:copilot-init-safe',!app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"));
 add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server.includes("checkerBase=String(env.AI_CHECKER_PROVIDER_BASE_URL"));
 add('voice:server-tts',server.includes('/api/saas/voice/speech')&&server.includes('makeGeminiSpeechAudio'));
 add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.includes('transcribeWithGemini'));

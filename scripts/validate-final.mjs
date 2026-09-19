@@ -75,7 +75,7 @@ for(const token of ['/api/saas/content/ai-spec','generateAiText','local-content-
 const app=read('saas/app.js'),ops=read('saas/ai-operations.js');
 for(const token of ['/api/saas/content/ai-spec','/api/saas/voice/transcribe','/api/saas/voice/speech'])if(!app.includes(token))failures.push('app.js missing '+token);
 for(const token of ['/api/saas/ai/status','startBrowserRecognitionFallback','/api/saas/voice/transcribe'])if(!ops.includes(token))failures.push('ai-operations.js missing '+token);
-if(/voiceTest=.*if\(voiceStyle\)/s.test(app))failures.push('app.js contains unsafe copilot voice initialization ordering');
+if(app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"))failures.push('app.js contains unsafe copilot voice initialization ordering');
 
 if(failures.length){
   console.error('CURRENT FINAL VALIDATION FAILED');

@@ -543,7 +543,7 @@
 
         // A silent attempt should end cleanly. Do not chain into continuous
         // browser recognition, otherwise the mic appears to run forever.
-        if(!speechStarted){
+        if(!speechStarted&&blob.size<1800){
           setVoiceStatus('No speech detected. Microphone stopped — press it again when you are ready.','ready');
           return;
         }
@@ -557,16 +557,19 @@
         try{
           const r=await fetch('/api/product-guide/transcribe',{method:'POST',credentials:'same-origin',body:fd});
           const d=await r.json().catch(()=>({}));
-          if(!r.ok||!String(d.text||'').trim())throw new Error(d.error||'Transcription failed.');
-          const transcript=String(d.text).trim();
+          if(!r.ok)throw new Error(d.error||'Transcription failed.');
+          const transcript=String(d.text||'').trim();
+          if(!transcript){
+            setVoiceStatus('No speech was understood from that recording. Microphone stopped — please try again.','ready');
+            return;
+          }
           input.value=transcript;
           const switched=languageSwitch(transcript),detected=d.language||window.GDSProductGuide?.detectLanguage?.(transcript)||'en';
           lastLanguage=(($('#guide-language')?.value||'auto')==='auto'?(switched||detected):$('#guide-language').value);resize();
           setVoiceStatus('Heard: “'+transcript.slice(0,90)+(transcript.length>90?'…':'')+'”','ready');
           await ask(transcript);
         }catch(e){
-          setVoiceStatus('Server transcription failed. Continuing with device recognition…','listening');
-          setTimeout(()=>startBrowserRecognitionFallback(),150);
+          setVoiceStatus('Voice transcription could not be completed. Please press the microphone and try again.','limited');
         }
       };
       // Small timeslices protect long recordings without delaying first-word capture.

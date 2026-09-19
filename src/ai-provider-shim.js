@@ -61,6 +61,12 @@ if (resolvedProvider) {
   env.AI_PROVIDER_BASE_URL = resolvedProvider.base;
   env.AI_PROVIDER_API_KEY = resolvedProvider.key;
   env.AI_PROVIDER_MODEL = resolvedProvider.model;
+} else if (freeAiModeEnabled()) {
+  // Do not leave an older paid-provider configuration reachable through
+  // legacy environment aliases when strict free mode is active.
+  env.AI_PROVIDER_BASE_URL = '';
+  env.AI_PROVIDER_API_KEY = '';
+  env.AI_PROVIDER_MODEL = '';
 }
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
@@ -68,6 +74,10 @@ const conversations = new Map();
 const MAX_CONVERSATIONS = 600;
 const MAX_TURNS = 24;
 const CONVERSATION_TTL_MS = 6 * 60 * 60 * 1000;
+function providerSignal(){
+  const ms=Math.max(5000,Math.min(45000,Number(env.AI_PROVIDER_TIMEOUT_MS||20000)));
+  try{return AbortSignal.timeout(ms)}catch{return undefined}
+}
 
 const PRODUCT_SYSTEM = `
 You are Super Pro AI Office Manager's customer-facing AI product specialist and in-workspace operations guide.
@@ -185,7 +195,8 @@ async function callOpenAI(base,key,model,messages,id) {
   const response = await nativeFetch(`${openAiBase(base)}/responses`, {
     method:'POST',
     headers:{ Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
-    body:JSON.stringify({ model, instructions, input, max_output_tokens:900, store:false })
+    body:JSON.stringify({ model, instructions, input, max_output_tokens:900, store:false }),
+    signal:providerSignal()
   });
   const data = await response.json().catch(()=>({}));
   const text = outputTextFromOpenAI(data);
@@ -207,7 +218,8 @@ async function callGemini(base,key,model,messages,id) {
       system_instruction:{ parts:[{ text:instructions }] },
       contents,
       generationConfig:{ maxOutputTokens:900, temperature:0.3 }
-    })
+    }),
+    signal:providerSignal()
   });
   const data = await response.json().catch(()=>({}));
   const text = outputTextFromGemini(data);
@@ -230,7 +242,7 @@ async function callGeneric(base,key,model,messages,id) {
     ]
   };
   const url = `${String(base).replace(/\/$/,'')}/chat/completions`;
-  const response = await nativeFetch(url, { method:'POST', headers:{ Authorization:`Bearer ${key}`, 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+  const response = await nativeFetch(url, { method:'POST', headers:{ Authorization:`Bearer ${key}`, 'Content-Type':'application/json' }, body:JSON.stringify(body), signal:providerSignal() });
   if (!response.ok) throw new Error(`Compatible provider failed: http_${response.status}`);
   const data = await response.json().catch(()=>({}));
   const text = String(data?.choices?.[0]?.message?.content || '').trim();
@@ -294,11 +306,18 @@ globalThis.fetch = async function superProFetch(input, init={}) {
 
   const auth = new Headers(init.headers || {}).get('authorization') || '';
   const keyFromRequest = auth.replace(/^Bearer\s+/i, '').trim();
-  const primary = {
-    base:String(url).replace(/\/chat\/completions(?:\?.*)?$/i,''),
-    key:keyFromRequest || env.AI_PROVIDER_API_KEY || '',
-    model:String(body.model || env.AI_PROVIDER_MODEL || '')
-  };
+  const strictFree=freeAiModeEnabled();
+  const resolved=resolveAiProviderConfig();
+  const primary = strictFree
+    ? resolved
+    : {
+        base:String(url).replace(/\/chat\/completions(?:\?.*)?$/i,''),
+        key:keyFromRequest || env.AI_PROVIDER_API_KEY || '',
+        model:String(body.model || env.AI_PROVIDER_MODEL || '')
+      };
+  if(!primary){
+    return new Response(JSON.stringify({error:{message:'AI provider is not configured for the active runtime mode.',code:'ai_not_configured'}}),{status:503,headers:{'content-type':'application/json'}});
+  }
   const id = conversationId(body.messages);
   const currentUser = [...body.messages].reverse().find(m=>m?.role==='user')?.content || '';
 
@@ -320,7 +339,10 @@ globalThis.fetch = async function superProFetch(input, init={}) {
     } else {
       console.warn('[SUPER PRO AI] Configured AI provider was unavailable:', primaryError.message);
     }
-    // Preserve the existing v15 fallback behaviour if no live AI provider can answer.
+    if(strictFree){
+      return new Response(JSON.stringify({error:{message:'Free AI provider is temporarily unavailable.',code:'ai_provider_unavailable'}}),{status:503,headers:{'content-type':'application/json'}});
+    }
+    // In paid/custom mode preserve compatibility for legacy callers.
     return nativeFetch(input, init);
   }
 };

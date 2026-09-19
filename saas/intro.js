@@ -164,15 +164,47 @@
       setTimeout(()=>{if(run===speechRun&&!everStarted&&!window.speechSynthesis.speaking){failStatus()}},2600)};
     speechHeartbeat=setInterval(()=>{if(run===speechRun&&voiceReplies&&window.speechSynthesis.paused)window.speechSynthesis.resume?.()},5000);next();return true
   }
+  async function safeBrowserVoiceFallback(text,lang,reason=''){
+    const locale=speechLocale(lang);
+    await ensureVoicesReady();
+    const matched=findLanguageVoice(locale).voice;
+    // Chrome/Windows can silently skip non-Latin script when no matching
+    // browser voice is installed, then pronounce only embedded English words.
+    // Never present that misleading partial playback as a successful reply.
+    if(lang!=='en'&&!matched){
+      setVoiceStatus(`Super Pro AI ${locale} server voice is temporarily unavailable. This device has no matching ${locale} browser voice, so partial English-only playback was blocked.`,'limited');
+      return false;
+    }
+    if(reason)setVoiceStatus(`Server voice unavailable (${reason}). Using this device's ${locale} voice.`,'limited');
+    return await speakBrowser(text,lang);
+  }
+
+  async function requestServerSpeech(payload,run){
+    let lastResponse=null,lastReason='';
+    for(let attempt=0;attempt<3;attempt++){
+      if(run!==speechRun)return {response:null,reason:'interrupted'};
+      try{
+        const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+        lastResponse=response;
+        if(response.ok)return {response,reason:''};
+        let detail={};try{detail=await response.clone().json()}catch{}
+        lastReason=String(detail?.error||('HTTP '+response.status));
+        if(![429,502,503].includes(response.status))break;
+      }catch(e){lastReason=String(e?.message||'network error')}
+      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,650*(attempt+1)));
+    }
+    return {response:lastResponse,reason:lastReason||'server TTS unavailable'};
+  }
+
   async function speak(text,lang=lastLanguage){
     if(!voiceReplies)return false;stopSpeech();
     const locale=speechLocale(lang),run=++speechRun;
-    // Prefer server TTS, but play it through an AudioContext that was unlocked by
-    // the customer's earlier click/tap. This avoids the common Chrome/Windows
-    // case where a freshly-created HTMLAudioElement is blocked after an async AI call.
+    // Prefer Gemini/server TTS. Brief retries cover freshly-updated quotas and
+    // transient provider throttling before any device/browser fallback is used.
     try{
-      const response=await fetch('/api/product-guide/speech',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({text,language:lang,voice:voicePreference()})});
-      if(response.ok&&run===speechRun){
+      const server=await requestServerSpeech({text,language:lang,voice:voicePreference()},run);
+      const response=server.response;
+      if(response?.ok&&run===speechRun){
         const blob=await response.blob();if(!blob.size)throw new Error('Empty server voice');
         const ctx=await ensurePlaybackContext();
         if(ctx&&run===speechRun){
@@ -187,7 +219,7 @@
         if(run!==speechRun)return false;
         serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio();serverAudio.preload='auto';serverAudio.src=serverAudioUrl;serverAudio.volume=1;serverAudio.muted=false;
         let fallbackStarted=false;
-        const fallback=async()=>{if(fallbackStarted||run!==speechRun)return;fallbackStarted=true;try{serverAudio?.pause()}catch{}if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudioUrl='';serverAudio=null;await speakBrowser(text,lang)};
+        const fallback=async()=>{if(fallbackStarted||run!==speechRun)return;fallbackStarted=true;try{serverAudio?.pause()}catch{}if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudioUrl='';serverAudio=null;await safeBrowserVoiceFallback(text,lang,'audio playback failed')};
         serverAudio.onplay=()=>{if(run===speechRun)setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking')};
         serverAudio.onended=()=>{if(run!==speechRun)return;if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
         serverAudio.onerror=()=>{fallback()};
@@ -198,11 +230,13 @@
           return true
         }catch{await fallback();return true}
       }
-    }catch{}
-    if(run!==speechRun)return false;
-    return await speakBrowser(text,lang)
+      if(run!==speechRun)return false;
+      return await safeBrowserVoiceFallback(text,lang,server.reason);
+    }catch(e){
+      if(run!==speechRun)return false;
+      return await safeBrowserVoiceFallback(text,lang,String(e?.message||'server TTS error'));
+    }
   }
-
 
 
   function setQuick(items=[]){const box=$('#quick-prompts');box.innerHTML=items.slice(0,3).map(x=>`<button type="button">${escape(x)}</button>`).join('');box.querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent))}

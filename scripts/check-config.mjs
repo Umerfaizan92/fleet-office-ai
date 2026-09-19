@@ -31,6 +31,7 @@ const groups=[
   {name:'Protected owner transfer',sets:[['TELNYX_API_KEY','OWNER_PRIVATE_TRANSFER_NUMBER']]},
   {name:'AI receptionist enquiry email',sets:[['RESEND_API_KEY','VOICE_ENQUIRY_NOTIFY_TO'],['RESEND_API_KEY','NOTIFY_TO']]},
   {name:'AI receptionist urgent SMS',sets:[['TELNYX_API_KEY','TELNYX_FROM_NUMBER','VOICE_ENQUIRY_ALERT_PHONE']]},
+  {name:'Integration token encryption',sets:[['INTEGRATION_ENCRYPTION_KEY'],['SAAS_SESSION_SECRET']]},
   {name:'Meta',sets:[['META_APP_ID','META_APP_SECRET']]},
   {name:'Facebook live statistics',sets:[['META_ACCESS_TOKEN','FACEBOOK_PAGE_ID']]},
   {name:'Instagram live statistics',sets:[['INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_USER_ID']]},

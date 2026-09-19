@@ -2075,8 +2075,9 @@ function requireSaasUser(req,res,next){
   const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString());
   if(!row)return res.status(401).json({ok:false,error:'Session expired'});const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);req.saas=row;
   const state=syncSubscriptionLifecycle(row.organisation_id);req.subscription=state.subscription;req.subscription_lifecycle=state.lifecycle;
-  const writeMethod=!['GET','HEAD','OPTIONS'].includes(req.method);const alwaysAllowed=/\/(logout|mfa)/.test(req.path);
-  if(writeMethod&&!alwaysAllowed&&state.lifecycle.access==='read_only')return res.status(402).json({ok:false,error:'Workspace write access is restricted because the trial/subscription is unpaid. Your data remains protected under the retention schedule.',subscription_state:state.lifecycle.state,lifecycle:state.lifecycle});
+  // Account identity and saved workspace data must never become inaccessible merely
+  // because a trial or billing state changes. Commercial plan enforcement belongs
+  // at feature/usage entitlement level, not by disabling sign-in or tenant data access.
   next();
 }
 const base32Alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -2568,7 +2569,7 @@ function pcm16Mono24kToWav(pcm){
 }
 async function makeGeminiSpeechAudio({text,language='en',voice='auto'}){
   const key=geminiApiKey();if(!key)throw Object.assign(new Error('Gemini free voice is not configured.'),{status:503});
-  const model=meaningfulConfigValue(env.GEMINI_TTS_MODEL)?String(env.GEMINI_TTS_MODEL).trim():'gemini-2.5-flash-preview-tts';
+  const model=meaningfulConfigValue(env.GEMINI_TTS_MODEL)?String(env.GEMINI_TTS_MODEL).trim() :'gemini-3.1-flash-tts-preview';
   const prompt=`${speechInstructions(language,voice)}\n\nRead the following reply faithfully. Do not add, remove or translate content:\n${text}`;
   const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
     method:'POST',headers:{'x-goog-api-key':key,'content-type':'application/json'},
@@ -2602,10 +2603,73 @@ async function speechEndpoint(req,res,max=3500){
 app.post('/api/product-guide/speech',productGuideLimiter,(req,res)=>speechEndpoint(req,res,1800));
 app.post('/api/saas/voice/speech',requireSaasUser,voiceReplyLimiter,(req,res)=>speechEndpoint(req,res,3500));
 
+async function streamGeminiSpeech(req,res,max=3500){
+  const parsed=z.object({text:z.string().trim().min(1).max(max),language:z.string().trim().max(20).default('en'),voice:z.enum(['auto','female','male']).default('auto')}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Voice text is invalid.'});
+  const key=geminiApiKey();
+  if(!key)return res.status(503).json({ok:false,error:'Gemini server voice is not configured.'});
+  const model=meaningfulConfigValue(env.GEMINI_TTS_MODEL)?String(env.GEMINI_TTS_MODEL).trim():'gemini-3.1-flash-tts-preview';
+  const prompt=`${speechInstructions(parsed.data.language,parsed.data.voice)}\n\nRead the following reply faithfully. Do not add, remove or translate content:\n${parsed.data.text}`;
+  const controller=new AbortController();
+  req.on('close',()=>controller.abort());
+  try{
+    const upstream=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,{
+      method:'POST',
+      headers:{'x-goog-api-key':key,'content-type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:geminiVoiceChoice(parsed.data.voice)}}}}}),
+      signal:controller.signal
+    });
+    if(!upstream.ok||!upstream.body){
+      const detail=await upstream.text().catch(()=> '');
+      console.warn('[VOICE TTS STREAM] provider error',upstream.status,detail.slice(0,500));
+      return res.status(upstream.status||502).json({ok:false,error:'Streaming server voice is temporarily unavailable.'});
+    }
+    res.status(200);
+    res.setHeader('Content-Type','application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control','no-store, no-transform');
+    res.setHeader('X-Accel-Buffering','no');
+    res.setHeader('X-SuperPro-Voice-Provider','gemini-stream');
+    res.flushHeaders?.();
+
+    const reader=upstream.body.getReader(),decoder=new TextDecoder();
+    let pending='';
+    const emitEvent=(raw)=>{
+      const dataLines=String(raw||'').split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trim()).filter(Boolean);
+      if(!dataLines.length)return;
+      let payload;try{payload=JSON.parse(dataLines.join('\n'))}catch{return}
+      for(const candidate of payload?.candidates||[]){
+        for(const part of candidate?.content?.parts||[]){
+          const audio=part?.inlineData?.data;
+          if(audio)res.write(JSON.stringify({audio,sample_rate:24000,encoding:'pcm_s16le'})+'\n');
+        }
+      }
+    };
+    while(true){
+      const {value,done}=await reader.read();
+      if(done)break;
+      pending+=decoder.decode(value,{stream:true});
+      const events=pending.split(/\r?\n\r?\n/);
+      pending=events.pop()||'';
+      for(const event of events)emitEvent(event);
+    }
+    pending+=decoder.decode();
+    if(pending.trim())emitEvent(pending);
+    res.write(JSON.stringify({done:true})+'\n');
+    res.end();
+  }catch(err){
+    if(controller.signal.aborted)return;
+    console.warn('[VOICE TTS STREAM] failed:',err.message);
+    if(!res.headersSent)return res.status(502).json({ok:false,error:'Streaming voice could not be completed.'});
+    try{res.write(JSON.stringify({error:'Streaming voice interrupted.'})+'\n');res.end()}catch{}
+  }
+}
+app.post('/api/product-guide/speech-stream',productGuideLimiter,(req,res)=>streamGeminiSpeech(req,res,3500));
+app.post('/api/saas/voice/speech-stream',requireSaasUser,voiceReplyLimiter,(req,res)=>streamGeminiSpeech(req,res,5000));
+
 const voiceInputUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(req,file,cb)=>{const ok=/^(audio\/|video\/webm)/i.test(String(file.mimetype||''));cb(ok?null:new Error('Unsupported microphone audio format.'),ok)}});
 async function transcribeWithGemini(file,requested='auto'){
   const key=geminiApiKey();if(!key)throw new Error('Gemini free transcription is not configured.');
-  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim():'gemini-3.5-flash-lite';
+  const model=meaningfulConfigValue(env.GEMINI_STT_MODEL)?String(env.GEMINI_STT_MODEL).trim() :'gemini-3.5-transcribe';
   const mime=file.mimetype||'audio/webm';const prompt=requested==='auto'
     ? 'Transcribe the speech exactly. Preserve the language and writing style used by the speaker. For Urdu, Hindi or Punjabi spoken in Roman/Latin form, return a natural Roman-script transcription when that is what was spoken. Return transcript text only, with no labels, explanation, timestamps or markdown.'
     : `Transcribe the speech exactly in language code ${requested}. Return transcript text only, with no labels, explanation, timestamps or markdown.`;

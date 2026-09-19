@@ -80,8 +80,9 @@ for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-
 for(const token of ['/api/saas/content/ai-spec','generateAiText','local-content-fallback'])if(!server.includes(token))failures.push('server.js missing '+token);
 if(!server.includes("const allowUnlistedOrigins = env.NODE_ENV !== 'production'")||server.includes('allowedOrigins.length === 0 ||'))failures.push('Production CORS must fail closed when ALLOWED_ORIGINS is omitted');
 const app=read('saas/app.js'),ops=read('saas/ai-operations.js'),workspaceAi=read('saas/workspace-ai-runtime.js');
-for(const token of ['/api/saas/content/ai-spec','/api/saas/voice/transcribe','/api/saas/voice/speech'])if(!app.includes(token))failures.push('app.js missing '+token);
-for(const token of ['/api/saas/ai/status','startBrowserRecognitionFallback','/api/saas/voice/transcribe'])if(!ops.includes(token))failures.push('ai-operations.js missing '+token);
+for(const token of ['/api/saas/content/ai-spec'])if(!app.includes(token))failures.push('app.js missing '+token);
+for(const token of ['/api/saas/ai/status','startBrowserRecognitionFallback'])if(!ops.includes(token))failures.push('ai-operations.js missing '+token);
+for(const token of ['/api/saas/voice/transcribe','/api/saas/voice/speech','/api/saas/voice/speech-stream'])if(!workspaceAi.includes(token))failures.push('workspace-ai-runtime.js missing '+token);
 if(app.includes("voiceTest=shell.querySelector('[data-copilot-voice-test]'); if(voiceStyle)"))failures.push('app.js contains unsafe copilot voice initialization ordering');
 if(!workspaceAi.includes('window.SuperProAIClient')||!workspaceAi.includes('/api/saas/voice/speech-stream')||!workspaceAi.includes('/api/saas/voice/transcribe'))failures.push('workspace shared AI runtime is incomplete');
 if(!app.includes('SuperProAIClient')||!ops.includes('SuperProAIClient'))failures.push('workspace assistants are not using the shared AI runtime');

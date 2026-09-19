@@ -8,7 +8,7 @@ const checks=[];const add=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 const required=[
   'src/server.js','src/db.js','src/ai-provider-shim.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manifest.webmanifest','saas/sw.js','saas/superpro-icon-192.png','saas/superpro-icon-512.png',
   'office/index.html','office/office.js','office/office-extras.js','office/office-records.js','office/office-insights.js',
@@ -23,7 +23,7 @@ const obsolete=[
 ];
 add('cleanup:no-obsolete-runtime-files',obsolete.every(f=>!exists(f)));
 
-const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
+const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
 add('brand:super-pro',index.includes('Super Pro AI Office Manager')&&office.includes('Super Pro AI Office Manager'));
 add('runtime:single-guide',index.includes('product-guide.js')&&!index.includes('guide-v16')&&!index.includes('guide-v17'));
 add('runtime:current-workspace-ai',workspace.includes('ai-operations.js')&&workspace.includes('workspace-extras.js'));
@@ -44,6 +44,12 @@ add('ai:quality-central',server.includes('/api/admin/ai-quality/check')&&!server
 add('voice:server-tts',server.includes('/api/saas/voice/speech')&&server.includes('makeGeminiSpeechAudio'));
 add('voice:workspace-shared-runtime',workspace.includes('workspace-ai-runtime.js')&&workspaceAi.includes('window.SuperProAIClient')&&workspaceAi.includes('/api/saas/voice/speech-stream')&&workspaceAi.includes('/api/saas/voice/transcribe')&&app.includes('SuperProAIClient')&&ops.includes('SuperProAIClient'));
 add('business:industry-registry-live',server.includes('/api/saas/industry-registry')&&app.includes('/api/saas/industry-registry')&&app.includes('renderIndustryBrowser'));
+add('business:onboarding-read-write',server.includes("app.get('/api/saas/onboarding'")&&server.includes("app.put('/api/saas/onboarding'")&&app.includes('loadOnboarding'));
+add('business:regulatory-watch',server.includes('/api/saas/regulatory/sources')&&server.includes('/api/saas/regulatory/check')&&db.includes('regulatory_source_snapshots')&&app.includes('check-regulatory-sources'));
+add('business:core-modules-never-hidden',!app.includes('button.hidden=!always&&!allowed.has(view)')&&app.includes("button.hidden=false"));
+add('updates:customer-inbox',workspace.includes('platform-notices.js')&&platformNotices.includes('/api/saas/announcements')&&server.includes('/api/saas/announcements'));
+add('updates:scheduled-email',server.includes('processPlatformAnnouncementEmails')&&server.includes('/api/admin/platform-announcements')&&db.includes('platform_announcement_deliveries'));
+add('updates:release-before-after',server.includes('/api/saas/releases/latest')&&db.includes('product_release_events')&&platformNotices.includes('What changed / current state'));
 add('voice:streaming-tts',server.includes('/api/product-guide/speech-stream')&&server.includes('streamGenerateContent?alt=sse')&&intro.includes('streamServerSpeech'));
 add('account:preserved-indefinitely',server.includes("preserved_indefinitely:true")&&server.includes("automatic_deletion:false"));
 add('account:verified-self-deletion',server.includes('/api/saas/account/deletion/start')&&server.includes('/api/saas/account/deletion/confirm')&&server.includes('/api/saas/account/deletion/cancel')&&server.includes('processEligibleAccountDeletions'));

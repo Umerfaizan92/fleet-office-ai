@@ -168,9 +168,6 @@
     const locale=speechLocale(lang);
     await ensureVoicesReady();
     const matched=findLanguageVoice(locale).voice;
-    // Chrome/Windows can silently skip non-Latin script when no matching
-    // browser voice is installed, then pronounce only embedded English words.
-    // Never present that misleading partial playback as a successful reply.
     if(lang!=='en'&&!matched){
       setVoiceStatus(`Super Pro AI ${locale} server voice is temporarily unavailable. This device has no matching ${locale} browser voice, so partial English-only playback was blocked.`,'limited');
       return false;
@@ -191,51 +188,83 @@
         lastReason=String(detail?.error||('HTTP '+response.status));
         if(![429,502,503].includes(response.status))break;
       }catch(e){lastReason=String(e?.message||'network error')}
-      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,650*(attempt+1)));
+      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
     }
     return {response:lastResponse,reason:lastReason||'server TTS unavailable'};
+  }
+
+  async function prepareSpeechChunk(text,lang,run){
+    const server=await requestServerSpeech({text,language:lang,voice:voicePreference()},run);
+    if(!server.response?.ok||run!==speechRun)return {ok:false,reason:server.reason||'server TTS unavailable'};
+    const blob=await server.response.blob();
+    if(!blob.size)return {ok:false,reason:'empty server voice'};
+    const ctx=await ensurePlaybackContext();
+    if(ctx&&run===speechRun){
+      try{
+        const buffer=await ctx.decodeAudioData(await blob.arrayBuffer());
+        return {ok:true,type:'buffer',buffer,ctx}
+      }catch{}
+    }
+    return {ok:true,type:'blob',blob};
+  }
+
+  async function playPreparedSpeech(prepared,locale,run){
+    if(run!==speechRun||!prepared?.ok)return false;
+    setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking');
+    if(prepared.type==='buffer'){
+      await new Promise(resolve=>{
+        if(run!==speechRun)return resolve();
+        const src=prepared.ctx.createBufferSource();
+        playbackSource=src;src.buffer=prepared.buffer;src.connect(prepared.ctx.destination);
+        let done=false;
+        const finish=()=>{if(done)return;done=true;try{src.disconnect()}catch{}if(playbackSource===src)playbackSource=null;resolve()};
+        src.onended=finish;
+        try{src.start(0)}catch{finish()}
+        const watch=setInterval(()=>{if(run!==speechRun){clearInterval(watch);finish()}},60);
+        const original=finish;
+        src.onended=()=>{clearInterval(watch);original()};
+      });
+      return run===speechRun;
+    }
+    const url=URL.createObjectURL(prepared.blob);
+    const audio=new Audio(url);serverAudio=audio;serverAudioUrl=url;audio.preload='auto';audio.volume=1;audio.muted=false;
+    await new Promise(resolve=>{
+      let done=false;
+      const finish=()=>{if(done)return;done=true;try{audio.pause()}catch{}try{URL.revokeObjectURL(url)}catch{}if(serverAudio===audio)serverAudio=null;if(serverAudioUrl===url)serverAudioUrl='';resolve()};
+      audio.onended=finish;audio.onerror=finish;
+      try{
+        const p=audio.play();if(p?.catch)p.catch(finish);
+      }catch{finish()}
+      const watch=setInterval(()=>{if(run!==speechRun){clearInterval(watch);finish()}},60);
+      const original=finish;
+      audio.onended=()=>{clearInterval(watch);original()};
+      audio.onerror=()=>{clearInterval(watch);original()};
+    });
+    return run===speechRun;
   }
 
   async function speak(text,lang=lastLanguage){
     if(!voiceReplies)return false;stopSpeech();
     const locale=speechLocale(lang),run=++speechRun;
-    // Prefer Gemini/server TTS. Brief retries cover freshly-updated quotas and
-    // transient provider throttling before any device/browser fallback is used.
-    try{
-      const server=await requestServerSpeech({text,language:lang,voice:voicePreference()},run);
-      const response=server.response;
-      if(response?.ok&&run===speechRun){
-        const blob=await response.blob();if(!blob.size)throw new Error('Empty server voice');
-        const ctx=await ensurePlaybackContext();
-        if(ctx&&run===speechRun){
-          try{
-            const audioBuffer=await ctx.decodeAudioData(await blob.arrayBuffer());
-            if(run!==speechRun)return false;
-            playbackSource=ctx.createBufferSource();playbackSource.buffer=audioBuffer;playbackSource.connect(ctx.destination);
-            playbackSource.onended=()=>{if(run!==speechRun)return;try{playbackSource?.disconnect()}catch{}playbackSource=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
-            setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking');playbackSource.start(0);return true
-          }catch{}
-        }
-        if(run!==speechRun)return false;
-        serverAudioUrl=URL.createObjectURL(blob);serverAudio=new Audio();serverAudio.preload='auto';serverAudio.src=serverAudioUrl;serverAudio.volume=1;serverAudio.muted=false;
-        let fallbackStarted=false;
-        const fallback=async()=>{if(fallbackStarted||run!==speechRun)return;fallbackStarted=true;try{serverAudio?.pause()}catch{}if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}serverAudioUrl='';serverAudio=null;await safeBrowserVoiceFallback(text,lang,'audio playback failed')};
-        serverAudio.onplay=()=>{if(run===speechRun)setVoiceStatus(`Speaking naturally in ${locale} using Super Pro AI voice.`,'speaking')};
-        serverAudio.onended=()=>{if(run!==speechRun)return;if(serverAudioUrl)URL.revokeObjectURL(serverAudioUrl);serverAudioUrl='';serverAudio=null;setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready')};
-        serverAudio.onerror=()=>{fallback()};
-        try{
-          const playPromise=serverAudio.play();
-          await Promise.race([playPromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('audio-start-timeout')),2200))]);
-          if(serverAudio.paused){await fallback();return true}
-          return true
-        }catch{await fallback();return true}
+    // Split long replies into natural sentence-sized chunks. The next chunk is
+    // prepared while the current one is playing, which reduces the initial
+    // silence and avoids long all-at-once TTS generation delays.
+    const chunks=splitSpeech(text,260);
+    if(!chunks.length)return false;
+    let preparedPromise=prepareSpeechChunk(chunks[0],lang,run);
+    for(let i=0;i<chunks.length;i++){
+      const prepared=await preparedPromise;
+      if(run!==speechRun)return false;
+      if(!prepared.ok){
+        return await safeBrowserVoiceFallback(chunks.slice(i).join(' '),lang,prepared.reason);
       }
-      if(run!==speechRun)return false;
-      return await safeBrowserVoiceFallback(text,lang,server.reason);
-    }catch(e){
-      if(run!==speechRun)return false;
-      return await safeBrowserVoiceFallback(text,lang,String(e?.message||'server TTS error'));
+      const nextPromise=(i+1<chunks.length)?prepareSpeechChunk(chunks[i+1],lang,run):null;
+      const played=await playPreparedSpeech(prepared,locale,run);
+      if(!played||run!==speechRun)return false;
+      preparedPromise=nextPromise;
     }
+    if(run===speechRun)setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');
+    return true;
   }
 
 

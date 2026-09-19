@@ -25,7 +25,7 @@
   try{localStorage.removeItem('superpro_conversation_language')}catch{}
   let conversationLanguage='auto';
   let recognition=null, listening=false, lastTopic='', lastLanguage='en', availableVoices=[], serverAudio=null, serverAudioUrl='', mediaRecorder=null, mediaStream=null;
-  let speechRun=0, speechHeartbeat=null, speechPrimed=false, playbackContext=null, playbackSource=null;
+  let speechRun=0, speechHeartbeat=null, speechPrimed=false, playbackContext=null, playbackSource=null, streamSources=[];
   const escape=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const speechSupported='speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
   const recognitionSupported=Boolean(window.SpeechRecognition||window.webkitSpeechRecognition);
@@ -136,6 +136,7 @@
     speechRun++;
     if(speechHeartbeat){clearInterval(speechHeartbeat);speechHeartbeat=null}
     if(playbackSource){try{playbackSource.onended=null;playbackSource.stop()}catch{}try{playbackSource.disconnect()}catch{}playbackSource=null}
+    for(const src of streamSources.splice(0)){try{src.onended=null;src.stop()}catch{}try{src.disconnect()}catch{}}
     if(serverAudio){try{serverAudio.pause();serverAudio.removeAttribute('src');serverAudio.load?.()}catch{}serverAudio=null}
     if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}
     if(speechSupported){window.speechSynthesis.cancel();window.speechSynthesis.resume?.()}
@@ -243,21 +244,89 @@
     return run===speechRun;
   }
 
+  function base64PcmToAudioBuffer(base64,ctx,sampleRate=24000){
+    const binary=atob(base64),bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    const samples=Math.floor(bytes.length/2),audio=ctx.createBuffer(1,samples,sampleRate),channel=audio.getChannelData(0);
+    for(let i=0;i<samples;i++){
+      let value=bytes[i*2]|(bytes[i*2+1]<<8);
+      if(value&0x8000)value-=0x10000;
+      channel[i]=Math.max(-1,Math.min(1,value/32768));
+    }
+    return audio;
+  }
+
+  async function streamServerSpeech(text,lang,run){
+    const ctx=await ensurePlaybackContext();
+    if(!ctx||run!==speechRun||!ReadableStream)return {ok:false,reason:'stream playback unavailable'};
+    const controller=new AbortController();
+    let firstAudio=false,firstTimer=setTimeout(()=>{if(!firstAudio)controller.abort('first-audio-timeout')},7000);
+    try{
+      const response=await fetch('/api/product-guide/speech-stream',{
+        method:'POST',credentials:'same-origin',signal:controller.signal,
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({text,language:lang,voice:voicePreference()})
+      });
+      if(!response.ok||!response.body){
+        clearTimeout(firstTimer);
+        let detail={};try{detail=await response.json()}catch{}
+        return {ok:false,reason:String(detail?.error||('HTTP '+response.status))}
+      }
+      const reader=response.body.getReader(),decoder=new TextDecoder();
+      let pending='',nextStart=Math.max(ctx.currentTime+.06,ctx.currentTime),lastEnd=nextStart;
+      setVoiceStatus(`Preparing live ${speechLocale(lang)} voice…`,'speaking');
+      while(true){
+        if(run!==speechRun){controller.abort();clearTimeout(firstTimer);return {ok:false,reason:'interrupted'}}
+        const {value,done}=await reader.read();
+        if(done)break;
+        pending+=decoder.decode(value,{stream:true});
+        const lines=pending.split(/\r?\n/);pending=lines.pop()||'';
+        for(const line of lines){
+          if(!line.trim())continue;
+          let event;try{event=JSON.parse(line)}catch{continue}
+          if(event.error){clearTimeout(firstTimer);return {ok:false,reason:event.error}}
+          if(!event.audio)continue;
+          firstAudio=true;clearTimeout(firstTimer);
+          const buffer=base64PcmToAudioBuffer(event.audio,ctx,Number(event.sample_rate||24000));
+          if(nextStart<ctx.currentTime+.035)nextStart=ctx.currentTime+.035;
+          const src=ctx.createBufferSource();src.buffer=buffer;src.connect(ctx.destination);
+          streamSources.push(src);
+          src.onended=()=>{const p=streamSources.indexOf(src);if(p>=0)streamSources.splice(p,1);try{src.disconnect()}catch{}};
+          src.start(nextStart);
+          lastEnd=nextStart+buffer.duration;nextStart=lastEnd;
+          setVoiceStatus(`Speaking naturally in ${speechLocale(lang)} using streaming Super Pro AI voice.`,'speaking');
+        }
+      }
+      clearTimeout(firstTimer);
+      if(!firstAudio)return {ok:false,reason:'no streaming audio received'};
+      while(run===speechRun&&ctx.currentTime<lastEnd-.03)await new Promise(resolve=>setTimeout(resolve,70));
+      return {ok:run===speechRun,reason:run===speechRun?'':'interrupted'};
+    }catch(err){
+      clearTimeout(firstTimer);
+      if(run!==speechRun)return {ok:false,reason:'interrupted'};
+      return {ok:false,reason:String(err?.name==='AbortError'?'stream start timeout':(err?.message||'streaming voice failed'))};
+    }
+  }
+
   async function speak(text,lang=lastLanguage){
     if(!voiceReplies)return false;stopSpeech();
     const locale=speechLocale(lang),run=++speechRun;
-    // Split long replies into natural sentence-sized chunks. The next chunk is
-    // prepared while the current one is playing, which reduces the initial
-    // silence and avoids long all-at-once TTS generation delays.
-    const chunks=splitSpeech(text,260);
+    // Gemini 3.1 TTS streaming is the primary path: audio is scheduled as PCM
+    // chunks arrive instead of waiting for the whole spoken reply to finish generating.
+    const streamed=await streamServerSpeech(text,lang,run);
+    if(streamed.ok&&run===speechRun){
+      setVoiceStatus('Voice reply finished. Press the microphone to speak, or type your next question.','ready');
+      return true;
+    }
+    if(run!==speechRun)return false;
+    // Buffered sentence pipeline remains as a resilient server fallback.
+    const chunks=splitSpeech(text,180);
     if(!chunks.length)return false;
     let preparedPromise=prepareSpeechChunk(chunks[0],lang,run);
     for(let i=0;i<chunks.length;i++){
       const prepared=await preparedPromise;
       if(run!==speechRun)return false;
-      if(!prepared.ok){
-        return await safeBrowserVoiceFallback(chunks.slice(i).join(' '),lang,prepared.reason);
-      }
+      if(!prepared.ok)return await safeBrowserVoiceFallback(chunks.slice(i).join(' '),lang,prepared.reason||streamed.reason);
       const nextPromise=(i+1<chunks.length)?prepareSpeechChunk(chunks[i+1],lang,run):null;
       const played=await playPreparedSpeech(prepared,locale,run);
       if(!played||run!==speechRun)return false;

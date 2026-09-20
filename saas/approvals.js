@@ -73,6 +73,7 @@
       $('#approval-count-approved').textContent=d.counts.approved;
       $('#approval-count-rejected').textContent=d.counts.rejected;
       $('#approval-count-total').textContent=d.counts.total;
+      const navBadge=$('#nav-approvals');if(navBadge)navBadge.textContent=String(d.counts.pending||0);
       if(policyHost){policyHost.innerHTML=policyHtml(d.policy);const mode=$('#approval-policy-mode');if(mode)mode.value=d.policy?.mode||'everything'}
       if(list)list.innerHTML=(d.approvals||[]).map(a=>cardHtml(a,d.can_decide)).join('')||'<div class="gov-empty">No '+esc(status==='all'?'approval history':status+' approvals')+' for this workspace.</div>';
       bind();

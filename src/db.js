@@ -1382,6 +1382,60 @@ export function createDb(databasePath) {
   for (const row of releaseRows) insertRelease.run(...row);
 
 
+
+  // Tenant-scoped approval control plane for Super Pro workspaces.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS workspace_approvals (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      reference_code TEXT NOT NULL UNIQUE,
+      approval_type TEXT NOT NULL DEFAULT 'general',
+      source_module TEXT NOT NULL DEFAULT 'workspace',
+      title TEXT NOT NULL,
+      summary TEXT,
+      entity_type TEXT,
+      entity_id TEXT,
+      risk_level TEXT NOT NULL DEFAULT 'normal',
+      status TEXT NOT NULL DEFAULT 'pending',
+      draft_payload_json TEXT NOT NULL DEFAULT '{}',
+      edited_payload_json TEXT,
+      requested_by_user_id TEXT,
+      required_role TEXT NOT NULL DEFAULT 'senior',
+      requested_at TEXT NOT NULL,
+      expires_at TEXT,
+      decided_by_user_id TEXT,
+      decided_at TEXT,
+      decision_note TEXT,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(requested_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY(decided_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workspace_approval_events (
+      id TEXT PRIMARY KEY,
+      approval_id TEXT NOT NULL,
+      organisation_id TEXT NOT NULL,
+      actor_user_id TEXT,
+      event_type TEXT NOT NULL,
+      detail_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(approval_id) REFERENCES workspace_approvals(id) ON DELETE CASCADE,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workspace_approvals_org_status
+      ON workspace_approvals(organisation_id,status,requested_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_workspace_approval_events_approval
+      ON workspace_approval_events(approval_id,created_at DESC);
+  `);
+
+  const onboardingApprovalColumns = new Set(db.prepare(`PRAGMA table_info(onboarding_profiles)`).all().map((column) => column.name));
+  if (!onboardingApprovalColumns.has('approval_rules_json')) {
+    db.exec(`ALTER TABLE onboarding_profiles ADD COLUMN approval_rules_json TEXT NOT NULL DEFAULT '{"external_messages":true,"social_publishing":true,"payments":true,"quotes_and_invoices":true,"compliance_changes":true,"job_changes":false,"customer_record_changes":false}'`);
+  }
+
   // Platform-wide customer notices: maintenance, incidents, releases and resolutions.
   db.exec(`
     CREATE TABLE IF NOT EXISTS platform_announcements (

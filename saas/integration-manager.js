@@ -13,14 +13,14 @@
   };
   const style=document.createElement('style');
   style.textContent=[
-    '.integration-manager{grid-column:1/-1;width:100%;min-width:0;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:grid;gap:10px}',
-    '.integration-manager-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.integration-manager-actions button{position:static!important;max-width:100%}',
+    '.integration-card.self-service.has-integration-manager{grid-template-columns:44px minmax(0,1fr)!important;grid-template-rows:auto auto!important;align-items:start!important;height:auto!important;min-height:0!important;overflow:visible!important}.integration-card.self-service.has-integration-manager>.integration-logo{grid-column:1;grid-row:1}.integration-card.self-service.has-integration-manager>div:not(.integration-manager){grid-column:2;grid-row:1;min-width:0}.integration-card.self-service.has-integration-manager>[data-connect-provider]{display:none!important}.integration-manager{grid-column:1/-1!important;grid-row:2!important;width:100%;min-width:0;margin-top:4px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);display:grid;gap:12px;align-self:stretch}',
+    '.integration-manager-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start}.integration-manager-actions button{position:static!important;grid-column:auto!important;width:auto!important;max-width:100%;margin:0!important}',
     '.integration-resource-list{display:grid;gap:6px;max-height:220px;overflow:auto}',
     '.integration-resource-list label{display:flex;gap:9px;align-items:flex-start;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.025)}',
     '.integration-resource-list label>span{display:grid;gap:2px}.integration-resource-list small{color:#8f9bab}',
     '.integration-requirements-inline{grid-column:1/-1;margin-top:8px;padding:9px 10px;border:1px solid rgba(232,190,105,.25);border-radius:10px;background:rgba(232,190,105,.06);color:#c8b88e;line-height:1.5}',
     '.integration-health-pass{color:#72d39a}.integration-health-fail{color:#ff8f8f}',
-    '.integration-manager-status{font-size:11px;color:#9aa5b4}'
+    '.integration-manager-status{font-size:11px;line-height:1.5;color:#9aa5b4;overflow-wrap:anywhere}'
   ].join('');
   document.head.append(style);
 
@@ -55,6 +55,7 @@
       card.querySelector('[data-im-manager]')?.remove();
       card.querySelector('[data-im-requirements]')?.remove();
       const legacyAction=card.querySelector('[data-connect-provider]');
+      card.classList.toggle('has-integration-manager',x.status==='connected');
       if(x.status==='connected'){
         if(legacyAction){legacyAction.hidden=true;legacyAction.setAttribute('aria-hidden','true')}
         card.insertAdjacentHTML('beforeend',managerHtml(x));

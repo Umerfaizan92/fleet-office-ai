@@ -2797,7 +2797,8 @@ app.get('/api/saas/onboarding',requireSaasUser,(req,res)=>{
       ...row,
       services:safeJson(row.services,[]),
       custom_sections:safeJson(row.custom_sections_json,[]),
-      workspace_modules:safeJson(row.workspace_modules_json,industry.modules||[])
+      workspace_modules:safeJson(row.workspace_modules_json,industry.modules||[]),
+      approval_rules:safeJson(row.approval_rules_json,{external_messages:true,social_publishing:true,payments:true,quotes_and_invoices:true,compliance_changes:true,job_changes:false,customer_record_changes:false})
     },
     industry,
     organisation:{
@@ -2966,7 +2967,7 @@ setTimeout(processPlatformAnnouncementEmails,20*1000).unref?.();
 setInterval(processPlatformAnnouncementEmails,60*1000).unref?.();
 
 
-app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
+app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),approval_rules:z.object({external_messages:z.boolean().default(true),social_publishing:z.boolean().default(true),payments:z.boolean().default(true),quotes_and_invoices:z.boolean().default(true),compliance_changes:z.boolean().default(true),job_changes:z.boolean().default(false),customer_record_changes:z.boolean().default(false)}).default({external_messages:true,social_publishing:true,payments:true,quotes_and_invoices:true,compliance_changes:true,job_changes:false,customer_record_changes:false}),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,approval_rules_json=?,ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,JSON.stringify(parsed.data.approval_rules),parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
   const parsed=z.object({
@@ -3057,6 +3058,138 @@ function optionalSaasSession(req){
 }
 
 app.get('/api/saas/dashboard',requireSaasUser,(req,res)=>{const org=req.saas.organisation_id;const workers=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND status!='archived'`).get(org).count;const ready=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active'`).get(org).count;const attention=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=0 AND status!='archived'`).get(org).count;const jobs=db.prepare(`SELECT COUNT(*) count FROM work_orders WHERE organisation_id=? AND status IN ('awaiting_allocation','offered')`).get(org).count;const expiring=db.prepare(`SELECT COUNT(*) count FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE w.organisation_id=? AND d.expiry_date IS NOT NULL AND d.expiry_date<=date('now','+30 day')`).get(org).count;res.json({ok:true,metrics:{workers,ready,attention,jobs,expiring}})});
+
+
+
+function workspaceApprovalReference(){return 'SP-APR-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+crypto.randomBytes(2).toString('hex').toUpperCase()}
+function approvalCanDecide(role){return ['owner','admin','manager','super_admin','director'].includes(String(role||'').toLowerCase())}
+function approvalPublic(row){
+  return {
+    ...row,
+    draft_payload:safeJson(row.draft_payload_json,{}),
+    edited_payload:row.edited_payload_json?safeJson(row.edited_payload_json,{}):null
+  };
+}
+function addWorkspaceApprovalEvent(req,approvalId,eventType,detail={}){
+  const now=new Date().toISOString();
+  db.prepare(`INSERT INTO workspace_approval_events (id,approval_id,organisation_id,actor_user_id,event_type,detail_json,created_at) VALUES (?,?,?,?,?,?,?)`)
+    .run(crypto.randomUUID(),approvalId,req.saas.organisation_id,req.saas.user_id,eventType,JSON.stringify(detail||{}),now);
+  saasAudit(req,'approval.'+eventType,'workspace_approval',approvalId,detail);
+}
+function createWorkspaceApproval(req,{approval_type='general',source_module='workspace',title,summary='',entity_type=null,entity_id=null,risk_level='normal',draft_payload={},required_role='senior',expires_at=null}){
+  const id=crypto.randomUUID(),reference=workspaceApprovalReference(),now=new Date().toISOString();
+  db.prepare(`INSERT INTO workspace_approvals (id,organisation_id,reference_code,approval_type,source_module,title,summary,entity_type,entity_id,risk_level,status,draft_payload_json,requested_by_user_id,required_role,requested_at,expires_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?,?,?,?,?,?)`)
+    .run(id,req.saas.organisation_id,reference,approval_type,source_module,title,summary||null,entity_type||null,entity_id||null,risk_level,JSON.stringify(draft_payload||{}),req.saas.user_id,required_role,now,expires_at||null,now);
+  addWorkspaceApprovalEvent(req,id,'requested',{reference_code:reference,approval_type,source_module,risk_level});
+  return {id,reference_code:reference};
+}
+
+app.get('/api/saas/approvals',requireSaasUser,(req,res)=>{
+  const status=String(req.query.status||'pending').toLowerCase();
+  const allowed=['pending','approved','rejected','cancelled','expired','all'];
+  if(!allowed.includes(status))return res.status(400).json({ok:false,error:'Invalid approval status filter.'});
+  const base=`SELECT a.*, ru.full_name requested_by_name, du.full_name decided_by_name
+    FROM workspace_approvals a
+    LEFT JOIN users ru ON ru.id=a.requested_by_user_id
+    LEFT JOIN users du ON du.id=a.decided_by_user_id
+    WHERE a.organisation_id=?`;
+  const rows=status==='all'
+    ?db.prepare(base+` ORDER BY a.requested_at DESC LIMIT 500`).all(req.saas.organisation_id)
+    :db.prepare(base+` AND a.status=? ORDER BY a.requested_at DESC LIMIT 500`).all(req.saas.organisation_id,status);
+  const counts=db.prepare(`SELECT
+    SUM(status='pending') pending,
+    SUM(status='approved') approved,
+    SUM(status='rejected') rejected,
+    COUNT(*) total
+    FROM workspace_approvals WHERE organisation_id=?`).get(req.saas.organisation_id);
+  const profile=db.prepare(`SELECT approval_mode,approval_rules_json FROM onboarding_profiles WHERE organisation_id=?`).get(req.saas.organisation_id)||{};
+  res.json({
+    ok:true,
+    approvals:rows.map(approvalPublic),
+    counts:{pending:Number(counts.pending||0),approved:Number(counts.approved||0),rejected:Number(counts.rejected||0),total:Number(counts.total||0)},
+    policy:{mode:profile.approval_mode||'everything',rules:safeJson(profile.approval_rules_json,{})},
+    can_decide:approvalCanDecide(req.saas.role)
+  });
+});
+
+app.get('/api/saas/approvals/:id/events',requireSaasUser,(req,res)=>{
+  const approval=db.prepare(`SELECT id FROM workspace_approvals WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+  if(!approval)return res.status(404).json({ok:false,error:'Approval not found.'});
+  const events=db.prepare(`SELECT e.*,u.full_name actor_name FROM workspace_approval_events e LEFT JOIN users u ON u.id=e.actor_user_id WHERE e.approval_id=? AND e.organisation_id=? ORDER BY e.created_at DESC LIMIT 200`).all(req.params.id,req.saas.organisation_id)
+    .map(e=>({...e,detail:safeJson(e.detail_json,{})}));
+  res.json({ok:true,events});
+});
+
+app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
+  const parsed=z.object({
+    approval_type:z.string().trim().min(2).max(80).default('general'),
+    source_module:z.string().trim().min(2).max(80).default('workspace'),
+    title:z.string().trim().min(3).max(180),
+    summary:z.string().trim().max(3000).optional(),
+    entity_type:z.string().trim().max(80).optional(),
+    entity_id:z.string().trim().max(200).optional(),
+    risk_level:z.enum(['low','normal','elevated','high','critical']).default('normal'),
+    draft_payload:z.record(z.any()).default({}),
+    required_role:z.enum(['senior','owner','admin','manager']).default('senior'),
+    expires_at:z.string().trim().max(60).optional()
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval request.'});
+  const created=createWorkspaceApproval(req,parsed.data);
+  res.status(201).json({ok:true,...created,status:'pending'});
+});
+
+app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
+  const parsed=z.object({edited_payload:z.record(z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval changes.'});
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
+  const now=new Date().toISOString();
+  db.prepare(`UPDATE workspace_approvals SET edited_payload_json=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=?`)
+    .run(JSON.stringify(parsed.data.edited_payload),parsed.data.decision_note||null,now,row.id,req.saas.organisation_id);
+  addWorkspaceApprovalEvent(req,row.id,'edited',{note:parsed.data.decision_note||''});
+  res.json({ok:true});
+});
+
+app.post('/api/saas/approvals/:id/decision',requireSaasUser,(req,res)=>{
+  if(!approvalCanDecide(req.saas.role))return res.status(403).json({ok:false,error:'Only an authorised owner, administrator, manager or director can decide approvals.'});
+  const parsed=z.object({decision:z.enum(['approve','reject']),note:z.string().trim().max(2000).optional(),edited_payload:z.record(z.any()).optional()}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Choose approve or reject.'});
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
+  if(row.expires_at&&new Date(row.expires_at).getTime()<Date.now()){
+    const now=new Date().toISOString();
+    db.prepare(`UPDATE workspace_approvals SET status='expired',updated_at=? WHERE id=? AND organisation_id=?`).run(now,row.id,req.saas.organisation_id);
+    addWorkspaceApprovalEvent(req,row.id,'expired',{});
+    return res.status(409).json({ok:false,error:'This approval request has expired.'});
+  }
+  const status=parsed.data.decision==='approve'?'approved':'rejected',now=new Date().toISOString();
+  const edited=parsed.data.edited_payload?JSON.stringify(parsed.data.edited_payload):row.edited_payload_json;
+  db.prepare(`UPDATE workspace_approvals SET status=?,edited_payload_json=?,decided_by_user_id=?,decided_at=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=?`)
+    .run(status,edited||null,req.saas.user_id,now,parsed.data.note||null,now,row.id,req.saas.organisation_id);
+  addWorkspaceApprovalEvent(req,row.id,status,{note:parsed.data.note||'',source_module:row.source_module,entity_type:row.entity_type,entity_id:row.entity_id});
+  res.json({ok:true,status,executed:false,message:status==='approved'?'Approved. Any external execution remains subject to the connected module/provider action.':'Rejected. No external action was executed.'});
+});
+
+app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
+  const parsed=z.object({
+    mode:z.enum(['everything','external_actions','custom']),
+    rules:z.object({
+      external_messages:z.boolean(),
+      social_publishing:z.boolean(),
+      payments:z.boolean(),
+      quotes_and_invoices:z.boolean(),
+      compliance_changes:z.boolean(),
+      job_changes:z.boolean(),
+      customer_record_changes:z.boolean()
+    })
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval policy.'});
+  const now=new Date().toISOString();
+  db.prepare(`UPDATE onboarding_profiles SET approval_mode=?,approval_rules_json=?,updated_at=? WHERE organisation_id=?`)
+    .run(parsed.data.mode,JSON.stringify(parsed.data.rules),now,req.saas.organisation_id);
+  saasAudit(req,'approval.policy_updated','organisation',req.saas.organisation_id,{mode:parsed.data.mode,rules:parsed.data.rules});
+  res.json({ok:true,policy:parsed.data});
+});
 
 app.get('/api/saas/workers',requireSaasUser,(req,res)=>{const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(req.saas.organisation_id);res.json({ok:true,workers})});
 app.post('/api/saas/workers',requireSaasUser,(req,res)=>{const parsed=z.object({full_name:z.string().trim().min(2).max(150),email:z.string().trim().email().optional().or(z.literal('')),phone:z.string().max(50).optional(),role_title:z.string().trim().min(2).max(100),employment_type:z.enum(['owner','full_time','part_time','casual','fixed_term','apprentice','contractor','subcontractor','temporary']),worker_level:z.coerce.number().int().min(1).max(7).default(1),work_status:z.enum(['australian_citizen','permanent_resident','visa_holder','requires_review'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check worker details.'});const id=crypto.randomUUID(),now=new Date().toISOString(),wr=['australian_citizen','permanent_resident'].includes(parsed.data.work_status)?'verified':'review_required',progress=wr==='verified'?55:35;db.prepare(`INSERT INTO workers (id,organisation_id,full_name,email,phone,role_title,employment_type,worker_level,status,work_rights_status,onboarding_progress,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,req.saas.organisation_id,parsed.data.full_name,parsed.data.email||null,parsed.data.phone||null,parsed.data.role_title,parsed.data.employment_type,parsed.data.worker_level,'onboarding',wr,progress,now,now);const docs=[['photo_id',1],['passport',0],['employment_contract',1],['emergency_contact',1]];if(parsed.data.work_status==='visa_holder')docs.push(['vevo_work_rights',1]);if(['contractor','subcontractor'].includes(parsed.data.employment_type)){docs.push(['abn_details',1],['insurance',1])}const ins=db.prepare(`INSERT INTO worker_documents (id,worker_id,document_type,required,created_at,updated_at) VALUES (?,?,?,?,?,?)`);db.transaction(()=>{for(const [t,r] of docs)ins.run(crypto.randomUUID(),id,t,r,now,now)})();saasAudit(req,'worker.created','worker',id,{employment_type:parsed.data.employment_type});res.status(201).json({ok:true,id,passport_optional:true,approved_for_scheduling:false})});

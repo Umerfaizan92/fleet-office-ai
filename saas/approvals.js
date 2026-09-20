@@ -28,6 +28,7 @@
       '.approval-risk.high,.approval-risk.critical{color:#ff9696;border-color:rgba(255,100,100,.3)}.approval-risk.elevated{color:#f2c970;border-color:rgba(242,201,112,.3)}',
       '.approval-policy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.approval-policy-grid label{display:flex;gap:9px;align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}',
       '.approval-history{margin-top:10px;padding:10px;border-radius:10px;background:#0b0f15}.approval-history article{padding:7px 0;border-bottom:1px solid var(--line);font-size:9px}.approval-history article:last-child{border-bottom:0}',
+      '.approval-request-dialog{width:min(620px,calc(100vw - 24px));border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:0}.approval-request-dialog::backdrop{background:rgba(0,0,0,.62)}.approval-request-dialog form{display:grid;gap:12px;padding:20px}.approval-request-dialog header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.approval-request-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:8px}',
       '@media(max-width:760px){.approval-metrics,.approval-policy-grid{grid-template-columns:1fr 1fr}.approval-card header{display:grid}}',
       '@media(max-width:480px){.approval-metrics,.approval-policy-grid{grid-template-columns:1fr}}'
     ].join('');
@@ -80,7 +81,31 @@
     }catch(err){if(list)list.innerHTML='<div class="gov-empty">'+esc(err.message)+'</div>'}
   }
 
+  function approvalRequestDialog(){
+    let dialog=$('#approval-request-dialog');
+    if(dialog)return dialog;
+    dialog=document.createElement('dialog');dialog.id='approval-request-dialog';dialog.className='approval-request-dialog';
+    dialog.innerHTML='<form method="dialog" id="approval-request-form"><header><div><span class="panel-kicker">NEW APPROVAL</span><h2>Request an authorised decision</h2><p>Create a review item for any action that should not proceed without human approval.</p></div><button class="secondary-button compact" value="cancel" type="button" data-close-approval-request>Close</button></header><label><span>Title</span><input name="title" required maxlength="180" placeholder="e.g. Approve customer quote before sending"></label><label><span>Summary</span><textarea name="summary" rows="4" maxlength="3000" placeholder="Explain what is being approved and why."></textarea></label><div class="form-grid"><label><span>Source module</span><select name="source_module"><option value="workspace">Workspace</option><option value="customer_communications">Customer communications</option><option value="jobs">Jobs & allocation</option><option value="finance">Expenses & profit</option><option value="ai_operations">AI Operations</option><option value="content_studio">Content Studio</option><option value="connections">Connections</option><option value="compliance">Compliance</option></select></label><label><span>Risk level</span><select name="risk_level"><option value="normal">Normal</option><option value="elevated">Elevated</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label><span>Approval type</span><select name="approval_type"><option value="general">General decision</option><option value="external_message">External message</option><option value="social_publish">Social publishing</option><option value="payment">Payment / financial action</option><option value="quote_invoice">Quote / invoice</option><option value="compliance_change">Compliance change</option><option value="job_change">Job change</option><option value="customer_record_change">Customer record change</option></select></label><div class="dialog-actions"><button class="secondary-button" value="cancel" type="button" data-close-approval-request>Cancel</button><button class="primary-button" type="submit">Create approval request</button></div></form>';
+    document.body.append(dialog);
+    dialog.querySelectorAll('[data-close-approval-request]').forEach(b=>b.onclick=()=>dialog.close());
+    dialog.querySelector('form').onsubmit=async e=>{
+      e.preventDefault();
+      const form=e.currentTarget,button=form.querySelector('button[type="submit"]');button.disabled=true;
+      const fd=new FormData(form),payload=Object.fromEntries(fd.entries());
+      payload.draft_payload={created_from:'manual_approval_request'};
+      try{
+        const r=await api('/api/saas/approvals',{method:'POST',body:JSON.stringify(payload)});
+        dialog.close();form.reset();status='pending';
+        window.GDSLive?.push?.('Approval request '+r.reference_code+' created.','success');
+        await load();
+      }catch(err){window.GDSLive?.push?.(err.message,'error')}
+      finally{button.disabled=false}
+    };
+    return dialog;
+  }
+
   function bind(){
+    $('#new-approval-request')?.addEventListener('click',()=>approvalRequestDialog().showModal(),{once:true});
     document.querySelectorAll('[data-approval-filter]').forEach(b=>{b.classList.toggle('active',b.dataset.approvalFilter===status);b.onclick=()=>{status=b.dataset.approvalFilter;load()}});
     $('#save-approval-policy')?.addEventListener('click',async()=>{
       const rules={};document.querySelectorAll('[data-approval-rule]').forEach(x=>rules[x.dataset.approvalRule]=x.checked);

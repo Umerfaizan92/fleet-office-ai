@@ -97,14 +97,15 @@
 <button data-view="jobs"><span class="nav-step">04</span><span>Jobs &amp; allocation</span><span class="nav-badge" id="nav-jobs">0</span></button>
 <button data-view="finance"><span class="nav-step">05</span><span>Expenses &amp; profit</span></button>
 <button data-view="assistant"><span class="nav-step">06</span><span>AI Operations</span></button>
+<button data-view="approvals"><span class="nav-step">07</span><span>Approvals</span><span class="nav-badge" id="nav-approvals">0</span></button>
 <span class="nav-label">GROW &amp; CONNECT</span>
-<button data-view="video"><span class="nav-step">07</span><span>Content studio</span></button>
-<button data-view="integrations"><span class="nav-step">08</span><span>Connections</span></button>
+<button data-view="video"><span class="nav-step">08</span><span>Content studio</span></button>
+<button data-view="integrations"><span class="nav-step">09</span><span>Connections</span></button>
 <span class="nav-label">TRUST &amp; ACCOUNT</span>
-<button data-view="governance"><span class="nav-step">09</span><span>Trust &amp; governance</span></button>
-<button data-view="support"><span class="nav-step">10</span><span>Help &amp; complaints</span></button>
-<button data-view="manual"><span class="nav-step">11</span><span>Digital user manual</span></button>
-<button data-view="billing"><span class="nav-step">12</span><span>Plans &amp; billing</span></button></nav>
+<button data-view="governance"><span class="nav-step">10</span><span>Trust &amp; governance</span></button>
+<button data-view="support"><span class="nav-step">11</span><span>Help &amp; complaints</span></button>
+<button data-view="manual"><span class="nav-step">12</span><span>Digital user manual</span></button>
+<button data-view="billing"><span class="nav-step">13</span><span>Plans &amp; billing</span></button></nav>
 <button class="sidebar-trial-card" data-tip="Review your 14-day trial and plan access" data-view="billing" type="button"><span><small>14-DAY TRIAL</small><b><strong id="sidebar-trial-days">14</strong> days left</b></span><em>View plan →</em></button><div class="sidebar-footer">
 <a class="legacy-link" data-help="Open the previous Fleet Parlour management workspace. It uses the same visual system but keeps the original operational tools." href="/office/"><span class="legacy-icon"><svg><use href="#i-grid"></use></svg></span><span><b>Legacy Manager</b><small>Open previous workspace</small></span><svg><use href="#i-arrow"></use></svg></a>
 <div class="security-mini"><span class="security-ring"><svg><use href="#i-shield"></use></svg></span><span><b>Workspace protected</b><small id="mfa-status-side">Security status loading…</small></span><button class="mini-action" id="setup-mfa" type="button">MFA</button></div>
@@ -259,6 +260,28 @@ Appointments"></textarea></label></div><div class="industry-template-preview" id
 </article>
 </div>
 </section>
+<section class="view" hidden id="approvals-view">
+<div class="page-heading"><div><p class="kicker">APPROVALS</p><h1>Review consequential actions before they happen</h1><p>One tenant-scoped queue for external messages, publishing, payments, quotes, compliance changes and other actions that require authorised human control.</p></div><span class="status-pill neutral">Human decision required</span></div>
+<div class="approval-metrics">
+  <article class="approval-metric"><strong id="approval-count-pending">0</strong><span>Pending</span></article>
+  <article class="approval-metric"><strong id="approval-count-approved">0</strong><span>Approved</span></article>
+  <article class="approval-metric"><strong id="approval-count-rejected">0</strong><span>Rejected</span></article>
+  <article class="approval-metric"><strong id="approval-count-total">0</strong><span>Total history</span></article>
+</div>
+<div class="two-column-layout">
+  <article class="panel list-panel">
+    <div class="panel-head"><div><span class="panel-kicker">APPROVAL QUEUE &amp; HISTORY</span><h2>Decisions waiting for review</h2><p>Approving a request records the human decision. Connected modules still perform the actual external action separately.</p></div></div>
+    <div class="approval-toolbar"><div class="approval-tabs">
+      <button class="secondary-button compact active" type="button" data-approval-filter="pending">Pending</button>
+      <button class="secondary-button compact" type="button" data-approval-filter="approved">Approved</button>
+      <button class="secondary-button compact" type="button" data-approval-filter="rejected">Rejected</button>
+      <button class="secondary-button compact" type="button" data-approval-filter="all">All history</button>
+    </div><button type="button" class="context-ai-help" data-context-help="Approval queue, human controls and approval history">Ask AI about approvals</button></div>
+    <div id="workspace-approval-list" class="approval-list"><div class="gov-empty">Loading approval queue…</div></div>
+  </article>
+  <div id="approval-policy-host"><article class="panel"><div class="gov-empty">Loading approval policy…</div></article></div>
+</div>
+</section>
 <section class="view" hidden="" id="video-view">
 <div class="page-heading"><div><p class="kicker">CONTENT STUDIO</p><h1>Turn field media into polished content</h1><p>Prepare render specifications now; production rendering remains provider/worker dependent.</p></div><span class="status-pill neutral">High-resolution ready</span></div>
 <div class="studio-workflow" aria-label="Content production sequence"><button class="active" type="button"><span>01</span><b>Source</b><small>Choose media</small></button><button type="button"><span>02</span><b>Organize</b><small>Clean library</small></button><button type="button"><span>03</span><b>Frame</b><small>Crop & sequence</small></button><button type="button"><span>04</span><b>AI Edit</b><small>Build creative</small></button><button type="button"><span>05</span><b>Optimize</b><small>Platform fit</small></button><button type="button"><span>06</span><b>Render</b><small>Queue output</small></button></div>
@@ -313,6 +336,6 @@ Appointments"></textarea></label></div><div class="industry-template-preview" id
 </section>
 <dialog class="modal" id="mfa-dialog"><form method="dialog"><div class="modal-icon"><svg><use href="#i-shield"></use></svg></div><h2>Protect your workspace</h2><p>Store this secret in your authenticator app, then enter a six-digit code to verify setup.</p><code id="mfa-secret"></code><label><span>Authenticator code</span><input autocomplete="one-time-code" id="mfa-code" inputmode="numeric" placeholder="000000"/></label><div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button compact" id="verify-mfa" type="button">Verify MFA</button></div></form></dialog>
 <script defer src="product-guide.js?v=20260919.10"></script><script defer src="workspace-ai-runtime.js?v=20260919.1"></script><script defer src="app.js?v=20260919.10"></script>
-<script defer src="ai-operations.js?v=20260919.10"></script><script defer src="integration-manager.js?v=20260919.1"></script><script defer src="platform-notices.js?v=20260919.1"></script><script defer src="manual.js?v=14"></script>
+<script defer src="ai-operations.js?v=20260919.10"></script><script defer src="approvals.js?v=20260920.1"></script><script defer src="integration-manager.js?v=20260919.1"></script><script defer src="platform-notices.js?v=20260919.1"></script><script defer src="manual.js?v=14"></script>
 <div aria-hidden="true" class="smart-tooltip" id="smart-tooltip" role="tooltip"></div><script defer src="support.js?v=13"></script><script defer src="workspace-extras.js?v=20260919.10"></script><script defer src="common.js?v=20260919.10"></script></body>
 </html>

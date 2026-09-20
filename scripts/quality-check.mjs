@@ -8,7 +8,7 @@ const checks=[];const add=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 const required=[
   'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manifest.webmanifest','saas/sw.js','saas/superpro-icon-192.png','saas/superpro-icon-512.png',
   'office/index.html','office/office.js','office/office-extras.js','office/office-records.js','office/office-insights.js',
@@ -23,7 +23,7 @@ const obsolete=[
 ];
 add('cleanup:no-obsolete-runtime-files',obsolete.every(f=>!exists(f)));
 
-const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),integrationManager=read('saas/integration-manager.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),integrationRuntime=read('src/integration-runtime.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
+const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),approvalsUi=read('saas/approvals.js'),integrationManager=read('saas/integration-manager.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),integrationRuntime=read('src/integration-runtime.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
 add('brand:super-pro',index.includes('Super Pro AI Office Manager')&&office.includes('Super Pro AI Office Manager'));
 add('runtime:single-guide',index.includes('product-guide.js')&&!index.includes('guide-v16')&&!index.includes('guide-v17'));
 add('runtime:current-workspace-ai',workspace.includes('ai-operations.js')&&workspace.includes('workspace-extras.js'));
@@ -47,6 +47,11 @@ add('business:industry-registry-live',server.includes('/api/saas/industry-regist
 add('business:onboarding-read-write',server.includes("app.get('/api/saas/onboarding'")&&server.includes("app.put('/api/saas/onboarding'")&&app.includes('loadOnboarding'));
 add('business:regulatory-watch',server.includes('/api/saas/regulatory/sources')&&server.includes('/api/saas/regulatory/check')&&db.includes('regulatory_source_snapshots')&&app.includes('check-regulatory-sources'));
 add('business:core-modules-never-hidden',!app.includes('button.hidden=!always&&!allowed.has(view)')&&app.includes("button.hidden=false"));
+add('approvals:first-class-page',workspace.includes('id="approvals-view"')&&workspace.includes('data-view="approvals"')&&app.includes("'approvals'")&&workspace.includes('approvals.js'));
+add('approvals:tenant-backend',db.includes('workspace_approvals')&&db.includes('workspace_approval_events')&&server.includes("app.get('/api/saas/approvals'")&&server.includes("app.post('/api/saas/approvals/:id/decision'"));
+add('approvals:history-policy',approvalsUi.includes('View history')&&approvalsUi.includes('APPROVAL POLICY')&&server.includes("app.put('/api/saas/approvals/policy'"));
+add('approvals:role-controlled',server.includes('approvalCanDecide')&&server.includes('Only an authorised owner, administrator, manager or director can decide approvals.'));
+add('approvals:audit-trail',server.includes("addWorkspaceApprovalEvent")&&server.includes("saasAudit(req,'approval.'+eventType"));
 add('updates:customer-inbox',workspace.includes('platform-notices.js')&&platformNotices.includes('/api/saas/announcements')&&server.includes('/api/saas/announcements'));
 add('updates:scheduled-email',server.includes('processPlatformAnnouncementEmails')&&server.includes('/api/admin/platform-announcements')&&db.includes('platform_announcement_deliveries'));
 add('updates:release-before-after',server.includes('/api/saas/releases/latest')&&db.includes('product_release_events')&&platformNotices.includes('What changed / current state'));

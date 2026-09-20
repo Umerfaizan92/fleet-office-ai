@@ -13,8 +13,8 @@
   };
   const style=document.createElement('style');
   style.textContent=[
-    '.integration-manager{grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:grid;gap:10px}',
-    '.integration-manager-actions{display:flex;flex-wrap:wrap;gap:8px}',
+    '.integration-manager{grid-column:1/-1;width:100%;min-width:0;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:grid;gap:10px}',
+    '.integration-manager-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.integration-manager-actions button{position:static!important;max-width:100%}',
     '.integration-resource-list{display:grid;gap:6px;max-height:220px;overflow:auto}',
     '.integration-resource-list label{display:flex;gap:9px;align-items:flex-start;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.025)}',
     '.integration-resource-list label>span{display:grid;gap:2px}.integration-resource-list small{color:#8f9bab}',
@@ -54,9 +54,14 @@
       if(!card)continue;
       card.querySelector('[data-im-manager]')?.remove();
       card.querySelector('[data-im-requirements]')?.remove();
+      const legacyAction=card.querySelector('[data-connect-provider]');
       if(x.status==='connected'){
+        if(legacyAction){legacyAction.hidden=true;legacyAction.setAttribute('aria-hidden','true')}
         card.insertAdjacentHTML('beforeend',managerHtml(x));
-      }else if(!x.provider_ready){
+      }else{
+        if(legacyAction){legacyAction.hidden=false;legacyAction.removeAttribute('aria-hidden')}
+      }
+      if(x.status!=='connected'&&!x.provider_ready){
         const box=document.createElement('div');
         box.className='integration-requirements-inline';
         box.dataset.imRequirements=x.provider;

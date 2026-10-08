@@ -3196,7 +3196,7 @@ app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','ad
 const workforceSeniorRoles=['owner','admin','manager','super_admin','director'];
 
 function workforceProfile(orgId){
-  const p=db.prepare(\`SELECT industry_code,services,custom_sections_json FROM onboarding_profiles WHERE organisation_id=?\`).get(orgId)||{};
+  const p=db.prepare(`SELECT industry_code,services,custom_sections_json FROM onboarding_profiles WHERE organisation_id=?`).get(orgId)||{};
   return {
     industry_code:p.industry_code||'custom',
     services:safeJson(p.services,[]),
@@ -3209,9 +3209,9 @@ function seedWorkerComplianceRequirements(orgId,worker){
     ...workStatusRequirements(worker.declared_work_status||'requires_review'),
     ...industryComplianceSuggestions(profile.industry_code,worker.role_title||'')
   ];
-  const ins=db.prepare(\`INSERT OR IGNORE INTO worker_compliance_requirements
+  const ins=db.prepare(`INSERT OR IGNORE INTO worker_compliance_requirements
     (id,organisation_id,worker_id,requirement_code,category,label,required,status,verification_method,official_source_name,official_source_url,condition_note,metadata_json,created_at,updated_at)
-    VALUES (?,?,?,?,?,?,1,'pending',?,?,?,?,?, ?,?)\`);
+    VALUES (?,?,?,?,?,?,1,'pending',?,?,?,?,?, ?,?)`);
   db.transaction(()=>{
     for(const row of rows){
       const src=officialSource(row.source);
@@ -3226,7 +3226,7 @@ function seedWorkerComplianceRequirements(orgId,worker){
 }
 function workerComplianceState(orgId,workerId){
   const now=new Date().toISOString().slice(0,10);
-  const requirements=db.prepare(\`SELECT * FROM worker_compliance_requirements WHERE organisation_id=? AND worker_id=? ORDER BY required DESC,category,label\`).all(orgId,workerId);
+  const requirements=db.prepare(`SELECT * FROM worker_compliance_requirements WHERE organisation_id=? AND worker_id=? ORDER BY required DESC,category,label`).all(orgId,workerId);
   const required=requirements.filter(x=>x.required);
   const blocking=required.filter(x=>x.status!=='verified'||(x.expiry_date&&x.expiry_date<now));
   const workRights=requirements.filter(x=>x.category==='work_rights');
@@ -3245,7 +3245,7 @@ function workerComplianceState(orgId,workerId){
 function recomputeWorkerEligibility(orgId,workerId){
   const state=workerComplianceState(orgId,workerId),now=new Date().toISOString();
   const workStatus=state.work_rights_verified?'verified':state.blocking_count?'review_required':'pending';
-  db.prepare(\`UPDATE workers SET work_rights_status=?,onboarding_progress=?,approved_for_scheduling=?,status=?,work_rights_verified_at=CASE WHEN ?='verified' THEN COALESCE(work_rights_verified_at,?) ELSE NULL END,updated_at=? WHERE id=? AND organisation_id=?\`)
+  db.prepare(`UPDATE workers SET work_rights_status=?,onboarding_progress=?,approved_for_scheduling=?,status=?,work_rights_verified_at=CASE WHEN ?='verified' THEN COALESCE(work_rights_verified_at,?) ELSE NULL END,updated_at=? WHERE id=? AND organisation_id=?`)
     .run(workStatus,state.progress,state.eligible?1:0,state.eligible?'active':'onboarding',workStatus,now,now,workerId,orgId);
   return {...state,work_rights_status:workStatus};
 }
@@ -3260,33 +3260,33 @@ async function sendWorkerInviteSms(to,{workerName,businessName,inviteUrl}){
   const from=env.TELNYX_FROM_NUMBER||env.TELNYX_PHONE_NUMBER;
   if(!env.TELNYX_API_KEY||!from||!to)return {sent:false,reason:'telnyx_sms_not_configured'};
   const normalized=normalizeAuMobile(to);if(!normalized)return {sent:false,reason:'invalid_mobile'};
-  const text=\`\${businessName}: secure onboarding for \${workerName}. Complete your details here: \${inviteUrl} This link is private and limited to onboarding only.\`;
-  const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:\`Bearer \${env.TELNYX_API_KEY}\`,'content-type':'application/json'},body:JSON.stringify({from,to:normalized,text:text.slice(0,1500)})});
+  const text=`${businessName}: secure onboarding for ${workerName}. Complete your details here: ${inviteUrl} This link is private and limited to onboarding only.`;
+  const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({from,to:normalized,text:text.slice(0,1500)})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)return {sent:false,reason:data?.errors?.[0]?.detail||'provider_error'};
   return {sent:true,message_id:data?.data?.id||null};
 }
 function workforceInviteRow(rawToken){
-  const row=db.prepare(\`SELECT i.*,w.full_name,w.email worker_email,w.phone worker_phone,w.role_title,w.employment_type,w.worker_level,w.declared_work_status,o.name organisation_name
+  const row=db.prepare(`SELECT i.*,w.full_name,w.email worker_email,w.phone worker_phone,w.role_title,w.employment_type,w.worker_level,w.declared_work_status,o.name organisation_name
     FROM worker_onboarding_invites i JOIN workers w ON w.id=i.worker_id JOIN organisations o ON o.id=i.organisation_id
-    WHERE i.token_hash=?\`).get(sha256(rawToken));
+    WHERE i.token_hash=?`).get(sha256(rawToken));
   if(!row||row.status!=='active'||new Date(row.expires_at).getTime()<=Date.now())return null;
   return row;
 }
 function publicWorkerOnboarding(invite){
-  const worker=db.prepare(\`SELECT id,full_name,email,phone,role_title,employment_type,worker_level,declared_work_status,work_rights_status,visa_subclass,visa_expiry,work_restrictions,onboarding_progress FROM workers WHERE id=? AND organisation_id=?\`).get(invite.worker_id,invite.organisation_id);
-  const requirements=db.prepare(\`SELECT id,requirement_code,category,label,required,status,verification_method,official_source_name,official_source_url,condition_note,evidence_reference,issue_date,expiry_date FROM worker_compliance_requirements WHERE worker_id=? AND organisation_id=? ORDER BY required DESC,category,label\`).all(invite.worker_id,invite.organisation_id);
-  const skills=db.prepare(\`SELECT id,skill_name,competency,verification_status,evidence_type,evidence_reference,expiry_date,official_source_url,requirement_note FROM worker_skills WHERE worker_id=? ORDER BY skill_name\`).all(invite.worker_id);
-  const docs=db.prepare(\`SELECT id,document_type,document_name,required,verification_status,issue_date,expiry_date,notes,evidence_reference,official_source_url FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type\`).all(invite.worker_id);
+  const worker=db.prepare(`SELECT id,full_name,email,phone,role_title,employment_type,worker_level,declared_work_status,work_rights_status,visa_subclass,visa_expiry,work_restrictions,onboarding_progress FROM workers WHERE id=? AND organisation_id=?`).get(invite.worker_id,invite.organisation_id);
+  const requirements=db.prepare(`SELECT id,requirement_code,category,label,required,status,verification_method,official_source_name,official_source_url,condition_note,evidence_reference,issue_date,expiry_date FROM worker_compliance_requirements WHERE worker_id=? AND organisation_id=? ORDER BY required DESC,category,label`).all(invite.worker_id,invite.organisation_id);
+  const skills=db.prepare(`SELECT id,skill_name,competency,verification_status,evidence_type,evidence_reference,expiry_date,official_source_url,requirement_note FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(invite.worker_id);
+  const docs=db.prepare(`SELECT id,document_type,document_name,required,verification_status,issue_date,expiry_date,notes,evidence_reference,official_source_url FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(invite.worker_id);
   return {organisation_name:invite.organisation_name,worker,requirements,skills,documents:docs,expires_at:invite.expires_at};
 }
 function addWorkerOnboardingEvent(invite,eventType,detail={}){
-  db.prepare(\`INSERT INTO worker_onboarding_events (id,invite_id,worker_id,organisation_id,event_type,detail_json,created_at) VALUES (?,?,?,?,?,?,?)\`)
+  db.prepare(`INSERT INTO worker_onboarding_events (id,invite_id,worker_id,organisation_id,event_type,detail_json,created_at) VALUES (?,?,?,?,?,?,?)`)
     .run(crypto.randomUUID(),invite.id,invite.worker_id,invite.organisation_id,eventType,JSON.stringify(detail||{}),new Date().toISOString());
 }
 
 app.get('/api/saas/workers',requireSaasUser,(req,res)=>{
-  const rows=db.prepare(\`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name\`).all(req.saas.organisation_id);
+  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(req.saas.organisation_id);
   res.json({ok:true,workers:rows.map(x=>workerPublicRow(req.saas.organisation_id,x))});
 });
 
@@ -3302,14 +3302,14 @@ app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check worker details.'});
   const id=crypto.randomUUID(),now=new Date().toISOString();
-  db.prepare(\`INSERT INTO workers (id,organisation_id,full_name,email,phone,role_title,employment_type,worker_level,status,work_rights_status,declared_work_status,onboarding_progress,approved_for_scheduling,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,'review_required',?,0,0,?,?)\`)
+  db.prepare(`INSERT INTO workers (id,organisation_id,full_name,email,phone,role_title,employment_type,worker_level,status,work_rights_status,declared_work_status,onboarding_progress,approved_for_scheduling,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,'review_required',?,0,0,?,?)`)
     .run(id,req.saas.organisation_id,parsed.data.full_name,parsed.data.email||null,parsed.data.phone||null,parsed.data.role_title,parsed.data.employment_type,parsed.data.worker_level,'onboarding',parsed.data.work_status,now,now);
   const docs=[['photo_id',1],['employment_contract',1],['emergency_contact',1]];
   if(['australian_citizen','permanent_resident','visa_holder'].includes(parsed.data.work_status))docs.push(['identity_work_rights_evidence',1]);
   if(['contractor','subcontractor'].includes(parsed.data.employment_type)){docs.push(['abn_details',1],['insurance',1])}
-  const ins=db.prepare(\`INSERT INTO worker_documents (id,worker_id,document_type,required,created_at,updated_at) VALUES (?,?,?,?,?,?)\`);
+  const ins=db.prepare(`INSERT INTO worker_documents (id,worker_id,document_type,required,created_at,updated_at) VALUES (?,?,?,?,?,?)`);
   db.transaction(()=>{for(const [t,r] of docs)ins.run(crypto.randomUUID(),id,t,r,now,now)})();
-  const worker=db.prepare(\`SELECT * FROM workers WHERE id=?\`).get(id);
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=?`).get(id);
   seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
   const state=recomputeWorkerEligibility(req.saas.organisation_id,id);
   saasAudit(req,'worker.created','worker',id,{employment_type:parsed.data.employment_type,declared_work_status:parsed.data.work_status});
@@ -3317,13 +3317,13 @@ app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
 });
 
 app.get('/api/saas/workers/:id/compliance',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(\`SELECT * FROM workers WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
-  if(!db.prepare(\`SELECT 1 FROM worker_compliance_requirements WHERE worker_id=? LIMIT 1\`).get(worker.id))seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
+  if(!db.prepare(`SELECT 1 FROM worker_compliance_requirements WHERE worker_id=? LIMIT 1`).get(worker.id))seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
   const state=recomputeWorkerEligibility(req.saas.organisation_id,worker.id);
-  const documents=db.prepare(\`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type\`).all(worker.id);
-  const skills=db.prepare(\`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name\`).all(worker.id);
-  res.json({ok:true,worker:db.prepare(\`SELECT * FROM workers WHERE id=?\`).get(worker.id),...state,documents,skills});
+  const documents=db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(worker.id);
+  const skills=db.prepare(`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(worker.id);
+  res.json({ok:true,worker:db.prepare(`SELECT * FROM workers WHERE id=?`).get(worker.id),...state,documents,skills});
 });
 
 app.patch('/api/saas/workers/:id/compliance/:requirementId',requireSaasUser,requireSaasRole(...workforceSeniorRoles),(req,res)=>{
@@ -3336,10 +3336,10 @@ app.patch('/api/saas/workers/:id/compliance/:requirementId',requireSaasUser,requ
     verification_method:z.enum(['authorised_review','official_portal','official_portal_or_authorised_review','official_source_or_authorised_review','approved_api']).optional()
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check compliance review details.'});
-  const row=db.prepare(\`SELECT r.* FROM worker_compliance_requirements r JOIN workers w ON w.id=r.worker_id WHERE r.id=? AND r.worker_id=? AND r.organisation_id=?\`).get(req.params.requirementId,req.params.id,req.saas.organisation_id);
+  const row=db.prepare(`SELECT r.* FROM worker_compliance_requirements r JOIN workers w ON w.id=r.worker_id WHERE r.id=? AND r.worker_id=? AND r.organisation_id=?`).get(req.params.requirementId,req.params.id,req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Compliance requirement not found.'});
   const now=new Date().toISOString(),verified=parsed.data.status==='verified';
-  db.prepare(\`UPDATE worker_compliance_requirements SET status=?,evidence_reference=?,evidence_note=?,issue_date=?,expiry_date=?,verification_method=COALESCE(?,verification_method),verified_by_user_id=?,verified_at=?,last_checked_at=?,updated_at=? WHERE id=?\`)
+  db.prepare(`UPDATE worker_compliance_requirements SET status=?,evidence_reference=?,evidence_note=?,issue_date=?,expiry_date=?,verification_method=COALESCE(?,verification_method),verified_by_user_id=?,verified_at=?,last_checked_at=?,updated_at=? WHERE id=?`)
     .run(parsed.data.status,parsed.data.evidence_reference||null,parsed.data.evidence_note||null,parsed.data.issue_date||null,parsed.data.expiry_date||null,parsed.data.verification_method||null,verified?req.saas.user_id:null,verified?now:null,now,now,row.id);
   const state=recomputeWorkerEligibility(req.saas.organisation_id,row.worker_id);
   saasAudit(req,'worker.compliance_requirement_reviewed','worker',row.worker_id,{requirement_id:row.id,status:parsed.data.status,verification_method:parsed.data.verification_method||row.verification_method});
@@ -3358,27 +3358,27 @@ app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workf
     verification_status:z.enum(['pending','verified','rejected','expired']).default('verified')
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check skill details.'});
-  const worker=db.prepare(\`SELECT id FROM workers WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   const now=new Date().toISOString(),verified=parsed.data.verification_status==='verified';
-  db.prepare(\`INSERT INTO worker_skills (id,worker_id,skill_name,competency,verification_status,evidence_type,evidence_reference,verified_by_user_id,verified_at,expiry_date,official_source_url,requirement_note,created_at,updated_at)
+  db.prepare(`INSERT INTO worker_skills (id,worker_id,skill_name,competency,verification_status,evidence_type,evidence_reference,verified_by_user_id,verified_at,expiry_date,official_source_url,requirement_note,created_at,updated_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(worker_id,skill_name) DO UPDATE SET competency=excluded.competency,verification_status=excluded.verification_status,evidence_type=excluded.evidence_type,evidence_reference=excluded.evidence_reference,verified_by_user_id=excluded.verified_by_user_id,verified_at=excluded.verified_at,expiry_date=excluded.expiry_date,official_source_url=excluded.official_source_url,requirement_note=excluded.requirement_note,updated_at=excluded.updated_at\`)
+    ON CONFLICT(worker_id,skill_name) DO UPDATE SET competency=excluded.competency,verification_status=excluded.verification_status,evidence_type=excluded.evidence_type,evidence_reference=excluded.evidence_reference,verified_by_user_id=excluded.verified_by_user_id,verified_at=excluded.verified_at,expiry_date=excluded.expiry_date,official_source_url=excluded.official_source_url,requirement_note=excluded.requirement_note,updated_at=excluded.updated_at`)
     .run(crypto.randomUUID(),worker.id,parsed.data.skill_name,parsed.data.competency,parsed.data.verification_status,parsed.data.evidence_type||null,parsed.data.evidence_reference||null,verified?req.saas.user_id:null,verified?now:null,parsed.data.expiry_date||null,parsed.data.official_source_url||null,parsed.data.requirement_note||null,now,now);
   saasAudit(req,'worker.skill_updated','worker',worker.id,{skill:parsed.data.skill_name,competency:parsed.data.competency,verification_status:parsed.data.verification_status});
   res.json({ok:true});
 });
 
 app.get('/api/saas/workers/:id/skills',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(\`SELECT id FROM workers WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
-  res.json({ok:true,skills:db.prepare(\`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name\`).all(worker.id)});
+  res.json({ok:true,skills:db.prepare(`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(worker.id)});
 });
 
 app.get('/api/saas/workers/:id/documents',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(\`SELECT id FROM workers WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
-  res.json({ok:true,documents:db.prepare(\`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type\`).all(worker.id)});
+  res.json({ok:true,documents:db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(worker.id)});
 });
 
 app.patch('/api/saas/workers/:id/documents/:documentId',requireSaasUser,requireSaasRole(...workforceSeniorRoles),(req,res)=>{
@@ -3391,10 +3391,10 @@ app.patch('/api/saas/workers/:id/documents/:documentId',requireSaasUser,requireS
     official_source_url:z.string().url().optional().or(z.literal(''))
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check document verification details.'});
-  const doc=db.prepare(\`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?\`).get(req.params.documentId,req.params.id,req.saas.organisation_id);
+  const doc=db.prepare(`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?`).get(req.params.documentId,req.params.id,req.saas.organisation_id);
   if(!doc)return res.status(404).json({ok:false,error:'Worker document not found.'});
   const now=new Date().toISOString(),verified=parsed.data.verification_status==='verified';
-  db.prepare(\`UPDATE worker_documents SET verification_status=?,evidence_reference=?,notes=?,issue_date=?,expiry_date=?,official_source_url=?,verified_by_user_id=?,verified_at=?,updated_at=? WHERE id=?\`)
+  db.prepare(`UPDATE worker_documents SET verification_status=?,evidence_reference=?,notes=?,issue_date=?,expiry_date=?,official_source_url=?,verified_by_user_id=?,verified_at=?,updated_at=? WHERE id=?`)
     .run(parsed.data.verification_status,parsed.data.evidence_reference||null,parsed.data.notes||null,parsed.data.issue_date||null,parsed.data.expiry_date||null,parsed.data.official_source_url||null,verified?req.saas.user_id:null,verified?now:null,now,doc.id);
   saasAudit(req,'worker.document_reviewed','worker',req.params.id,{document_id:doc.id,status:parsed.data.verification_status});
   res.json({ok:true});
@@ -3407,18 +3407,18 @@ app.post('/api/saas/workers/:id/invite',requireSaasUser,requireSaasRole(...workf
     expires_days:z.coerce.number().int().min(1).max(30).default(7)
   }).safeParse(req.body||{});
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check invite details.'});
-  const worker=db.prepare(\`SELECT * FROM workers WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   const email=parsed.data.email||worker.email||'',phone=parsed.data.phone||worker.phone||'';
   if(!email&&!phone)return res.status(400).json({ok:false,error:'Add an email address or mobile number for the worker.'});
   const raw=crypto.randomBytes(32).toString('base64url'),id=crypto.randomUUID(),now=new Date(),expires=new Date(now.getTime()+parsed.data.expires_days*86400000);
-  db.prepare(\`UPDATE worker_onboarding_invites SET status='revoked',revoked_at=?,updated_at=? WHERE worker_id=? AND organisation_id=? AND status='active'\`).run(now.toISOString(),now.toISOString(),worker.id,req.saas.organisation_id);
-  db.prepare(\`INSERT INTO worker_onboarding_invites (id,organisation_id,worker_id,token_hash,invited_email,invited_phone,status,expires_at,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?,'active',?,?,?,?)\`)
+  db.prepare(`UPDATE worker_onboarding_invites SET status='revoked',revoked_at=?,updated_at=? WHERE worker_id=? AND organisation_id=? AND status='active'`).run(now.toISOString(),now.toISOString(),worker.id,req.saas.organisation_id);
+  db.prepare(`INSERT INTO worker_onboarding_invites (id,organisation_id,worker_id,token_hash,invited_email,invited_phone,status,expires_at,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?,'active',?,?,?,?)`)
     .run(id,req.saas.organisation_id,worker.id,sha256(raw),email||null,phone||null,expires.toISOString(),req.saas.user_id,now.toISOString(),now.toISOString());
   const invite={id,organisation_id:req.saas.organisation_id,worker_id:worker.id};
   addWorkerOnboardingEvent(invite,'invite_created',{email:Boolean(email),phone:Boolean(phone),expires_at:expires.toISOString()});
-  const base=(env.PUBLIC_BASE_URL||\`\${req.protocol}://\${req.get('host')}\`).replace(/\/$/,'');
-  const inviteUrl=\`\${base}/saas/worker-onboarding.html?token=\${encodeURIComponent(raw)}\`;
+  const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
+  const inviteUrl=`${base}/saas/worker-onboarding.html?token=${encodeURIComponent(raw)}`;
   const emailResult=email?await sendWorkerOnboardingInviteEmail(env,{to:email,workerName:worker.full_name,businessName:req.saas.organisation_name,inviteUrl,expiresAt:expires.toISOString()}).catch(e=>({sent:false,reason:e.message})):{sent:false,reason:'no_email'};
   const smsResult=phone?await sendWorkerInviteSms(phone,{workerName:worker.full_name,businessName:req.saas.organisation_name,inviteUrl}).catch(e=>({sent:false,reason:e.message})):{sent:false,reason:'no_phone'};
   saasAudit(req,'worker.onboarding_invited','worker',worker.id,{email_sent:Boolean(emailResult.sent),sms_sent:Boolean(smsResult.sent),expires_at:expires.toISOString()});
@@ -3431,7 +3431,7 @@ app.get('/api/saas/work-orders/skill-suggestions',requireSaasUser,(req,res)=>{
 });
 
 app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
-  const jobs=db.prepare(\`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE organisation_id=? ORDER BY start_at\`).all(req.saas.organisation_id).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
+  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE organisation_id=? ORDER BY start_at`).all(req.saas.organisation_id).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
   res.json({ok:true,jobs});
 });
 
@@ -3443,28 +3443,28 @@ app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check work order details.'});
   const id=crypto.randomUUID(),now=new Date().toISOString();
-  db.prepare(\`INSERT INTO work_orders (id,organisation_id,title,address,start_at,estimated_hours,required_workers,required_level,required_skills,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)\`)
+  db.prepare(`INSERT INTO work_orders (id,organisation_id,title,address,start_at,estimated_hours,required_workers,required_level,required_skills,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id,req.saas.organisation_id,parsed.data.title,parsed.data.address||null,parsed.data.start_at,parsed.data.estimated_hours||null,parsed.data.required_workers,parsed.data.required_level,JSON.stringify(parsed.data.required_skills),now,now);
   saasAudit(req,'work_order.created','work_order',id,{required_skills:parsed.data.required_skills});
   res.status(201).json({ok:true,id});
 });
 
 app.post('/api/saas/work-orders/:id/offer',requireSaasUser,(req,res)=>{
-  const job=db.prepare(\`SELECT * FROM work_orders WHERE id=? AND organisation_id=?\`).get(req.params.id,req.saas.organisation_id);
+  const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);
-  const workers=db.prepare(\`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=?\`).all(req.saas.organisation_id,job.required_level);
+  const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=?`).all(req.saas.organisation_id,job.required_level);
   const evaluated=workers.map(w=>{
     const missingSkills=skills.filter(skill=>{
-      const r=db.prepare(\`SELECT competency,verification_status,expiry_date FROM worker_skills WHERE worker_id=? AND lower(skill_name)=lower(?) AND competency IN ('competent','advanced','expert')\`).get(w.id,skill);
+      const r=db.prepare(`SELECT competency,verification_status,expiry_date FROM worker_skills WHERE worker_id=? AND lower(skill_name)=lower(?) AND competency IN ('competent','advanced','expert')`).get(w.id,skill);
       return !r||r.verification_status!=='verified'||(r.expiry_date&&r.expiry_date<today);
     });
     const compliance=workerComplianceState(req.saas.organisation_id,w.id);
     return {worker:w,missing_skills:missingSkills,compliance,eligible:missingSkills.length===0&&compliance.blocking_count===0&&compliance.work_rights_verified};
   });
   const eligible=evaluated.filter(x=>x.eligible).map(x=>x.worker),now=new Date().toISOString();
-  const ins=db.prepare(\`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at) VALUES (?,?,?,?, 'offered',?)\`);
-  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now);db.prepare(\`UPDATE work_orders SET status=?,updated_at=? WHERE id=?\`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
+  const ins=db.prepare(`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at) VALUES (?,?,?,?, 'offered',?)`);
+  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
   saasAudit(req,'work_order.offered','work_order',job.id,{eligible_workers:eligible.length,required_skills:skills});
   res.json({
     ok:true,eligible_workers:eligible.map(w=>({id:w.id,full_name:w.full_name,level:w.worker_level})),offered:eligible.length,
@@ -3478,7 +3478,7 @@ const workerOnboardingUpload=multer({
       const dir=path.join(uploadRoot,'workforce',String(req.workerInvite.worker_id).replace(/[^A-Za-z0-9-]/g,''));
       fs.mkdirSync(dir,{recursive:true});cb(null,dir);
     },
-    filename(req,file,cb){const ext=path.extname(file.originalname||'').toLowerCase().slice(0,12);cb(null,\`\${crypto.randomUUID()}\${ext}\`)}
+    filename(req,file,cb){const ext=path.extname(file.originalname||'').toLowerCase().slice(0,12);cb(null,`${crypto.randomUUID()}${ext}`)}
   }),
   limits:{fileSize:Number(env.WORKFORCE_MAX_FILE_MB||10)*1024*1024,files:1},
   fileFilter(req,file,cb){
@@ -3493,7 +3493,7 @@ function requireWorkerInvite(req,res,next){
   req.workerInvite=invite;
   if(!invite.opened_at){
     const now=new Date().toISOString();
-    db.prepare(\`UPDATE worker_onboarding_invites SET opened_at=?,updated_at=? WHERE id=?\`).run(now,now,invite.id);
+    db.prepare(`UPDATE worker_onboarding_invites SET opened_at=?,updated_at=? WHERE id=?`).run(now,now,invite.id);
     addWorkerOnboardingEvent(invite,'invite_opened',{});
   }
   next();
@@ -3509,12 +3509,12 @@ app.put('/api/workforce/onboarding/:token/profile',requireWorkerInvite,(req,res)
     accept_terms:z.literal(true),accept_privacy:z.literal(true),declaration:z.literal(true)
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Complete the required onboarding declarations.'});
-  const now=new Date().toISOString(),worker=db.prepare(\`SELECT * FROM workers WHERE id=? AND organisation_id=?\`).get(req.workerInvite.worker_id,req.workerInvite.organisation_id);
+  const now=new Date().toISOString(),worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.workerInvite.worker_id,req.workerInvite.organisation_id);
   const statusChanged=worker.declared_work_status!==parsed.data.declared_work_status;
-  db.prepare(\`UPDATE workers SET full_name=?,email=?,phone=?,declared_work_status=?,visa_subclass=?,visa_expiry=?,work_restrictions=?,terms_accepted_at=?,privacy_accepted_at=?,updated_at=? WHERE id=? AND organisation_id=?\`)
+  db.prepare(`UPDATE workers SET full_name=?,email=?,phone=?,declared_work_status=?,visa_subclass=?,visa_expiry=?,work_restrictions=?,terms_accepted_at=?,privacy_accepted_at=?,updated_at=? WHERE id=? AND organisation_id=?`)
     .run(parsed.data.full_name,parsed.data.email||null,parsed.data.phone||null,parsed.data.declared_work_status,parsed.data.visa_subclass||null,parsed.data.visa_expiry||null,parsed.data.work_restrictions||null,now,now,now,worker.id,req.workerInvite.organisation_id);
   if(statusChanged){
-    db.prepare(\`DELETE FROM worker_compliance_requirements WHERE worker_id=? AND category IN ('identity','work_rights')\`).run(worker.id);
+    db.prepare(`DELETE FROM worker_compliance_requirements WHERE worker_id=? AND category IN ('identity','work_rights')`).run(worker.id);
     seedWorkerComplianceRequirements(req.workerInvite.organisation_id,{...worker,declared_work_status:parsed.data.declared_work_status});
   }
   addWorkerOnboardingEvent(req.workerInvite,'profile_saved',{declared_work_status:parsed.data.declared_work_status,terms:true,privacy:true});
@@ -3530,33 +3530,33 @@ app.post('/api/workforce/onboarding/:token/skills',requireWorkerInvite,(req,res)
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check skill details.'});
   const now=new Date().toISOString();
-  db.prepare(\`INSERT INTO worker_skills (id,worker_id,skill_name,competency,verification_status,evidence_type,evidence_reference,expiry_date,created_at,updated_at)
+  db.prepare(`INSERT INTO worker_skills (id,worker_id,skill_name,competency,verification_status,evidence_type,evidence_reference,expiry_date,created_at,updated_at)
     VALUES (?,?,?,?, 'pending',?,?,?,?,?)
-    ON CONFLICT(worker_id,skill_name) DO UPDATE SET competency=excluded.competency,verification_status='pending',evidence_type=excluded.evidence_type,evidence_reference=excluded.evidence_reference,expiry_date=excluded.expiry_date,verified_by_user_id=NULL,verified_at=NULL,updated_at=excluded.updated_at\`)
+    ON CONFLICT(worker_id,skill_name) DO UPDATE SET competency=excluded.competency,verification_status='pending',evidence_type=excluded.evidence_type,evidence_reference=excluded.evidence_reference,expiry_date=excluded.expiry_date,verified_by_user_id=NULL,verified_at=NULL,updated_at=excluded.updated_at`)
     .run(crypto.randomUUID(),req.workerInvite.worker_id,parsed.data.skill_name,parsed.data.competency,parsed.data.evidence_type||null,parsed.data.evidence_reference||null,parsed.data.expiry_date||null,now,now);
   addWorkerOnboardingEvent(req.workerInvite,'skill_submitted',{skill_name:parsed.data.skill_name});
   res.status(201).json({ok:true,status:'pending_review'});
 });
 
 app.post('/api/workforce/onboarding/:token/documents/:documentId',requireWorkerInvite,(req,res,next)=>{next()},workerOnboardingUpload.single('file'),(req,res)=>{
-  const doc=db.prepare(\`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?\`).get(req.params.documentId,req.workerInvite.worker_id,req.workerInvite.organisation_id);
+  const doc=db.prepare(`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?`).get(req.params.documentId,req.workerInvite.worker_id,req.workerInvite.organisation_id);
   if(!doc){if(req.file)try{fs.unlinkSync(req.file.path)}catch{};return res.status(404).json({ok:false,error:'Requested document item not found.'})}
   if(!req.file)return res.status(400).json({ok:false,error:'Choose a document or image to upload.'});
   const now=new Date().toISOString(),relative=path.relative(uploadRoot,req.file.path).replaceAll('\\\\','/');
-  db.prepare(\`UPDATE worker_documents SET document_name=?,stored_path=?,mime_type=?,size_bytes=?,verification_status='review_required',updated_at=? WHERE id=?\`)
+  db.prepare(`UPDATE worker_documents SET document_name=?,stored_path=?,mime_type=?,size_bytes=?,verification_status='review_required',updated_at=? WHERE id=?`)
     .run(String(req.file.originalname||'evidence').slice(0,250),relative,req.file.mimetype,req.file.size,now,doc.id);
   addWorkerOnboardingEvent(req.workerInvite,'document_uploaded',{document_id:doc.id,document_type:doc.document_type});
   res.status(201).json({ok:true,status:'review_required'});
 });
 
 app.post('/api/workforce/onboarding/:token/submit',requireWorkerInvite,(req,res)=>{
-  const worker=db.prepare(\`SELECT * FROM workers WHERE id=? AND organisation_id=?\`).get(req.workerInvite.worker_id,req.workerInvite.organisation_id);
-  const missingDocs=db.prepare(\`SELECT document_type FROM worker_documents WHERE worker_id=? AND required=1 AND (stored_path IS NULL OR verification_status IN ('rejected','expired'))\`).all(worker.id);
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.workerInvite.worker_id,req.workerInvite.organisation_id);
+  const missingDocs=db.prepare(`SELECT document_type FROM worker_documents WHERE worker_id=? AND required=1 AND (stored_path IS NULL OR verification_status IN ('rejected','expired'))`).all(worker.id);
   if(!worker.terms_accepted_at||!worker.privacy_accepted_at)return res.status(409).json({ok:false,error:'Terms, privacy and worker declaration must be accepted before submission.'});
   if(missingDocs.length)return res.status(409).json({ok:false,error:'Required evidence is still missing.',missing_documents:missingDocs.map(x=>x.document_type)});
   const now=new Date().toISOString();
-  db.prepare(\`UPDATE workers SET self_onboarding_submitted_at=?,updated_at=? WHERE id=?\`).run(now,now,worker.id);
-  db.prepare(\`UPDATE worker_onboarding_invites SET status='submitted',submitted_at=?,updated_at=? WHERE id=?\`).run(now,now,req.workerInvite.id);
+  db.prepare(`UPDATE workers SET self_onboarding_submitted_at=?,updated_at=? WHERE id=?`).run(now,now,worker.id);
+  db.prepare(`UPDATE worker_onboarding_invites SET status='submitted',submitted_at=?,updated_at=? WHERE id=?`).run(now,now,req.workerInvite.id);
   addWorkerOnboardingEvent(req.workerInvite,'submitted',{});
   res.json({ok:true,status:'submitted_for_authorised_review',message:'Your onboarding information has been submitted. Final compliance and scheduling approval must be completed by an authorised reviewer.'});
 });

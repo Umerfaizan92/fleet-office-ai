@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Secure Workforce Onboarding — Super Pro AI Office Manager</title>
+<link rel="stylesheet" href="brand.css">
+<link rel="stylesheet" href="experience.css">
+<style>
+body{margin:0;background:#080c11;color:#eef2f7;font-family:Inter,Segoe UI,Arial,sans-serif}.onboard-shell{width:min(980px,calc(100% - 28px));margin:0 auto;padding:28px 0 70px}.onboard-head,.card{border:1px solid rgba(255,255,255,.09);background:#0e141d;border-radius:18px}.onboard-head{padding:24px;margin-bottom:16px}.onboard-head h1{margin:8px 0;font-size:clamp(28px,5vw,48px)}.onboard-head p,.muted{color:#95a0af;line-height:1.6}.badge{display:inline-flex;padding:6px 9px;border-radius:999px;border:1px solid rgba(232,190,105,.35);color:#e8be69;font-size:11px;font-weight:800}.card{padding:20px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid .full{grid-column:1/-1}label{display:grid;gap:7px;font-size:12px;font-weight:700}input,select,textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:#111923;color:#eef2f7}button{border:1px solid rgba(232,190,105,.35);border-radius:11px;background:#e8be69;color:#0b1017;padding:11px 14px;font-weight:900;cursor:pointer}button.secondary{background:#131b25;color:#eef2f7;border-color:rgba(255,255,255,.1)}.item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin:8px 0}.item header{display:flex;justify-content:space-between;gap:12px}.status{font-size:10px;text-transform:uppercase}.status.verified{color:#65d8a5}.status.pending,.status.review_required{color:#e8be69}.status.rejected,.status.expired{color:#ff8b8b}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.notice{padding:12px;border-radius:12px;background:rgba(232,190,105,.08);border:1px solid rgba(232,190,105,.2);font-size:12px;line-height:1.55}.success{border-color:rgba(101,216,165,.3);background:rgba(101,216,165,.08)}@media(max-width:700px){.grid{grid-template-columns:1fr}.grid .full{grid-column:auto}.item header{display:grid}}
+</style>
+</head>
+<body>
+<main class="onboard-shell">
+<section class="onboard-head"><span class="badge">LIMITED ACCESS · WORKFORCE ONBOARDING ONLY</span><h1>Secure workforce onboarding</h1><p id="business-line">Loading your invitation…</p><p class="muted">This page does not provide access to the business workspace. Your information is submitted for authorised review. A declaration or uploaded document is not treated as officially verified until the relevant review is completed.</p></section>
+<div id="status" class="notice">Checking secure invitation…</div>
+<form id="profile-form" class="card" hidden>
+<h2>Your details & work-right declaration</h2>
+<div class="grid">
+<label>Full name<input name="full_name" required></label>
+<label>Email<input name="email" type="email"></label>
+<label>Mobile<input name="phone"></label>
+<label>Declared Australian work status<select name="declared_work_status"><option value="requires_review">Requires review</option><option value="australian_citizen">Australian citizen</option><option value="permanent_resident">Permanent resident</option><option value="visa_holder">Visa holder</option></select></label>
+<label>Visa subclass (if applicable)<input name="visa_subclass"></label>
+<label>Visa expiry (if applicable)<input name="visa_expiry" type="date"></label>
+<label class="full">Work restrictions / conditions<textarea name="work_restrictions" rows="3"></textarea></label>
+<label class="full"><span><input name="accept_terms" type="checkbox" required style="width:auto"> I confirm the information I provide is accurate and I accept the workforce onboarding terms/declaration.</span></label>
+<label class="full"><span><input name="accept_privacy" type="checkbox" required style="width:auto"> I acknowledge the privacy notice and consent to this information being used for workforce onboarding and compliance review.</span></label>
+<label class="full"><span><input name="declaration" type="checkbox" required style="width:auto"> I understand that final work-right, licence, skill and compliance verification is completed by authorised reviewers and/or official sources where available.</span></label>
+</div><div class="actions"><button type="submit">Save my details</button></div>
+</form>
+<section id="requirements-card" class="card" hidden><h2>Compliance requirements</h2><div id="requirements"></div></section>
+<section id="documents-card" class="card" hidden><h2>Required evidence</h2><p class="muted">Upload only requested evidence. Do not upload passwords or unrelated personal information.</p><div id="documents"></div></section>
+<section id="skills-card" class="card" hidden><h2>Skills & qualifications</h2><div id="skills"></div><form id="skill-form" class="grid"><label>Skill / qualification<input name="skill_name" required></label><label>Competency<select name="competency"><option value="training">Training</option><option value="competent">Competent</option><option value="advanced">Advanced</option><option value="expert">Expert</option></select></label><label>Evidence type<input name="evidence_type" placeholder="Certificate, licence, assessment…"></label><label>Evidence/reference<input name="evidence_reference" placeholder="Certificate/licence/reference number"></label><label>Expiry date<input name="expiry_date" type="date"></label><div class="actions"><button type="submit">Add skill for review</button></div></form></section>
+<section id="submit-card" class="card" hidden><h2>Submit for authorised review</h2><p class="muted">Once submitted, the business will review your evidence, work rights, skills, licences and other requirements before scheduling eligibility can be granted.</p><button id="submit-onboarding" type="button">Submit onboarding</button></section>
+</main>
+<script defer src="worker-onboarding.js?v=20261008.1"></script>
+</body>
+</html>

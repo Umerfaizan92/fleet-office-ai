@@ -265,41 +265,113 @@ async function loadOnboarding(){
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
 async function loadWorkers(){
   const d=await api('/api/saas/workers'),list=$('#workers');
-  list.innerHTML=d.workers.map(w=>`<article class="row-card" data-worker-id="${esc(w.id)}"><header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${w.approved_for_scheduling?'good':'warn'}">${w.approved_for_scheduling?'Ready to schedule':'Onboarding'}</span></header><p class="muted">Work rights: ${esc(w.work_rights_status.replaceAll('_',' '))} · Onboarding ${w.onboarding_progress}%</p><div class="row-actions"><button type="button" data-worker-compliance="${esc(w.id)}">Review compliance</button><button type="button" data-worker-skill="${esc(w.id)}">Add verified skill</button></div></article>`).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
+  list.innerHTML=d.workers.map(w=>{
+    const skills=(w.skills||[]).slice(0,5);
+    return `<article class="row-card" data-worker-id="${esc(w.id)}">
+      <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${w.approved_for_scheduling?'good':'warn'}">${w.approved_for_scheduling?'Ready to schedule':'Onboarding'}</span></header>
+      <p class="muted">Declared status: ${esc(String(w.declared_work_status||'requires_review').replaceAll('_',' '))} · Work rights: ${esc(w.work_rights_status.replaceAll('_',' '))} · Compliance ${w.compliance_summary?.verified||0}/${w.compliance_summary?.required||0}</p>
+      <div class="worker-skill-summary">${skills.length?skills.map(s=>`<span class="filter-chip">${esc(s.skill_name)} · ${esc(s.competency)} · ${esc(s.verification_status||'pending')}</span>`).join(''):'<span class="muted">No skills recorded yet.</span>'}</div>
+      <div class="row-actions"><button type="button" data-worker-compliance="${esc(w.id)}">Compliance & credentials</button><button type="button" data-worker-skill="${esc(w.id)}">Add / verify skill</button><button type="button" data-worker-invite="${esc(w.id)}" data-worker-email="${esc(w.email||'')}" data-worker-phone="${esc(w.phone||'')}">Send onboarding link</button></div>
+    </article>`;
+  }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
 }
-$('#worker-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();note('Worker profile created with compliance checklist.');await Promise.all([loadWorkers(),loadDashboard()])}catch(x){note(x.message,true)}};
+$('#worker-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Work-right and compliance evidence must be reviewed before scheduling.');await Promise.all([loadWorkers(),loadDashboard()])}catch(x){note(x.message,true)}};
 
-async function approveWorkerCompliance(id,button){
-  const confirmed=confirm('Mark this worker as work-rights verified and onboarding 100% complete? Use this only after authorised review of the worker evidence.');
-  if(!confirmed)return;
-  if(button){button.disabled=true;button.textContent='Updating…'}
+function ensureWorkforceDialog(){
+  let d=$('#workforce-dialog');if(d)return d;
+  d=document.createElement('dialog');d.id='workforce-dialog';d.className='workforce-dialog';
+  d.innerHTML='<div class="workforce-dialog-shell"><header><div><span class="panel-kicker">WORKFORCE CONTROL</span><h2 id="workforce-dialog-title">Worker compliance</h2></div><button type="button" class="secondary-button compact" data-close-workforce>Close</button></header><div id="workforce-dialog-body"></div></div>';
+  document.body.append(d);d.querySelector('[data-close-workforce]').onclick=()=>d.close();return d;
+}
+function workforceStatusClass(status){return status==='verified'?'good':(['rejected','expired','restricted'].includes(status)?'danger':'warn')}
+async function openWorkerCompliance(id){
+  const d=ensureWorkforceDialog(),body=d.querySelector('#workforce-dialog-body');body.innerHTML='<div class="empty-state">Loading compliance record…</div>';d.showModal();
   try{
-    await api(`/api/saas/workers/${id}/compliance`,{method:'PATCH',body:JSON.stringify({work_rights_status:'verified',onboarding_progress:100})});
-    note('Worker compliance review saved and scheduling eligibility refreshed.');
-    await Promise.all([loadWorkers(),loadDashboard()]);
-  }catch(x){note(x.message,true);if(button){button.disabled=false;button.textContent='Review compliance'}}
+    const x=await api('/api/saas/workers/'+encodeURIComponent(id)+'/compliance'),w=x.worker;
+    d.querySelector('#workforce-dialog-title').textContent=w.full_name+' — compliance & credentials';
+    body.innerHTML=`
+      <div class="notice-banner"><div><b>Scheduling eligibility: ${x.eligible?'Eligible':'Blocked pending compliance'}</b><span>${x.verified_count}/${x.required_count} required compliance items verified. Work rights: ${x.work_rights_verified?'verified':'not yet verified'}.</span></div></div>
+      <section class="workforce-review-section"><h3>Compliance requirements</h3><div class="record-list">${(x.requirements||[]).map(r=>`<article class="row-card"><header><div><b>${esc(r.label)}</b><div class="muted">${esc(r.category.replaceAll('_',' '))} · ${esc(r.verification_method.replaceAll('_',' '))}</div></div><span class="status ${workforceStatusClass(r.status)}">${esc(r.status.replaceAll('_',' '))}</span></header>${r.condition_note?`<p class="muted">${esc(r.condition_note)}</p>`:''}${r.official_source_url?`<a class="text-button" href="${esc(r.official_source_url)}" target="_blank" rel="noopener">Open official verification source ↗</a>`:''}<div class="row-actions"><button type="button" data-review-requirement="${esc(r.id)}" data-worker-id="${esc(id)}">Review / update</button></div></article>`).join('')}</div></section>
+      <section class="workforce-review-section"><h3>Skills & competency</h3><div class="record-list">${(x.skills||[]).map(s=>`<article class="row-card"><header><div><b>${esc(s.skill_name)}</b><div class="muted">${esc(s.competency)} · evidence: ${esc(s.evidence_reference||'not recorded')}</div></div><span class="status ${workforceStatusClass(s.verification_status||'pending')}">${esc(s.verification_status||'pending')}</span></header></article>`).join('')||'<div class="empty-state">No skills recorded.</div>'}</div></section>
+      <section class="workforce-review-section"><h3>Document checklist</h3><div class="record-list">${(x.documents||[]).map(doc=>`<article class="row-card"><header><div><b>${esc(doc.document_type.replaceAll('_',' '))}</b><div class="muted">${doc.required?'Required':'Optional'} · ${esc(doc.document_name||'No evidence uploaded')}</div></div><span class="status ${workforceStatusClass(doc.verification_status||'pending')}">${esc(doc.verification_status||'pending')}</span></header></article>`).join('')}</div></section>`;
+  }catch(err){body.innerHTML='<div class="empty-state">'+esc(err.message)+'</div>'}
 }
-
-async function addWorkerSkill(id,button){
-  const skill=prompt('Verified skill name, e.g. Truck Metal Polishing');
-  if(!skill?.trim())return;
-  const competency=String(prompt('Competency: competent, advanced or expert','competent')||'competent').trim().toLowerCase();
-  if(!['competent','advanced','expert'].includes(competency)){note('Choose competent, advanced or expert.',true);return}
-  if(button){button.disabled=true;button.textContent='Saving…'}
+async function reviewComplianceRequirement(workerId,requirementId){
+  const evidence=prompt('Evidence / official verification reference (do not enter passwords):','');if(evidence===null)return;
+  const decision=String(prompt('Status: verified, review_required, restricted, rejected or expired','verified')||'').trim().toLowerCase();
+  if(!['verified','review_required','restricted','rejected','expired','pending'].includes(decision)){note('Invalid compliance status.',true);return}
+  try{await api(`/api/saas/workers/${workerId}/compliance/${requirementId}`,{method:'PATCH',body:JSON.stringify({status:decision,evidence_reference:evidence,evidence_note:'Authorised workforce review'})});note('Compliance requirement updated.');await Promise.all([openWorkerCompliance(workerId),loadWorkers(),loadDashboard()])}catch(err){note(err.message,true)}
+}
+async function addWorkerSkill(id){
+  const d=ensureWorkforceDialog(),body=d.querySelector('#workforce-dialog-body');d.querySelector('#workforce-dialog-title').textContent='Add / verify worker skill';
+  body.innerHTML='<form id="worker-skill-form" class="form-grid"><label class="full"><span>Skill / competency</span><input name="skill_name" required placeholder="e.g. Truck Metal Polishing"></label><label><span>Competency</span><select name="competency"><option value="competent">Competent</option><option value="advanced">Advanced</option><option value="expert">Expert</option><option value="training">Training</option></select></label><label><span>Verification status</span><select name="verification_status"><option value="pending">Pending review</option><option value="verified">Verified by authorised reviewer</option></select></label><label><span>Evidence type</span><input name="evidence_type" placeholder="Certificate, licence, internal assessment…"></label><label><span>Evidence/reference</span><input name="evidence_reference" placeholder="Certificate/licence/reference number"></label><label><span>Expiry date</span><input name="expiry_date" type="date"></label><label class="full"><span>Requirement / assessment note</span><textarea name="requirement_note" rows="3" placeholder="What evidence or practical assessment supports this competency?"></textarea></label><button class="primary-button full" type="submit">Save skill record</button></form>';d.showModal();
+  body.querySelector('#worker-skill-form').onsubmit=async e=>{e.preventDefault();const payload=obj(e.target);try{await api(`/api/saas/workers/${id}/skills`,{method:'POST',body:JSON.stringify(payload)});d.close();note('Worker skill record saved.');await loadWorkers()}catch(err){note(err.message,true)}};
+}
+async function inviteWorker(button){
+  const id=button.dataset.workerInvite,email=prompt('Worker email address (leave blank if using mobile only):',button.dataset.workerEmail||'');if(email===null)return;
+  const phone=prompt('Worker mobile number (leave blank if using email only):',button.dataset.workerPhone||'');if(phone===null)return;
   try{
-    await api(`/api/saas/workers/${id}/skills`,{method:'POST',body:JSON.stringify({skill_name:skill.trim(),competency})});
-    note('Verified worker skill saved.');
-    await loadWorkers();
-  }catch(x){note(x.message,true);if(button){button.disabled=false;button.textContent='Add verified skill'}}
+    const d=await api(`/api/saas/workers/${id}/invite`,{method:'POST',body:JSON.stringify({email:email.trim(),phone:phone.trim(),expires_days:7})});
+    const delivered=[d.delivery?.email?.sent?'email':null,d.delivery?.sms?.sent?'SMS':null].filter(Boolean).join(' and ');
+    await navigator.clipboard?.writeText(d.invite_url).catch(()=>{});
+    note((delivered?'Secure onboarding link sent by '+delivered+'. ':'Secure onboarding link created. ')+(navigator.clipboard?'Link copied to clipboard.':'Copy the link from the response if needed.'));
+  }catch(err){note(err.message,true)}
 }
-
 $('#workers')?.addEventListener('click',e=>{
-  const compliance=e.target.closest('[data-worker-compliance]');
-  if(compliance){e.preventDefault();approveWorkerCompliance(compliance.dataset.workerCompliance,compliance);return}
-  const skill=e.target.closest('[data-worker-skill]');
-  if(skill){e.preventDefault();addWorkerSkill(skill.dataset.workerSkill,skill)}
+  const compliance=e.target.closest('[data-worker-compliance]');if(compliance){e.preventDefault();openWorkerCompliance(compliance.dataset.workerCompliance);return}
+  const skill=e.target.closest('[data-worker-skill]');if(skill){e.preventDefault();addWorkerSkill(skill.dataset.workerSkill);return}
+  const invite=e.target.closest('[data-worker-invite]');if(invite){e.preventDefault();inviteWorker(invite);return}
+  const review=e.target.closest('[data-review-requirement]');if(review){e.preventDefault();reviewComplianceRequirement(review.dataset.workerId,review.dataset.reviewRequirement)}
 });
-async function loadJobs(){const d=await api('/api/saas/work-orders');$('#jobs').innerHTML=d.jobs.map(j=>`<article class="row-card"><header><div><b>${esc(j.title)}</b><div class="muted">${new Date(j.start_at).toLocaleString()} · ${j.required_workers} worker${j.required_workers===1?'':'s'} · Level ${j.required_level}+</div></div><span class="status">${esc(j.status.replaceAll('_',' '))}</span></header><p class="muted">${esc(j.address||'No address')} · Skills: ${(j.required_skills||[]).map(esc).join(', ')||'None specified'} · ${j.accepted_workers||0}/${j.required_workers} accepted</p><div class="row-actions"><button onclick="offerJob('${j.id}')">Find eligible workers →</button></div></article>`).join('')||'<div class="empty-state"><b>No work orders yet</b><span>Create a job and the eligibility engine will match compliant workers.</span></div>'}$('#job-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.required_skills=b.required_skills.split('\n').map(x=>x.trim()).filter(Boolean);try{await api('/api/saas/work-orders',{method:'POST',body:JSON.stringify(b)});e.target.reset();note('Work order added to the allocation pool.');await Promise.all([loadJobs(),loadDashboard()])}catch(x){note(x.message,true)}};window.offerJob=async id=>{try{const d=await api(`/api/saas/work-orders/${id}/offer`,{method:'POST'});note(d.offered?`Offered to ${d.offered} eligible worker${d.offered===1?'':'s'}: ${(d.eligible_workers||[]).map(x=>x.full_name).join(', ')}`:'No eligible workers. Check compliance, level and verified skills.',!d.offered);await Promise.all([loadJobs(),loadDashboard()])}catch(x){note(x.message,true)}};
+document.addEventListener('click',e=>{const review=e.target.closest('[data-review-requirement]');if(review){e.preventDefault();reviewComplianceRequirement(review.dataset.workerId,review.dataset.reviewRequirement)}});
+
+function updateWorkStatusHelp(){
+  const select=$('#worker-form [name="work_status"]');if(!select)return;
+  let box=$('#work-status-help');if(!box){box=document.createElement('div');box.id='work-status-help';box.className='notice-banner full';select.closest('label').after(box)}
+  const map={
+    australian_citizen:['Declaration only — evidence review required','Citizenship is not verified by selecting this option. Appropriate identity/citizenship evidence must be reviewed.'],
+    permanent_resident:['Declaration only — current entitlement review required','Record appropriate identity evidence and use an authorised/official work-right check where applicable.'],
+    visa_holder:['VEVO work-right review required','Record the visa details and check current work entitlements/conditions through VEVO with the worker’s permission.'],
+    requires_review:['Scheduling blocked until reviewed','An authorised reviewer must establish lawful work entitlement before allocation.']
+  };
+  const x=map[select.value]||map.requires_review;box.innerHTML='<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>';
+}
+$('#worker-form [name="work_status"]')?.addEventListener('change',updateWorkStatusHelp);updateWorkStatusHelp();
+
+let skillSuggestTimer=null;
+async function refreshJobSkillSuggestions(){
+  const form=$('#job-form'),title=form?.elements?.title?.value?.trim()||'',host=$('#job-skill-suggestions');if(!form||!host)return;
+  try{
+    const d=await api('/api/saas/work-orders/skill-suggestions?title='+encodeURIComponent(title));
+    host.innerHTML='<div class="muted">Suggested for this business / job — click to add:</div><div class="row-actions">'+(d.suggestions||[]).slice(0,14).map(s=>`<button type="button" data-add-job-skill="${esc(s.name)}">${esc(s.name)}</button>`).join('')+'</div>';
+  }catch{host.innerHTML='<div class="muted">Skill suggestions are temporarily unavailable.</div>'}
+}
+(function installJobSkillAssist(){
+  const form=$('#job-form'),field=form?.elements?.required_skills;if(!form||!field)return;
+  let host=$('#job-skill-suggestions');if(!host){host=document.createElement('div');host.id='job-skill-suggestions';host.className='job-skill-suggestions';field.closest('label').append(host)}
+  form.elements.title?.addEventListener('input',()=>{clearTimeout(skillSuggestTimer);skillSuggestTimer=setTimeout(refreshJobSkillSuggestions,280)});
+  host.addEventListener('click',e=>{const b=e.target.closest('[data-add-job-skill]');if(!b)return;const lines=field.value.split('\\n').map(x=>x.trim()).filter(Boolean);if(!lines.some(x=>x.toLowerCase()===b.dataset.addJobSkill.toLowerCase()))lines.push(b.dataset.addJobSkill);field.value=lines.join('\\n')});
+  refreshJobSkillSuggestions();
+})();
+
+async function loadJobs(){
+  const d=await api('/api/saas/work-orders'),list=$('#jobs');
+  list.innerHTML=d.jobs.map(j=>`<article class="row-card"><header><div><b>${esc(j.title)}</b><div class="muted">${new Date(j.start_at).toLocaleString()} · ${j.required_workers} worker${j.required_workers===1?'':'s'} · Level ${j.required_level}+</div></div><span class="status">${esc(j.status.replaceAll('_',' '))}</span></header><p class="muted">${esc(j.address||'No address')} · Skills: ${(j.required_skills||[]).map(esc).join(', ')||'None specified'} · ${j.accepted_workers||0}/${j.required_workers} accepted</p><div class="row-actions"><button type="button" data-offer-job="${esc(j.id)}">Find eligible workers →</button></div></article>`).join('')||'<div class="empty-state"><b>No work orders yet</b><span>Create a job and the eligibility engine will match compliant workers.</span></div>';
+}
+$('#job-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.required_skills=b.required_skills.split('\\n').map(x=>x.trim()).filter(Boolean);try{await api('/api/saas/work-orders',{method:'POST',body:JSON.stringify(b)});e.target.reset();note('Work order added to the allocation pool.');await Promise.all([loadJobs(),loadDashboard(),refreshJobSkillSuggestions()])}catch(x){note(x.message,true)}};
+$('#jobs')?.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-offer-job]');if(!b)return;
+  b.disabled=true;b.textContent='Checking eligibility…';
+  try{
+    const d=await api('/api/saas/work-orders/'+encodeURIComponent(b.dataset.offerJob)+'/offer',{method:'POST'});
+    if(d.offered)note('Offered to '+d.offered+' fully eligible worker'+(d.offered===1?'':'s')+': '+(d.eligible_workers||[]).map(x=>x.full_name).join(', '));
+    else{
+      const reasons=(d.evaluated||[]).slice(0,5).map(x=>x.full_name+': '+[x.missing_skills?.length?'missing verified skills '+x.missing_skills.join(', '):'',x.blocking_compliance?'compliance items pending':'',!x.work_rights_verified?'work rights not verified':''].filter(Boolean).join('; ')).join(' | ');
+      note('No fully eligible workers. '+(reasons||'Check worker compliance, level and verified skills.'),true);
+    }
+    await Promise.all([loadJobs(),loadDashboard()]);
+  }catch(err){note(err.message,true)}finally{b.disabled=false;b.textContent='Find eligible workers →'}
+});
 async function loadThreads(){const d=await api('/api/saas/ai/threads');$('#threads').innerHTML=d.threads.map(t=>`<article class="row-card"><header><div><b>${esc(t.title)}</b><div class="muted">Updated ${new Date(t.updated_at).toLocaleString()}</div></div><span class="status">${t.last_ai_response?'AI complete':'Saved'}</span></header>${t.last_ai_response?`<p class="muted" style="white-space:pre-wrap;margin-top:10px">${esc(t.last_ai_response)}</p>`:''}</article>`).join('')||'<div class="empty-state"><b>No AI Operations threads</b><span>Save an instruction to start building workspace-scoped operational memory.</span></div>'}$('#assistant-form').onsubmit=async e=>{e.preventDefault();const f=obj(e.target),submit=e.target.querySelector('button[type="submit"]');if(submit)submit.disabled=true;try{const d=await api('/api/saas/ai/threads',{method:'POST',body:JSON.stringify({title:f.title,message:f.message})});e.target.reset();updatePromptCount();note(d.ai_response?'AI Operations completed the task and saved the answer below.':d.note);await loadThreads()}catch(x){note(x.message,true)}finally{if(submit)submit.disabled=false}};
 $('#setup-mfa')?.addEventListener('click',async()=>{try{const d=await api('/api/saas/mfa/setup',{method:'POST'});$('#mfa-secret').textContent=d.secret;$('#mfa-dialog').showModal()}catch(x){note(x.message,true)}});$('#verify-mfa').onclick=async()=>{try{await api('/api/saas/mfa/verify',{method:'POST',body:JSON.stringify({code:$('#mfa-code').value})});$('#mfa-dialog').close();note('Authenticator MFA enabled.');await boot()}catch(x){note(x.message,true)}};
 async function loadRenders(){const d=await api('/api/saas/video-renders');$('#renders').innerHTML=d.jobs.map(j=>{const x=j.edit_spec||{};return `<article class="row-card"><header><div><b>${esc(j.quality)} · ${esc(x.aspect_ratio)}</b><div class="muted">${esc(x.platform||'Multi-platform')} · ${esc(x.goal||'Saved render specification')}</div></div><span class="status">${esc(j.status)}</span></header></article>`}).join('')||'<div class="empty-state"><b>No render specifications</b><span>Create an AI-assisted output specification to populate this queue.</span></div>'}

@@ -1436,6 +1436,120 @@ export function createDb(databasePath) {
     db.exec(`ALTER TABLE onboarding_profiles ADD COLUMN approval_rules_json TEXT NOT NULL DEFAULT '{"external_messages":true,"social_publishing":true,"payments":true,"quotes_and_invoices":true,"compliance_changes":true,"job_changes":false,"customer_record_changes":false}'`);
   }
 
+
+
+  // v18 workforce compliance, credential verification and limited-access onboarding.
+  const workerColumns = new Set(db.prepare(`PRAGMA table_info(workers)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['declared_work_status', `TEXT NOT NULL DEFAULT 'requires_review'`],
+    ['work_rights_verified_at', `TEXT`],
+    ['work_rights_verification_method', `TEXT`],
+    ['work_rights_reference', `TEXT`],
+    ['work_rights_verified_by_user_id', `TEXT`],
+    ['terms_accepted_at', `TEXT`],
+    ['privacy_accepted_at', `TEXT`],
+    ['self_onboarding_submitted_at', `TEXT`]
+  ]) {
+    if (!workerColumns.has(name)) db.exec(`ALTER TABLE workers ADD COLUMN ${name} ${definition}`);
+  }
+
+  const workerSkillColumns = new Set(db.prepare(`PRAGMA table_info(worker_skills)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['verification_status', `TEXT NOT NULL DEFAULT 'pending'`],
+    ['evidence_type', `TEXT`],
+    ['evidence_reference', `TEXT`],
+    ['verified_by_user_id', `TEXT`],
+    ['verified_at', `TEXT`],
+    ['expiry_date', `TEXT`],
+    ['official_source_url', `TEXT`],
+    ['requirement_note', `TEXT`]
+  ]) {
+    if (!workerSkillColumns.has(name)) db.exec(`ALTER TABLE worker_skills ADD COLUMN ${name} ${definition}`);
+  }
+
+  const workerDocumentColumns = new Set(db.prepare(`PRAGMA table_info(worker_documents)`).all().map((column) => column.name));
+  for (const [name, definition] of [
+    ['stored_path', `TEXT`],
+    ['mime_type', `TEXT`],
+    ['size_bytes', `INTEGER`],
+    ['evidence_reference', `TEXT`],
+    ['official_source_url', `TEXT`],
+    ['verified_by_user_id', `TEXT`],
+    ['verified_at', `TEXT`]
+  ]) {
+    if (!workerDocumentColumns.has(name)) db.exec(`ALTER TABLE worker_documents ADD COLUMN ${name} ${definition}`);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worker_compliance_requirements (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      requirement_code TEXT NOT NULL,
+      category TEXT NOT NULL,
+      label TEXT NOT NULL,
+      required INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'pending',
+      verification_method TEXT NOT NULL DEFAULT 'authorised_review',
+      official_source_name TEXT,
+      official_source_url TEXT,
+      condition_note TEXT,
+      evidence_reference TEXT,
+      evidence_note TEXT,
+      issue_date TEXT,
+      expiry_date TEXT,
+      verified_by_user_id TEXT,
+      verified_at TEXT,
+      last_checked_at TEXT,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(worker_id, requirement_code),
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE,
+      FOREIGN KEY(verified_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS worker_onboarding_invites (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      invited_email TEXT,
+      invited_phone TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      expires_at TEXT NOT NULL,
+      opened_at TEXT,
+      submitted_at TEXT,
+      revoked_at TEXT,
+      created_by_user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE,
+      FOREIGN KEY(created_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+    );
+
+    CREATE TABLE IF NOT EXISTS worker_onboarding_events (
+      id TEXT PRIMARY KEY,
+      invite_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      organisation_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      detail_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(invite_id) REFERENCES worker_onboarding_invites(id) ON DELETE CASCADE,
+      FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_worker_compliance_worker ON worker_compliance_requirements(worker_id,required,status);
+    CREATE INDEX IF NOT EXISTS idx_worker_compliance_org ON worker_compliance_requirements(organisation_id,status,expiry_date);
+    CREATE INDEX IF NOT EXISTS idx_worker_invites_worker ON worker_onboarding_invites(worker_id,status,expires_at);
+    CREATE INDEX IF NOT EXISTS idx_worker_invites_org ON worker_onboarding_invites(organisation_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_worker_onboarding_events_invite ON worker_onboarding_events(invite_id,created_at DESC);
+  `);
+
   // Platform-wide customer notices: maintenance, incidents, releases and resolutions.
   db.exec(`
     CREATE TABLE IF NOT EXISTS platform_announcements (

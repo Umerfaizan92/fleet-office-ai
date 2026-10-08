@@ -3476,6 +3476,27 @@ app.post('/api/saas/work-orders/:id/offer',requireSaasUser,(req,res)=>{
   });
 });
 
+const workforceOnboardingLimiter=rateLimit({windowMs:15*60*1000,limit:80,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Too many onboarding requests. Please wait briefly and try again.'}});
+
+const workerStaffEvidenceUpload=multer({
+  storage:multer.diskStorage({
+    destination(req,file,cb){const dir=path.join(uploadRoot,'workforce',String(req.params.id||'unknown').replace(/[^A-Za-z0-9-]/g,''));fs.mkdirSync(dir,{recursive:true});cb(null,dir)},
+    filename(req,file,cb){const ext=path.extname(file.originalname||'').toLowerCase().slice(0,12);cb(null,`${crypto.randomUUID()}${ext}`)}
+  }),
+  limits:{fileSize:Number(env.WORKFORCE_MAX_FILE_MB||10)*1024*1024,files:1},
+  fileFilter(req,file,cb){const allowed=['image/jpeg','image/png','image/webp','application/pdf'];if(!allowed.includes(file.mimetype))return cb(new Error('Workforce evidence may be JPG, PNG, WEBP or PDF.'));cb(null,true)}
+});
+
+app.post('/api/saas/workers/:id/documents/:documentId/upload',requireSaasUser,requireSaasRole(...workforceSeniorRoles),workerStaffEvidenceUpload.single('file'),(req,res)=>{
+  const doc=db.prepare(`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?`).get(req.params.documentId,req.params.id,req.saas.organisation_id);
+  if(!doc){if(req.file)try{fs.unlinkSync(req.file.path)}catch{};return res.status(404).json({ok:false,error:'Worker document not found.'})}
+  if(!req.file)return res.status(400).json({ok:false,error:'Choose a document or image to upload.'});
+  const now=new Date().toISOString(),relative=path.relative(uploadRoot,req.file.path).replaceAll('\\','/');
+  db.prepare(`UPDATE worker_documents SET document_name=?,stored_path=?,mime_type=?,size_bytes=?,verification_status='review_required',updated_at=? WHERE id=?`).run(String(req.file.originalname||'evidence').slice(0,250),relative,req.file.mimetype,req.file.size,now,doc.id);
+  saasAudit(req,'worker.document_uploaded','worker',req.params.id,{document_id:doc.id,document_type:doc.document_type});
+  res.status(201).json({ok:true,status:'review_required'});
+});
+
 const workerOnboardingUpload=multer({
   storage:multer.diskStorage({
     destination(req,file,cb){
@@ -3503,9 +3524,9 @@ function requireWorkerInvite(req,res,next){
   next();
 }
 
-app.get('/api/workforce/onboarding/:token',requireWorkerInvite,(req,res)=>res.json({ok:true,...publicWorkerOnboarding(req.workerInvite)}));
+app.get('/api/workforce/onboarding/:token',workforceOnboardingLimiter,requireWorkerInvite,(req,res)=>res.json({ok:true,...publicWorkerOnboarding(req.workerInvite)}));
 
-app.put('/api/workforce/onboarding/:token/profile',requireWorkerInvite,(req,res)=>{
+app.put('/api/workforce/onboarding/:token/profile',workforceOnboardingLimiter,requireWorkerInvite,(req,res)=>{
   const parsed=z.object({
     full_name:z.string().trim().min(2).max(150),email:z.string().trim().email().optional().or(z.literal('')),phone:z.string().trim().max(50).optional().or(z.literal('')),
     declared_work_status:z.enum(['australian_citizen','permanent_resident','visa_holder','requires_review']),
@@ -3526,7 +3547,7 @@ app.put('/api/workforce/onboarding/:token/profile',requireWorkerInvite,(req,res)
   res.json({ok:true});
 });
 
-app.post('/api/workforce/onboarding/:token/skills',requireWorkerInvite,(req,res)=>{
+app.post('/api/workforce/onboarding/:token/skills',workforceOnboardingLimiter,requireWorkerInvite,(req,res)=>{
   const parsed=z.object({
     skill_name:z.string().trim().min(2).max(100),competency:z.enum(['unverified','training','competent','advanced','expert']),
     evidence_type:z.string().trim().max(100).optional().or(z.literal('')),evidence_reference:z.string().trim().max(500).optional().or(z.literal('')),
@@ -3542,7 +3563,7 @@ app.post('/api/workforce/onboarding/:token/skills',requireWorkerInvite,(req,res)
   res.status(201).json({ok:true,status:'pending_review'});
 });
 
-app.post('/api/workforce/onboarding/:token/documents/:documentId',requireWorkerInvite,(req,res,next)=>{next()},workerOnboardingUpload.single('file'),(req,res)=>{
+app.post('/api/workforce/onboarding/:token/documents/:documentId',workforceOnboardingLimiter,requireWorkerInvite,(req,res,next)=>{next()},workerOnboardingUpload.single('file'),(req,res)=>{
   const doc=db.prepare(`SELECT d.* FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE d.id=? AND d.worker_id=? AND w.organisation_id=?`).get(req.params.documentId,req.workerInvite.worker_id,req.workerInvite.organisation_id);
   if(!doc){if(req.file)try{fs.unlinkSync(req.file.path)}catch{};return res.status(404).json({ok:false,error:'Requested document item not found.'})}
   if(!req.file)return res.status(400).json({ok:false,error:'Choose a document or image to upload.'});
@@ -3553,7 +3574,7 @@ app.post('/api/workforce/onboarding/:token/documents/:documentId',requireWorkerI
   res.status(201).json({ok:true,status:'review_required'});
 });
 
-app.post('/api/workforce/onboarding/:token/submit',requireWorkerInvite,(req,res)=>{
+app.post('/api/workforce/onboarding/:token/submit',workforceOnboardingLimiter,requireWorkerInvite,(req,res)=>{
   const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.workerInvite.worker_id,req.workerInvite.organisation_id);
   const missingDocs=db.prepare(`SELECT document_type FROM worker_documents WHERE worker_id=? AND required=1 AND (stored_path IS NULL OR verification_status IN ('rejected','expired'))`).all(worker.id);
   if(!worker.terms_accepted_at||!worker.privacy_accepted_at)return res.status(409).json({ok:false,error:'Terms, privacy and worker declaration must be accepted before submission.'});

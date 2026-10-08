@@ -6,9 +6,9 @@ const exists=p=>fs.existsSync(path.join(root,p));
 const checks=[];const add=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 
 const required=[
-  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js',
+  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js','src/workforce-compliance.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js','saas/worker-onboarding.html','saas/worker-onboarding.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manifest.webmanifest','saas/sw.js','saas/superpro-icon-192.png','saas/superpro-icon-512.png',
   'office/index.html','office/office.js','office/office-extras.js','office/office-records.js','office/office-insights.js',
@@ -23,7 +23,7 @@ const obsolete=[
 ];
 add('cleanup:no-obsolete-runtime-files',obsolete.every(f=>!exists(f)));
 
-const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),approvalsUi=read('saas/approvals.js'),integrationManager=read('saas/integration-manager.js'),platformNotices=read('saas/platform-notices.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),integrationRuntime=read('src/integration-runtime.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
+const index=read('saas/index.html'),workspace=read('saas/workspace.html'),guide=read('saas/product-guide.js'),intro=read('saas/intro.js'),workspaceAi=read('saas/workspace-ai-runtime.js'),approvalsUi=read('saas/approvals.js'),integrationManager=read('saas/integration-manager.js'),platformNotices=read('saas/platform-notices.js'),workerOnboarding=read('saas/worker-onboarding.js'),workforceCompliance=read('src/workforce-compliance.js'),app=read('saas/app.js'),ops=read('saas/ai-operations.js'),server=read('src/server.js'),shim=read('src/ai-provider-shim.js'),integrationRuntime=read('src/integration-runtime.js'),sw=read('saas/sw.js'),office=read('office/index.html'),db=read('src/db.js'),render=read('render.yaml');
 add('brand:super-pro',index.includes('Super Pro AI Office Manager')&&office.includes('Super Pro AI Office Manager'));
 add('runtime:single-guide',index.includes('product-guide.js')&&!index.includes('guide-v16')&&!index.includes('guide-v17'));
 add('runtime:current-workspace-ai',workspace.includes('ai-operations.js')&&workspace.includes('workspace-extras.js'));
@@ -85,7 +85,12 @@ add('security:mfa',server.includes('/api/saas/mfa/setup')&&server.includes('/api
 add('governance:audit',server.includes('governance_ledger')&&server.includes('saas_audit_events'));
 add('workforce:jobs',server.includes('/api/saas/workers')&&server.includes('/api/saas/work-orders'));
 add('workforce:interactive-actions',app.includes('data-worker-compliance')&&app.includes('data-worker-skill')&&!app.includes('onclick="completeCompliance(')&&!app.includes('onclick="addSkill('));
-add('workforce:senior-compliance-control',server.includes("app.patch('/api/saas/workers/:id/compliance',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')")&&server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"));
+add('workforce:senior-compliance-control',server.includes("app.patch('/api/saas/workers/:id/compliance/:requirementId',requireSaasUser,requireSaasRole(...workforceSeniorRoles)")&&server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workforceSeniorRoles)"));
+add('workforce:compliance-persistence',db.includes('worker_compliance_requirements')&&db.includes('worker_onboarding_invites')&&db.includes('worker_onboarding_events'));
+add('workforce:secure-self-onboarding',server.includes("app.post('/api/saas/workers/:id/invite'")&&server.includes('/api/workforce/onboarding/:token')&&server.includes('workforceOnboardingLimiter')&&workerOnboarding.includes('/api/workforce/onboarding/'));
+add('workforce:industry-skill-assist',workforceCompliance.includes('workforceSkillSuggestions')&&app.includes('/api/saas/work-orders/skill-suggestions')&&app.includes('data-add-job-skill'));
+add('workforce:strict-eligibility',server.includes("verification_status!=='verified'")&&server.includes('blocking_compliance')&&server.includes('work_rights_verified'));
+add('workforce:evidence-review',server.includes("/documents/:documentId/upload")&&server.includes('workerStaffEvidenceUpload')&&server.includes('official_source_url'));
 add('finance:tenant',server.includes('/api/saas/finance')&&db.includes('organisation_finance_entries'));
 add('content:studio',workspace.includes('video-view')&&app.includes('renderTrendSuggestions'));
 add('office:current-assets',office.includes('office-extras.js')&&office.includes('office-records.js')&&office.includes('office-insights.js')&&!office.includes('office-v11'));

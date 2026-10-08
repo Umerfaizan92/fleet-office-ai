@@ -10,11 +10,12 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 import { createDb } from './db.js';
-import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail } from './mailer.js';
+import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
 import { aiProviderStatus, generateAiText, meaningfulConfigValue, resolveAiProviderConfig } from './ai-provider-shim.js';
 import { createIntegrationRuntime } from './integration-runtime.js';
+import { workforceSkillSuggestions, workStatusRequirements, industryComplianceSuggestions, officialSource } from './workforce-compliance.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

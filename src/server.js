@@ -3251,7 +3251,11 @@ function recomputeWorkerEligibility(orgId,workerId){
 }
 function workerPublicRow(orgId,row){
   const compliance=workerComplianceState(orgId,row.id);
-  return {...row,compliance_summary:{
+  const skills=db.prepare(`SELECT skill_name,competency,verification_status,expiry_date FROM worker_skills WHERE worker_id=? ORDER BY skill_name LIMIT 20`).all(row.id);
+  const documents=db.prepare(`SELECT COUNT(*) total,SUM(required=1) required,SUM(verification_status='verified') verified,SUM(required=1 AND verification_status!='verified') pending_required FROM worker_documents WHERE worker_id=?`).get(row.id)||{};
+  return {...row,skills,document_summary:{
+    total:Number(documents.total||0),required:Number(documents.required||0),verified:Number(documents.verified||0),pending_required:Number(documents.pending_required||0)
+  },compliance_summary:{
     required:compliance.required_count,verified:compliance.verified_count,blocking:compliance.blocking_count,
     work_rights_verified:compliance.work_rights_verified
   }};

@@ -84,6 +84,8 @@ add('security:sessions',server.includes('HttpOnly')&&server.includes('SameSite=S
 add('security:mfa',server.includes('/api/saas/mfa/setup')&&server.includes('/api/saas/mfa/verify'));
 add('governance:audit',server.includes('governance_ledger')&&server.includes('saas_audit_events'));
 add('workforce:jobs',server.includes('/api/saas/workers')&&server.includes('/api/saas/work-orders'));
+add('workforce:interactive-actions',app.includes('data-worker-compliance')&&app.includes('data-worker-skill')&&!app.includes('onclick="completeCompliance(')&&!app.includes('onclick="addSkill('));
+add('workforce:senior-compliance-control',server.includes("app.patch('/api/saas/workers/:id/compliance',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')")&&server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"));
 add('finance:tenant',server.includes('/api/saas/finance')&&db.includes('organisation_finance_entries'));
 add('content:studio',workspace.includes('video-view')&&app.includes('renderTrendSuggestions'));
 add('office:current-assets',office.includes('office-extras.js')&&office.includes('office-records.js')&&office.includes('office-insights.js')&&!office.includes('office-v11'));

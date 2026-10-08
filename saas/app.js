@@ -275,7 +275,7 @@ async function loadWorkers(){
     </article>`;
   }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
 }
-$('#worker-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Work-right and compliance evidence must be reviewed before scheduling.');await Promise.all([loadWorkers(),loadDashboard()])}catch(x){note(x.message,true)}};
+$('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
 
 function ensureWorkforceDialog(){
   let d=$('#workforce-dialog');if(d)return d;
@@ -334,7 +334,7 @@ function updateWorkStatusHelp(){
     visa_holder:['VEVO work-right review required','Record the visa details and check current work entitlements/conditions through VEVO with the worker’s permission.'],
     requires_review:['Scheduling blocked until reviewed','An authorised reviewer must establish lawful work entitlement before allocation.']
   };
-  const x=map[select.value]||map.requires_review;box.innerHTML='<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>';
+  const x=map[select.value]||map.requires_review;box.innerHTML='<div><b>'+x[0]+'</b><span>'+x[1]+' Verification workflow will open immediately after the worker profile is created.</span></div>';
 }
 $('#worker-form [name="work_status"]')?.addEventListener('change',updateWorkStatusHelp);updateWorkStatusHelp();
 

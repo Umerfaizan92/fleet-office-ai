@@ -293,7 +293,7 @@ async function openWorkerCompliance(id){
       <div class="notice-banner"><div><b>Scheduling eligibility: ${x.eligible?'Eligible':'Blocked pending compliance'}</b><span>${x.verified_count}/${x.required_count} required compliance items verified. Work rights: ${x.work_rights_verified?'verified':'not yet verified'}.</span></div></div>
       <section class="workforce-review-section"><h3>Compliance requirements</h3><div class="record-list">${(x.requirements||[]).map(r=>`<article class="row-card"><header><div><b>${esc(r.label)}</b><div class="muted">${esc(r.category.replaceAll('_',' '))} · ${esc(r.verification_method.replaceAll('_',' '))}</div></div><span class="status ${workforceStatusClass(r.status)}">${esc(r.status.replaceAll('_',' '))}</span></header>${r.condition_note?`<p class="muted">${esc(r.condition_note)}</p>`:''}${r.official_source_url?`<a class="text-button" href="${esc(r.official_source_url)}" target="_blank" rel="noopener">Open official verification source ↗</a>`:''}<div class="row-actions"><button type="button" data-review-requirement="${esc(r.id)}" data-worker-id="${esc(id)}">Review / update</button></div></article>`).join('')}</div></section>
       <section class="workforce-review-section"><h3>Skills & competency</h3><div class="record-list">${(x.skills||[]).map(s=>`<article class="row-card"><header><div><b>${esc(s.skill_name)}</b><div class="muted">${esc(s.competency)} · evidence: ${esc(s.evidence_reference||'not recorded')}</div></div><span class="status ${workforceStatusClass(s.verification_status||'pending')}">${esc(s.verification_status||'pending')}</span></header></article>`).join('')||'<div class="empty-state">No skills recorded.</div>'}</div></section>
-      <section class="workforce-review-section"><h3>Document checklist</h3><div class="record-list">${(x.documents||[]).map(doc=>`<article class="row-card"><header><div><b>${esc(doc.document_type.replaceAll('_',' '))}</b><div class="muted">${doc.required?'Required':'Optional'} · ${esc(doc.document_name||'No evidence uploaded')}</div></div><span class="status ${workforceStatusClass(doc.verification_status||'pending')}">${esc(doc.verification_status||'pending')}</span></header></article>`).join('')}</div></section>`;
+      <section class="workforce-review-section"><h3>Document checklist</h3><div class="record-list">${(x.documents||[]).map(doc=>`<article class="row-card"><header><div><b>${esc(doc.document_type.replaceAll('_',' '))}</b><div class="muted">${doc.required?'Required':'Optional'} · ${esc(doc.document_name||'No evidence uploaded')}</div></div><span class="status ${workforceStatusClass(doc.verification_status||'pending')}">${esc(doc.verification_status||'pending')}</span></header><form class="row-actions" data-staff-doc-upload="${esc(doc.id)}" data-worker-id="${esc(id)}"><input type="file" name="file" accept=".pdf,image/jpeg,image/png,image/webp"><button type="submit">Upload / replace evidence</button><button type="button" data-review-document="${esc(doc.id)}" data-worker-id="${esc(id)}">Review document</button></form></article>`).join('')}</div></section>`;
   }catch(err){body.innerHTML='<div class="empty-state">'+esc(err.message)+'</div>'}
 }
 async function reviewComplianceRequirement(workerId,requirementId){
@@ -306,6 +306,17 @@ async function addWorkerSkill(id){
   const d=ensureWorkforceDialog(),body=d.querySelector('#workforce-dialog-body');d.querySelector('#workforce-dialog-title').textContent='Add / verify worker skill';
   body.innerHTML='<form id="worker-skill-form" class="form-grid"><label class="full"><span>Skill / competency</span><input name="skill_name" required placeholder="e.g. Truck Metal Polishing"></label><label><span>Competency</span><select name="competency"><option value="competent">Competent</option><option value="advanced">Advanced</option><option value="expert">Expert</option><option value="training">Training</option></select></label><label><span>Verification status</span><select name="verification_status"><option value="pending">Pending review</option><option value="verified">Verified by authorised reviewer</option></select></label><label><span>Evidence type</span><input name="evidence_type" placeholder="Certificate, licence, internal assessment…"></label><label><span>Evidence/reference</span><input name="evidence_reference" placeholder="Certificate/licence/reference number"></label><label><span>Expiry date</span><input name="expiry_date" type="date"></label><label class="full"><span>Requirement / assessment note</span><textarea name="requirement_note" rows="3" placeholder="What evidence or practical assessment supports this competency?"></textarea></label><button class="primary-button full" type="submit">Save skill record</button></form>';d.showModal();
   body.querySelector('#worker-skill-form').onsubmit=async e=>{e.preventDefault();const payload=obj(e.target);try{await api(`/api/saas/workers/${id}/skills`,{method:'POST',body:JSON.stringify(payload)});d.close();note('Worker skill record saved.');await loadWorkers()}catch(err){note(err.message,true)}};
+}
+async function reviewWorkerDocument(workerId,documentId){
+  const evidence=prompt('Document / official verification reference:','');if(evidence===null)return;
+  const status=String(prompt('Status: verified, review_required, rejected or expired','verified')||'').trim().toLowerCase();
+  if(!['verified','review_required','rejected','expired','pending'].includes(status)){note('Invalid document status.',true);return}
+  try{await api(`/api/saas/workers/${workerId}/documents/${documentId}`,{method:'PATCH',body:JSON.stringify({verification_status:status,evidence_reference:evidence,notes:'Authorised document review'})});note('Worker document review saved.');await Promise.all([openWorkerCompliance(workerId),loadWorkers(),loadDashboard()])}catch(err){note(err.message,true)}
+}
+async function uploadWorkerDocument(form){
+  const workerId=form.dataset.workerId,documentId=form.dataset.staffDocUpload,file=form.elements.file?.files?.[0];if(!file){note('Choose a PDF or image first.',true);return}
+  const fd=new FormData();fd.append('file',file);const b=form.querySelector('button[type="submit"]');b.disabled=true;
+  try{const r=await fetch(`/api/saas/workers/${encodeURIComponent(workerId)}/documents/${encodeURIComponent(documentId)}/upload`,{method:'POST',credentials:'same-origin',body:fd});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Evidence upload failed.');note('Worker evidence uploaded for review.');await openWorkerCompliance(workerId)}catch(err){note(err.message,true)}finally{b.disabled=false}
 }
 async function inviteWorker(button){
   const id=button.dataset.workerInvite,email=prompt('Worker email address (leave blank if using mobile only):',button.dataset.workerEmail||'');if(email===null)return;
@@ -323,18 +334,19 @@ $('#workers')?.addEventListener('click',e=>{
   const invite=e.target.closest('[data-worker-invite]');if(invite){e.preventDefault();inviteWorker(invite);return}
   const review=e.target.closest('[data-review-requirement]');if(review){e.preventDefault();reviewComplianceRequirement(review.dataset.workerId,review.dataset.reviewRequirement)}
 });
-document.addEventListener('click',e=>{const review=e.target.closest('[data-review-requirement]');if(review){e.preventDefault();reviewComplianceRequirement(review.dataset.workerId,review.dataset.reviewRequirement)}});
+document.addEventListener('click',e=>{const review=e.target.closest('[data-review-requirement]');if(review){e.preventDefault();reviewComplianceRequirement(review.dataset.workerId,review.dataset.reviewRequirement);return}const doc=e.target.closest('[data-review-document]');if(doc){e.preventDefault();reviewWorkerDocument(doc.dataset.workerId,doc.dataset.reviewDocument)}});
+document.addEventListener('submit',e=>{const form=e.target.closest('[data-staff-doc-upload]');if(form){e.preventDefault();uploadWorkerDocument(form)}});
 
 function updateWorkStatusHelp(){
   const select=$('#worker-form [name="work_status"]');if(!select)return;
   let box=$('#work-status-help');if(!box){box=document.createElement('div');box.id='work-status-help';box.className='notice-banner full';select.closest('label').after(box)}
   const map={
-    australian_citizen:['Declaration only — evidence review required','Citizenship is not verified by selecting this option. Appropriate identity/citizenship evidence must be reviewed.'],
-    permanent_resident:['Declaration only — current entitlement review required','Record appropriate identity evidence and use an authorised/official work-right check where applicable.'],
-    visa_holder:['VEVO work-right review required','Record the visa details and check current work entitlements/conditions through VEVO with the worker’s permission.'],
-    requires_review:['Scheduling blocked until reviewed','An authorised reviewer must establish lawful work entitlement before allocation.']
+    australian_citizen:['Declaration only — evidence review required','Citizenship is not verified by selecting this option. Appropriate identity/citizenship evidence must be reviewed.','https://immi.homeaffairs.gov.au/visas/already-have-a-visa/check-visa-details-and-conditions/check-conditions-online/'],
+    permanent_resident:['Declaration only — current entitlement review required','Record appropriate identity evidence and use an authorised/official work-right check where applicable.','https://immi.homeaffairs.gov.au/visa-conditions-subsite/Pages/vevo-for-organisations.aspx'],
+    visa_holder:['VEVO work-right review required','Record the visa details and check current work entitlements/conditions through VEVO with the worker’s permission.','https://immi.homeaffairs.gov.au/visa-conditions-subsite/Pages/vevo-for-organisations.aspx'],
+    requires_review:['Scheduling blocked until reviewed','An authorised reviewer must establish lawful work entitlement before allocation.','https://immi.homeaffairs.gov.au/visas/employing-and-sponsoring-someone/hire-someone-in-australia/']
   };
-  const x=map[select.value]||map.requires_review;box.innerHTML='<div><b>'+x[0]+'</b><span>'+x[1]+' Verification workflow will open immediately after the worker profile is created.</span></div>';
+  const x=map[select.value]||map.requires_review;box.innerHTML='<div><b>'+x[0]+'</b><span>'+x[1]+' Verification workflow will open immediately after the worker profile is created.</span><a class="text-button" href="'+x[2]+'" target="_blank" rel="noopener noreferrer">Official guidance ↗</a></div>';
 }
 $('#worker-form [name="work_status"]')?.addEventListener('change',updateWorkStatusHelp);updateWorkStatusHelp();
 
@@ -343,14 +355,14 @@ async function refreshJobSkillSuggestions(){
   const form=$('#job-form'),title=form?.elements?.title?.value?.trim()||'',host=$('#job-skill-suggestions');if(!form||!host)return;
   try{
     const d=await api('/api/saas/work-orders/skill-suggestions?title='+encodeURIComponent(title));
-    host.innerHTML='<div class="muted">Suggested for this business / job — click to add:</div><div class="row-actions">'+(d.suggestions||[]).slice(0,14).map(s=>`<button type="button" data-add-job-skill="${esc(s.name)}">${esc(s.name)}</button>`).join('')+'</div>';
+    const suggestions=(d.suggestions||[]).slice(0,14);host.innerHTML='<div class="muted">Suggested for this business / job — click individual skills or add the recommended set:</div><div class="row-actions"><button type="button" data-add-recommended-skills>+ Add recommended skills</button>'+suggestions.map(s=>`<button type="button" data-add-job-skill="${esc(s.name)}">${esc(s.name)}</button>`).join('')+'</div>';host.dataset.suggestions=JSON.stringify(suggestions.map(s=>s.name));
   }catch{host.innerHTML='<div class="muted">Skill suggestions are temporarily unavailable.</div>'}
 }
 (function installJobSkillAssist(){
   const form=$('#job-form'),field=form?.elements?.required_skills;if(!form||!field)return;
   let host=$('#job-skill-suggestions');if(!host){host=document.createElement('div');host.id='job-skill-suggestions';host.className='job-skill-suggestions';field.closest('label').append(host)}
   form.elements.title?.addEventListener('input',()=>{clearTimeout(skillSuggestTimer);skillSuggestTimer=setTimeout(refreshJobSkillSuggestions,280)});
-  host.addEventListener('click',e=>{const b=e.target.closest('[data-add-job-skill]');if(!b)return;const lines=field.value.split('\\n').map(x=>x.trim()).filter(Boolean);if(!lines.some(x=>x.toLowerCase()===b.dataset.addJobSkill.toLowerCase()))lines.push(b.dataset.addJobSkill);field.value=lines.join('\\n')});
+  host.addEventListener('click',e=>{const lines=field.value.split('\\n').map(x=>x.trim()).filter(Boolean),all=e.target.closest('[data-add-recommended-skills]');if(all){let suggestions=[];try{suggestions=JSON.parse(host.dataset.suggestions||'[]')}catch{}for(const s of suggestions.slice(0,8))if(!lines.some(x=>x.toLowerCase()===String(s).toLowerCase()))lines.push(s);field.value=lines.join('\\n');return}const b=e.target.closest('[data-add-job-skill]');if(!b)return;if(!lines.some(x=>x.toLowerCase()===b.dataset.addJobSkill.toLowerCase()))lines.push(b.dataset.addJobSkill);field.value=lines.join('\\n')});
   refreshJobSkillSuggestions();
 })();
 

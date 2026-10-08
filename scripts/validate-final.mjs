@@ -7,9 +7,9 @@ const abs=p=>path.join(root,p),exists=p=>fs.existsSync(abs(p)),read=p=>fs.readFi
 
 const required=[
   'package.json','.env.example',
-  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js',
+  'src/server.js','src/db.js','src/ai-provider-shim.js','src/integration-runtime.js','src/workforce-compliance.js',
   'saas/index.html','saas/workspace.html','saas/product-guide.js','saas/intro.js','saas/workspace-ai-runtime.js','saas/app.js',
-  'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js',
+  'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js','saas/worker-onboarding.html','saas/worker-onboarding.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manual.js','saas/support.js','saas/adaptive.css','saas/governance.css','saas/manifest.webmanifest','saas/sw.js',
   'saas/superpro-icon-192.png','saas/superpro-icon-512.png',
@@ -95,8 +95,15 @@ if(!db.includes('platform_announcements')||!db.includes('platform_announcement_d
 if(app.includes('button.hidden=!always&&!allowed.has(view)'))failures.push('industry setup must not hide core workspace modules');
 if(app.includes("onclick=\"completeCompliance(")||app.includes("onclick=\"addSkill("))failures.push('Workforce actions must use delegated event listeners, not inline onclick handlers');
 if(!app.includes('data-worker-compliance')||!app.includes('data-worker-skill'))failures.push('Workforce compliance/skill action bindings are missing');
-if(!server.includes("app.patch('/api/saas/workers/:id/compliance',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"))failures.push('Workforce compliance route is not senior-role protected');
-if(!server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"))failures.push('Verified skill route is not senior-role protected');
+if(!server.includes("app.patch('/api/saas/workers/:id/compliance/:requirementId',requireSaasUser,requireSaasRole(...workforceSeniorRoles)"))failures.push('Workforce compliance requirement route is not senior-role protected');
+if(!server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workforceSeniorRoles)"))failures.push('Verified skill route is not senior-role protected');
+if(!db.includes('worker_compliance_requirements')||!db.includes('worker_onboarding_invites'))failures.push('Workforce compliance/onboarding persistence is incomplete');
+if(!server.includes('/api/saas/work-orders/skill-suggestions')||!app.includes('data-add-job-skill'))failures.push('Industry-assisted work-order skill suggestions are missing');
+if(!server.includes("app.post('/api/saas/workers/:id/invite'")||!server.includes('/api/workforce/onboarding/:token'))failures.push('Secure workforce self-onboarding flow is incomplete');
+if(!server.includes('workforceOnboardingLimiter')||!server.includes('token_hash'))failures.push('Workforce onboarding security controls are incomplete');
+if(!app.includes('Compliance & credentials')||!app.includes('Send onboarding link'))failures.push('Workforce compliance management UI is incomplete');
+if(!read('saas/worker-onboarding.html').includes('LIMITED ACCESS')||!read('saas/worker-onboarding.js').includes('/api/workforce/onboarding/'))failures.push('Isolated worker onboarding page is incomplete');
+if(!read('src/workforce-compliance.js').includes('workforceSkillSuggestions')||!read('src/workforce-compliance.js').includes('workStatusRequirements'))failures.push('Industry workforce compliance catalogue is incomplete');
 const approvalsUi=read('saas/approvals.js');
 if(!workspace.includes('data-view="approvals"')||!app.includes("'approvals'")||!app.includes("approvals:['CONTROL','Approvals']"))failures.push('Approvals must remain a first-class workspace page');
 if(!db.includes('workspace_approvals')||!db.includes('workspace_approval_events')||!server.includes('approvalCanDecide'))failures.push('tenant-scoped approval backend is incomplete');

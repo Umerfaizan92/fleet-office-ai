@@ -93,6 +93,10 @@ if(!server.includes('loadIntegrationBundle')||!server.includes('persistIntegrati
 if(!platformNotices.includes('/api/saas/announcements')||!platformNotices.includes('Updates & service notices'))failures.push('platform notice inbox is incomplete');
 if(!db.includes('platform_announcements')||!db.includes('platform_announcement_deliveries'))failures.push('platform announcement storage is missing');
 if(app.includes('button.hidden=!always&&!allowed.has(view)'))failures.push('industry setup must not hide core workspace modules');
+if(app.includes("onclick=\"completeCompliance(")||app.includes("onclick=\"addSkill("))failures.push('Workforce actions must use delegated event listeners, not inline onclick handlers');
+if(!app.includes('data-worker-compliance')||!app.includes('data-worker-skill'))failures.push('Workforce compliance/skill action bindings are missing');
+if(!server.includes("app.patch('/api/saas/workers/:id/compliance',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"))failures.push('Workforce compliance route is not senior-role protected');
+if(!server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director')"))failures.push('Verified skill route is not senior-role protected');
 const approvalsUi=read('saas/approvals.js');
 if(!workspace.includes('data-view="approvals"')||!app.includes("'approvals'")||!app.includes("approvals:['CONTROL','Approvals']"))failures.push('Approvals must remain a first-class workspace page');
 if(!db.includes('workspace_approvals')||!db.includes('workspace_approval_events')||!server.includes('approvalCanDecide'))failures.push('tenant-scoped approval backend is incomplete');

@@ -3207,6 +3207,8 @@ function seedWorkerComplianceRequirements(orgId,worker){
   const profile=workforceProfile(orgId),now=new Date().toISOString();
   const rows=[
     ...workStatusRequirements(worker.declared_work_status||'requires_review'),
+    {code:'worker_terms_acceptance',category:'declaration',label:'Workforce terms / declaration accepted',verification_method:'authorised_review',source:null,note:'The worker must accept the applicable onboarding declaration/terms or provide equivalent signed evidence.'},
+    {code:'worker_privacy_acknowledgement',category:'declaration',label:'Workforce privacy notice acknowledged',verification_method:'authorised_review',source:null,note:'Record the worker acknowledgement/consent required for workforce onboarding and compliance records.'},
     ...industryComplianceSuggestions(profile.industry_code,worker.role_title||'')
   ];
   const ins=db.prepare(`INSERT OR IGNORE INTO worker_compliance_requirements
@@ -3228,18 +3230,26 @@ function workerComplianceState(orgId,workerId){
   const now=new Date().toISOString().slice(0,10);
   const requirements=db.prepare(`SELECT * FROM worker_compliance_requirements WHERE organisation_id=? AND worker_id=? ORDER BY required DESC,category,label`).all(orgId,workerId);
   const required=requirements.filter(x=>x.required);
-  const blocking=required.filter(x=>x.status!=='verified'||(x.expiry_date&&x.expiry_date<now));
+  const blockingRequirements=required.filter(x=>x.status!=='verified'||(x.expiry_date&&x.expiry_date<now));
+  const requiredDocuments=db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? AND required=1 ORDER BY document_type`).all(workerId);
+  const blockingDocuments=requiredDocuments.filter(x=>x.verification_status!=='verified'||(x.expiry_date&&x.expiry_date<now));
   const workRights=requirements.filter(x=>x.category==='work_rights');
   const workRightsVerified=workRights.length>0&&workRights.every(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now));
-  const total=required.length,verified=required.filter(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now)).length;
+  const total=required.length+requiredDocuments.length;
+  const verifiedRequirements=required.filter(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now)).length;
+  const verifiedDocuments=requiredDocuments.filter(x=>x.verification_status==='verified'&&(!x.expiry_date||x.expiry_date>=now)).length;
+  const verified=verifiedRequirements+verifiedDocuments;
   return {
     requirements,
+    required_documents:requiredDocuments,
     required_count:total,
     verified_count:verified,
-    blocking_count:blocking.length,
+    blocking_count:blockingRequirements.length+blockingDocuments.length,
+    blocking_requirement_count:blockingRequirements.length,
+    blocking_document_count:blockingDocuments.length,
     work_rights_verified:workRightsVerified,
     progress:total?Math.round((verified/total)*100):0,
-    eligible:total>0&&blocking.length===0&&workRightsVerified
+    eligible:total>0&&blockingRequirements.length===0&&blockingDocuments.length===0&&workRightsVerified
   };
 }
 function recomputeWorkerEligibility(orgId,workerId){
@@ -3542,6 +3552,7 @@ app.put('/api/workforce/onboarding/:token/profile',workforceOnboardingLimiter,re
     db.prepare(`DELETE FROM worker_compliance_requirements WHERE worker_id=? AND category IN ('identity','work_rights')`).run(worker.id);
     seedWorkerComplianceRequirements(req.workerInvite.organisation_id,{...worker,declared_work_status:parsed.data.declared_work_status});
   }
+  db.prepare(`UPDATE worker_compliance_requirements SET status='verified',evidence_reference='worker self-acknowledgement',evidence_note='Accepted through secure limited-access onboarding link',verified_at=?,last_checked_at=?,updated_at=? WHERE worker_id=? AND requirement_code IN ('worker_terms_acceptance','worker_privacy_acknowledgement')`).run(now,now,now,worker.id);
   addWorkerOnboardingEvent(req.workerInvite,'profile_saved',{declared_work_status:parsed.data.declared_work_status,terms:true,privacy:true});
   recomputeWorkerEligibility(req.workerInvite.organisation_id,worker.id);
   res.json({ok:true});

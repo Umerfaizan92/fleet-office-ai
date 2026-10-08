@@ -178,6 +178,40 @@ export async function sendSaasVerificationEmail(env, { to, code, businessName })
   throw new Error(`Verification email failed: ${message}`);
 }
 
+
+export async function sendWorkerOnboardingInviteEmail(env,{to,workerName,businessName,inviteUrl,expiresAt}){
+  if(!usableEnvValue(env.RESEND_API_KEY)||!to)return {sent:false,reason:'resend_not_configured'};
+  const resend=new Resend(env.RESEND_API_KEY);
+  const from=
+    normaliseSender(env.WORKFORCE_FROM,'Super Pro AI Office Manager Workforce')||
+    normaliseSender(env.SAAS_VERIFY_FROM,'Super Pro AI Office Manager Workforce')||
+    normaliseSender(env.NOTIFY_FROM,'Super Pro AI Office Manager Workforce')||
+    'Super Pro AI Office Manager Workforce <security@fleetparlour.com.au>';
+  const {data,error}=await resend.emails.send({
+    from,to:[to],
+    subject:`${businessName} — secure workforce onboarding`,
+    text:[
+      'SUPER PRO AI OFFICE MANAGER — SECURE WORKFORCE ONBOARDING',
+      '',
+      `Business: ${businessName}`,
+      `Worker: ${workerName}`,
+      '',
+      'Use the secure link below to complete only your workforce onboarding information, upload requested evidence and accept the applicable declarations/policies.',
+      '',
+      inviteUrl,
+      '',
+      `Link expires: ${expiresAt}`,
+      '',
+      'This link does not provide access to the business workspace.',
+      'Do not forward this link to another person.',
+      '',
+      'Final work-right, licence, skill and compliance approval remains subject to authorised review and any required official verification.'
+    ].join('\n')
+  });
+  if(error)throw new Error(`Worker onboarding email failed: ${error.message||JSON.stringify(error)}`);
+  return {sent:true,email_id:data?.id||null};
+}
+
 export async function sendSupportEscalationEmail(env, { to, supportCase }) {
   if (!env.RESEND_API_KEY || !to) return { sent: false, reason: 'support_email_not_configured' };
   const resend = new Resend(env.RESEND_API_KEY);

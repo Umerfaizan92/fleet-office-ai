@@ -2571,6 +2571,25 @@ app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{
   }catch(err){console.warn('[PRODUCT GUIDE] AI unavailable:',err.message);return res.json({ok:true,text:localGuideText[language]||localGuideText.en,language,source:'local-multilingual-fallback',configuration_required:true});}
 });
 
+// Staff presence is independent from work-rights and roster approval.
+app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
+  const members=db.prepare(`SELECT m.user_id,m.role,u.full_name,u.email,u.status,a.status availability,a.reason,a.returns_at,a.updated_at
+    FROM memberships m JOIN users u ON u.id=m.user_id
+    LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id
+    WHERE m.organisation_id=? AND u.status='active' ORDER BY u.full_name`).all(req.saas.organisation_id);
+  const manager=['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase());
+  res.json({ok:true,staff:members.map(m=>({user_id:m.user_id,full_name:m.full_name,designation:m.role,availability:m.availability||'unavailable',reason:m.reason||'',returns_at:m.returns_at||null,updated_at:m.updated_at||null})),can_view_inactive:manager});
+});
+app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
+  const parsed=z.object({status:z.enum(['available','busy','unavailable','on_leave','day_off','working_from_home']),reason:z.string().trim().max(120).default(''),returns_at:z.union([z.string().datetime({offset:true}),z.literal(''),z.null()]).optional()}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check availability, reason and return time.'});
+  const now=new Date().toISOString();
+  db.prepare(`INSERT INTO staff_availability (organisation_id,user_id,status,reason,returns_at,updated_at) VALUES (?,?,?,?,?,?)
+    ON CONFLICT(organisation_id,user_id) DO UPDATE SET status=excluded.status,reason=excluded.reason,returns_at=excluded.returns_at,updated_at=excluded.updated_at`)
+    .run(req.saas.organisation_id,req.saas.user_id,parsed.data.status,parsed.data.reason,parsed.data.returns_at||null,now);
+  saasAudit(req,'staff.availability_updated','user',req.saas.user_id,{status:parsed.data.status,has_reason:Boolean(parsed.data.reason)});
+  res.json({ok:true,status:parsed.data.status,updated_at:now});
+});
 app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const messages=db.prepare(`SELECT id,sender_name,sender_role,message,created_at FROM staff_chat_messages WHERE organisation_id=? ORDER BY created_at DESC LIMIT 80`).all(req.saas.organisation_id).reverse();res.json({ok:true,messages})});
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name,sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:row})});
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});

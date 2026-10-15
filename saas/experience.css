@@ -97,3 +97,8 @@ html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .co
 #org-avatar-side img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
 #workspace-branding-settings input,#workspace-branding-settings select{min-width:0;max-width:100%}
 #workspace-branding-settings [disabled]{opacity:.6;cursor:not-allowed}
+
+/* Owner administration links reuse existing modules and permissions. */
+.owner-control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+.owner-control-grid button{min-height:48px;text-align:left;white-space:normal}
+@media(max-width:600px){.owner-control-grid{grid-template-columns:1fr}}

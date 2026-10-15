@@ -1014,7 +1014,10 @@ export function createDb(databasePath) {
     ['abn_status', `TEXT`],
     ['abn_verified_at', `TEXT`],
     ['state', `TEXT`],
-    ['postcode', `TEXT`]
+    ['postcode', `TEXT`],
+    ['display_name', `TEXT`],
+    ['brand_logo_url', `TEXT`],
+    ['brand_theme', `TEXT NOT NULL DEFAULT 'system'`]
   ]) {
     if (!organisationColumns.has(name)) db.exec(`ALTER TABLE organisations ADD COLUMN ${name} ${definition}`);
   }

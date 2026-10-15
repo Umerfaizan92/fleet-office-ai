@@ -78,7 +78,7 @@ async function boot(){
   document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();
   const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];
   if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
-  $('#org-name-side').textContent=d.organisation.name;$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
+  $('#org-name-side').textContent=d.organisation.name;const workspaceAvatar=$('#org-avatar-side');if(workspaceAvatar)workspaceAvatar.textContent=initials(d.organisation.name);$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
 
   const loaders=[
     ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription],['account lifecycle',loadAccountLifecycle]

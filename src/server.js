@@ -2576,6 +2576,23 @@ app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.objec
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
+app.get('/api/saas/branding',requireSaasUser,(req,res)=>{
+  const row=db.prepare('SELECT name,display_name,brand_logo_url,brand_theme FROM organisations WHERE id=?').get(req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'Workspace not found.'});
+  res.json({ok:true,branding:{display_name:row.display_name||row.name,logo_url:row.brand_logo_url||'',theme:row.brand_theme||'system'}});
+});
+app.put('/api/saas/branding',requireSaasUser,(req,res)=>{
+  if(!['owner','admin','administrator'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Workspace administrator access required.'});
+  const parsed=z.object({
+    display_name:z.string().trim().min(2).max(120),
+    logo_url:z.union([z.literal(''),z.string().url().max(1000).refine(v=>v.startsWith('https://'),'HTTPS logo URL required')]),
+    theme:z.enum(['system','light','dark'])
+  }).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the branding settings.'});
+  const {display_name,logo_url,theme}=parsed.data;
+  db.prepare('UPDATE organisations SET display_name=?,brand_logo_url=?,brand_theme=?,updated_at=? WHERE id=?').run(display_name,logo_url||null,theme,new Date().toISOString(),req.saas.organisation_id);
+  res.json({ok:true,branding:{display_name,logo_url,theme}});
+});
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
 app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
 app.get('/api/saas/billing/providers',requireSaasUser,(req,res)=>res.json({ok:true,providers:[{id:'stripe',name:'Stripe',ready:Boolean(env.STRIPE_SECRET_KEY)},{id:'paypal',name:'PayPal',ready:Boolean(env.PAYPAL_CLIENT_ID&&env.PAYPAL_CLIENT_SECRET)},{id:'bank',name:'Direct bank',ready:Boolean(env.PAYMENT_BANK_INSTRUCTIONS)}],customer_secret_entry:false}));

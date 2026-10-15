@@ -2584,12 +2584,13 @@ app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{
 
 // Staff presence is independent from work-rights and roster approval.
 app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
+  const manager=['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase());
+  const includeInactive=manager&&req.query.include_inactive==='1';
   const members=db.prepare(`SELECT m.user_id,m.role,u.full_name,u.email,u.status,a.status availability,a.reason,a.returns_at,a.updated_at
     FROM memberships m JOIN users u ON u.id=m.user_id
     LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id
-    WHERE m.organisation_id=? AND u.status='active' ORDER BY u.full_name`).all(req.saas.organisation_id);
-  const manager=['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase());
-  res.json({ok:true,staff:members.map(m=>({user_id:m.user_id,full_name:m.full_name,designation:m.role,availability:m.availability||'unavailable',reason:m.reason||'',returns_at:m.returns_at||null,updated_at:m.updated_at||null})),can_view_inactive:manager});
+    WHERE m.organisation_id=? AND (u.status='active' OR ?=1) ORDER BY u.full_name`).all(req.saas.organisation_id,includeInactive?1:0);
+  res.json({ok:true,staff:members.map(m=>({user_id:m.user_id,full_name:m.full_name,designation:m.role,account_status:m.status,availability:m.status==='active'?(m.availability||'unavailable'):'unavailable',reason:m.status==='active'?(m.reason||''):'',returns_at:m.status==='active'?(m.returns_at||null):null,updated_at:m.updated_at||null})),can_view_inactive:manager});
 });
 app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
   const parsed=z.object({status:z.enum(['available','busy','unavailable','on_leave','day_off','working_from_home']),reason:z.string().trim().max(120).default(''),returns_at:z.union([z.string().datetime({offset:true}),z.literal(''),z.null()]).optional()}).safeParse(req.body);

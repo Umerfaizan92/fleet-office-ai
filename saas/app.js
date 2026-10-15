@@ -316,6 +316,8 @@ async function loadWorkspaceBranding(){
   const canEdit=['owner','admin','administrator'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
   const section=$('#workspace-branding-settings');
   if(section)section.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
+  const ownerControls=$('#owner-control-centre');
+  if(ownerControls)ownerControls.hidden=!canEdit;
   setTheme(b.theme||'system',{persist:false});
 }
 $('#upload-workspace-logo')?.addEventListener('click',async()=>{
@@ -329,6 +331,8 @@ $('#upload-workspace-logo')?.addEventListener('click',async()=>{
     const result=await response.json();
     if(!response.ok||!result.ok)throw new Error(result.error||'Logo upload failed.');
     if(feedback)feedback.textContent='Logo uploaded successfully.';
+    if($('#branding-logo-url'))$('#branding-logo-url').value=result.logo_url;
+    if(input)input.value='';
     await loadWorkspaceBranding();
   }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
   finally{button.disabled=false}

@@ -265,7 +265,9 @@ async function loadOnboarding(){
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
 async function loadWorkers(){
   const d=await api('/api/saas/workers'),list=$('#workers');
-  list.innerHTML=d.workers.map(w=>{
+  const filter=$('#worker-status-filter')?.value||'active';
+  const visible=d.workers.filter(w=>filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true));
+  list.innerHTML=visible.map(w=>{
     const skills=(w.skills||[]).slice(0,5);
     return `<article class="row-card" data-worker-id="${esc(w.id)}">
       <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${w.approved_for_scheduling?'good':'warn'}">${w.approved_for_scheduling?'Ready to schedule':'Onboarding'}</span></header>
@@ -275,6 +277,7 @@ async function loadWorkers(){
     </article>`;
   }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
 }
+$('#worker-status-filter')?.addEventListener('change',()=>loadWorkers().catch(x=>note(x.message,true)));
 $('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
 
 function ensureWorkforceDialog(){

@@ -4980,7 +4980,7 @@ app.get('/api/saas/integrations/self-service',requireSaasUser,(req,res)=>{
 
 app.get('/api/saas/platform-capabilities',requireSaasUser,(req,res)=>{const providers=['meta','whatsapp','tiktok','youtube','google_business','snapchat','x','website','email_sms'],free=freeAiModeEnabled(),geminiReady=Boolean(geminiApiKey()),openAiReady=Boolean(openAiSpeechConfig()),voiceReady=free?geminiReady:(geminiReady||openAiReady);res.json({ok:true,credential_scope:'platform_managed',customer_secret_entry:false,secrets_exposed:false,capabilities:Object.fromEntries(providers.map(p=>[p,integrationReadiness(p)])),ai:aiProviderStatus(),voice_server_ready:voiceReady,note:'This endpoint reports readiness only and rejects placeholder deployment values. It never returns credential values.'})});
 
-app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
   const provider=req.params.provider,row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});if(!integrationReadiness(provider))return res.status(409).json({ok:false,error:'This provider is not fully configured on the platform deployment yet. Complete the required server-side credentials/callback settings first.'});
   if(provider==='website'||provider==='email_sms'){const now=new Date().toISOString(),label=provider==='website'?'Platform website endpoint configured':'Platform email/SMS provider configured';db.prepare(`UPDATE organisation_integrations SET status='connected',account_label=?,connected_at=COALESCE(connected_at,?),updated_at=? WHERE organisation_id=? AND provider=?`).run(label,now,now,req.saas.organisation_id,provider);return res.json({ok:true,status:'connected',message:`${label}. Connection is available to this workspace.`})}
   const state=makeOauthState({organisation_id:req.saas.organisation_id,user_id:req.saas.user_id,provider});if(!state)return res.status(503).json({ok:false,error:'Secure OAuth state signing is not configured on this deployment.'});const uri=oauthRedirectUri(provider,req);let authorizeUrl='';
@@ -5006,7 +5006,7 @@ app.get('/api/saas/integrations/oauth/:provider/callback',async(req,res)=>{
 });
 
 
-app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,async(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),async(req,res)=>{
   const provider=req.params.provider;
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
   if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
@@ -5035,7 +5035,7 @@ app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,as
   }
 });
 
-app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUser,(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
   const provider=req.params.provider;
   const parsed=z.object({resource_ids:z.array(z.string().trim().min(1).max(300)).max(25)}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose valid provider resources.'});
@@ -5052,7 +5052,7 @@ app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUs
   res.json({ok:true,provider,selected_resources:selected});
 });
 
-app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,async(req,res)=>{
+app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),async(req,res)=>{
   const provider=req.params.provider;
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
   if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
@@ -5069,7 +5069,7 @@ app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,async
   res.json({ok:true,provider,status:'not_connected',local_credentials_removed:true,remote_revoked:Boolean(remote.remote_revoked),remote_note:remote.reason||null});
 });
 
-app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
   const parsed=z.object({account_label:z.string().trim().max(150).optional().or(z.literal('')),capabilities:z.array(z.string().max(80)).max(20).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the connection details.'});
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,req.params.provider);

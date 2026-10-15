@@ -91,3 +91,9 @@
 html[data-theme='light'] #worker-status-filter{background:#fff;color:#17202c}
 html[data-theme='light'] .staff-chat-panel,html[data-theme='light'] .copilot-panel{background:#fff;color:#17202c}
 html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .copilot-panel textarea{background:#fff;color:#17202c;border-color:#778397}
+
+/* Tenant branding image is decorative; organisation name remains accessible text. */
+#org-avatar-side{display:grid;place-items:center;overflow:hidden}
+#org-avatar-side img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+#workspace-branding-settings input,#workspace-branding-settings select{min-width:0;max-width:100%}
+#workspace-branding-settings [disabled]{opacity:.6;cursor:not-allowed}

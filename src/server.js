@@ -3517,13 +3517,13 @@ app.get('/api/saas/work-orders/skill-suggestions',requireSaasUser,(req,res)=>{
   res.json({ok:true,industry_code:profile.industry_code,suggestions:workforceSkillSuggestions({industryCode:profile.industry_code,jobTitle:title,services:profile.services,customSections:profile.custom_sections})});
 });
 
+const workOrderManagerRoles=['owner','admin','manager','super_admin','director'];
 app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
   const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE organisation_id=? ORDER BY start_at`).all(req.saas.organisation_id).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
   res.json({ok:true,jobs});
 });
 
-app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{
-  if(!['owner','admin','administrator','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Work order management permission required.'});
+app.post('/api/saas/work-orders',requireSaasUser,requireSaasRole(...workOrderManagerRoles),(req,res)=>{
   const parsed=z.object({
     title:z.string().trim().min(2).max(200),address:z.string().max(500).optional(),start_at:z.string().min(10).max(50),
     estimated_hours:z.coerce.number().positive().max(100).optional(),required_workers:z.coerce.number().int().min(1).max(100),
@@ -3537,8 +3537,7 @@ app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{
   res.status(201).json({ok:true,id});
 });
 
-app.post('/api/saas/work-orders/:id/offer',requireSaasUser,(req,res)=>{
-  if(!['owner','admin','administrator','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Work order management permission required.'});
+app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole(...workOrderManagerRoles),(req,res)=>{
   const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);

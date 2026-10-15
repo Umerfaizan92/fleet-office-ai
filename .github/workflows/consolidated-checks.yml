@@ -33,8 +33,12 @@ jobs:
           node --check saas/workspace-extras.js
       - name: Validate release structure
         run: npm run validate:final
-      - name: Verify manifest
+      - name: Verify historical release manifest (main only)
+        if: github.ref == 'refs/heads/main'
         run: npm run verify:manifest
+      - name: Explain historical release manifest in development
+        if: github.ref != 'refs/heads/main'
+        run: echo 'SHA256SUMS_FINAL.txt records an earlier release; development changes require a new release manifest before deployment.'
       - name: Integration tests
         run: npm run integration:test
       - name: Runtime smoke test

@@ -2603,6 +2603,12 @@ app.post('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
       try{fs.unlinkSync(path.join(logoDir,filename))}catch{}
       return res.status(500).json({ok:false,error:'Unable to save the uploaded logo.'});
     }
+    // Keep the current logo only. Older files are never needed to serve this endpoint.
+    try{
+      for(const previous of fs.readdirSync(logoDir)){
+        if(previous!==filename&&/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(previous))fs.unlinkSync(path.join(logoDir,previous));
+      }
+    }catch(error){console.warn('Branding logo cleanup deferred:',error.message)}
     res.json({ok:true,logo_url:url});
   });
 });

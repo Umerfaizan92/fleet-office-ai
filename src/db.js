@@ -778,6 +778,18 @@ export function createDb(databasePath) {
       FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS staff_availability (
+      organisation_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','busy','unavailable','on_leave','day_off','working_from_home')),
+      reason TEXT NOT NULL DEFAULT '',
+      returns_at TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(organisation_id,user_id),
+      FOREIGN KEY(organisation_id,user_id) REFERENCES memberships(organisation_id,user_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_availability_org ON staff_availability(organisation_id,status);
+
     CREATE TABLE IF NOT EXISTS office_staff_chat (
       id TEXT PRIMARY KEY,
       sender_name TEXT NOT NULL DEFAULT 'Office Admin',

@@ -102,3 +102,14 @@ html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .co
 .owner-control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
 .owner-control-grid button{min-height:48px;text-align:left;white-space:normal}
 @media(max-width:600px){.owner-control-grid{grid-template-columns:1fr}}
+
+/* Floating assistant windows: viewport-safe, with reachable composers. */
+#gds-staff-chat .staff-chat-panel,#gds-copilot .copilot-panel{box-sizing:border-box;max-height:min(680px,calc(100dvh - 110px));overflow:hidden}
+#gds-staff-chat .staff-chat-panel{display:flex;flex-direction:column}
+#gds-staff-chat .staff-chat-panel[hidden],#gds-copilot .copilot-panel[hidden]{display:none!important}
+#gds-staff-chat .staff-chat-log{min-height:0;overflow-y:auto;overscroll-behavior:contain;flex:1}
+#gds-staff-chat .staff-chat-panel form{flex-shrink:0}
+@media(max-width:760px){
+ #gds-staff-chat .staff-chat-panel,#gds-copilot .copilot-panel{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:calc(100dvh - 100px - env(safe-area-inset-bottom))!important}
+ #gds-staff-chat .staff-chat-panel textarea,#gds-copilot .copilot-panel textarea{font-size:16px}
+}

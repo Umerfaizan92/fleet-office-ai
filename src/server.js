@@ -2607,7 +2607,7 @@ app.get('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
   const dir=path.join(uploadRoot,'branding',req.saas.organisation_id);
   const files=fs.existsSync(dir)?fs.readdirSync(dir).filter(name=>/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(name)).sort():[];
   if(!files.length)return res.status(404).end();
-  const filename=files[files.length-1];
+  const filename=files.map(name=>({name,modified:fs.statSync(path.join(dir,name)).mtimeMs})).sort((a,b)=>b.modified-a.modified)[0].name;
   res.setHeader('Cache-Control','private, no-store');
   res.type(path.extname(filename)).sendFile(path.join(dir,filename));
 });

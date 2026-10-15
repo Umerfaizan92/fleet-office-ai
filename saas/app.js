@@ -298,6 +298,8 @@ async function loadWorkers(){
   }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
 }
 $('#worker-status-filter')?.addEventListener('change',()=>loadWorkers().catch(x=>note(x.message,true)));
+$('#industry-code')?.addEventListener('change',refreshWorkerRoleSuggestions);
+$('#business-type')?.addEventListener('input',refreshWorkerRoleSuggestions);
 $('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
 
 function ensureWorkforceDialog(){

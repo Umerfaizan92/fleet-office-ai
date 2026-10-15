@@ -113,3 +113,8 @@ html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .co
  #gds-staff-chat .staff-chat-panel,#gds-copilot .copilot-panel{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:calc(100dvh - 100px - env(safe-area-inset-bottom))!important}
  #gds-staff-chat .staff-chat-panel textarea,#gds-copilot .copilot-panel textarea{font-size:16px}
 }
+
+/* Owner branding logo upload and preview */
+.branding-logo-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#branding-logo-preview:not([hidden]){display:block;width:88px;height:88px;object-fit:contain;background:#fff;border:1px solid #788397;border-radius:12px;padding:6px}
+#branding-logo-file{max-width:100%;width:100%}

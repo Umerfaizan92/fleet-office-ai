@@ -2504,10 +2504,10 @@ app.post('/api/saas/account/deletion/confirm',requireSaasUser,(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE id=? AND organisation_id=? AND status='pending_verification'`).get(parsed.data.request_id,req.saas.organisation_id);
   if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'This deletion verification request expired. Start again.'});
   const expected=otpHash(row.id,parsed.data.code);if(expected.length!==row.code_hash.length||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(row.code_hash)))return res.status(401).json({ok:false,error:'The deletion verification code is incorrect.'});
-  const confirmedAt=new Date(),eligibleAfter=new Date(confirmedAt.getTime()+7*DAY_MS);
-  db.prepare(`UPDATE account_deletion_requests SET status='scheduled',confirmed_at=?,eligible_after=?,last_message=? WHERE id=?`).run(confirmedAt.toISOString(),eligibleAfter.toISOString(),'Customer confirmed deletion; seven-day cancellation window active.',row.id);
+  const confirmedAt=new Date(),eligibleAfter=new Date(confirmedAt.getTime()+28*DAY_MS);
+  db.prepare(`UPDATE account_deletion_requests SET status='scheduled',confirmed_at=?,eligible_after=?,last_message=? WHERE id=?`).run(confirmedAt.toISOString(),eligibleAfter.toISOString(),'Customer confirmed deletion; 28-day cancellation and export window active.',row.id);
   saasAudit(req,'account.deletion_scheduled','organisation',req.saas.organisation_id,{eligible_after:eligibleAfter.toISOString(),automatic:false});
-  res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 7-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date.'});
+  res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 28-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date. Export your records before the deadline. Applicable legal retention requirements may prevent immediate deletion of some records.'});
 });
 app.post('/api/saas/account/deletion/cancel',requireSaasUser,requireSaasRole('owner'),(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE organisation_id=? AND status='scheduled' ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);

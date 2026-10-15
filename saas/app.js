@@ -56,7 +56,17 @@ function installWorkspaceAddressSearch(){
 
 function note(v,bad=false){const e=$('#workspace').hidden?$('#auth-message'):$('#notice');if(!e)return;e.textContent=v;e.style.color=bad?'var(--red)':'var(--green)';clearTimeout(noteTimer);if(e.id==='notice'&&v)noteTimer=setTimeout(()=>e.textContent='',6500)}
 function obj(f){return Object.fromEntries(new FormData(f))} function initials(name='User'){return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'U'}
-function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('foai-theme',theme);$$('.theme-icon use').forEach(u=>u.setAttribute('href',theme==='dark'?'#i-sun':'#i-moon'))} setTheme(localStorage.getItem('foai-theme')||'dark'); $$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
+function setTheme(theme,{persist=true}={}){
+  const resolved=theme==='system'?(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark'):theme;
+  document.documentElement.dataset.theme=resolved;
+  if(persist)localStorage.setItem('foai-theme',theme);
+  $('.theme-icon use').forEach(u=>u.setAttribute('href',resolved==='dark'?'#i-sun':'#i-moon'));
+}
+setTheme(localStorage.getItem('foai-theme')||'dark',{persist:false});
+$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{
+  if(localStorage.getItem('foai-theme')==='system')setTheme('system',{persist:false});
+});
 function closeSidebar(){$('#sidebar')?.classList.remove('open');$('#sidebar-scrim')?.classList.remove('show')} $('#open-sidebar')?.addEventListener('click',()=>{$('#sidebar').classList.add('open');$('#sidebar-scrim').classList.add('show')});$('#close-sidebar')?.addEventListener('click',closeSidebar);$('#sidebar-scrim')?.addEventListener('click',closeSidebar);
 function updateFlowNav(){const index=Math.max(0,viewSequence.indexOf(currentView)),prev=$('#flow-prev'),next=$('#flow-next'),pos=$('#flow-position');if(pos)pos.textContent=`Step ${index+1} of ${viewSequence.length}`;if(prev)prev.disabled=index===0;if(next){next.disabled=index===viewSequence.length-1;next.textContent=index===viewSequence.length-1?'Complete':'Next →'}}
 function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$$('.view').forEach(v=>v.hidden=v.id!==`${name}-view`);const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
@@ -306,8 +316,7 @@ async function loadWorkspaceBranding(){
   const canEdit=['owner','admin','administrator'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
   const section=$('#workspace-branding-settings');
   if(section)section.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
-  if(b.theme!=='system')setTheme(b.theme);
-  else setTheme(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark');
+  setTheme(b.theme||'system',{persist:false});
 }
 $('#upload-workspace-logo')?.addEventListener('click',async()=>{
   const input=$('#branding-logo-file'),file=input?.files?.[0],button=$('#upload-workspace-logo'),feedback=$('#branding-upload-feedback');

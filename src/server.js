@@ -3377,7 +3377,7 @@ app.get('/api/saas/workers',requireSaasUser,(req,res)=>{
   res.json({ok:true,workers:rows.map(x=>workerPublicRow(req.saas.organisation_id,x))});
 });
 
-app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
+app.post('/api/saas/workers',requireSaasUser,requireSaasRole(...workforceSeniorRoles),(req,res)=>{
   const parsed=z.object({
     full_name:z.string().trim().min(2).max(150),
     email:z.string().trim().email().optional().or(z.literal('')),

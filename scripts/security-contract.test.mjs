@@ -11,7 +11,7 @@ test('scheduled deletion requires owner confirmation and a 28-day grace period',
   const end=server.indexOf("app.post('/api/saas/account/deletion/cancel'",start);
   assert.ok(start>=0&&end>start);
   const route=server.slice(start,end);
-  assert.match(route,/role\|\|'\)\.toLowerCase\(\)!=='owner'/);
+  assert.ok(route.includes("String(req.saas.role||'').toLowerCase()!=='owner'"));
   assert.match(route,/confirmedAt\.getTime\(\)\+28\*DAY_MS/);
   assert.match(route,/28-day cancellation window/);
 });

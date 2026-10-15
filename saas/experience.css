@@ -83,3 +83,11 @@
   .copilot-send,.copilot-mic,.staff-chat-panel form button{position:relative;z-index:5}
   .flow-nav{margin-bottom:max(74px,calc(62px + env(safe-area-inset-bottom)))}
 }
+
+/* Accessible workforce status selection */
+.worker-filter-label{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+#worker-status-filter{min-height:40px;min-width:130px;border:1px solid #778397;border-radius:10px;padding:7px 10px;background:var(--panel);color:var(--text);font:inherit}
+#worker-status-filter:focus-visible{outline:3px solid #b78a36;outline-offset:2px}
+html[data-theme='light'] #worker-status-filter{background:#fff;color:#17202c}
+html[data-theme='light'] .staff-chat-panel,html[data-theme='light'] .copilot-panel{background:#fff;color:#17202c}
+html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .copilot-panel textarea{background:#fff;color:#17202c;border-color:#778397}

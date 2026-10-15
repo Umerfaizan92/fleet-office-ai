@@ -2594,10 +2594,15 @@ app.post('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
     const filename=crypto.randomUUID()+(png?'.png':jpeg?'.jpg':'.webp');
     fs.writeFileSync(path.join(logoDir,filename),data,{flag:'wx',mode:0o600});
     const url='/api/saas/branding/logo';
-    db.transaction(()=>{
-      db.prepare('UPDATE organisations SET brand_logo_url=?,updated_at=? WHERE id=?').run(url,new Date().toISOString(),organisationId);
-      saasAudit(req,'workspace.branding.logo_uploaded','organisation',organisationId,{mime,bytes:data.length});
-    })();
+    try{
+      db.transaction(()=>{
+        db.prepare('UPDATE organisations SET brand_logo_url=?,updated_at=? WHERE id=?').run(url,new Date().toISOString(),organisationId);
+        saasAudit(req,'workspace.branding.logo_uploaded','organisation',organisationId,{mime,bytes:data.length});
+      })();
+    }catch(error){
+      try{fs.unlinkSync(path.join(logoDir,filename))}catch{}
+      return res.status(500).json({ok:false,error:'Unable to save the uploaded logo.'});
+    }
     res.json({ok:true,logo_url:url});
   });
 });
@@ -2620,7 +2625,7 @@ app.put('/api/saas/branding',requireSaasUser,(req,res)=>{
   if(!['owner','admin','administrator'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Workspace administrator access required.'});
   const parsed=z.object({
     display_name:z.string().trim().min(2).max(120),
-    logo_url:z.union([z.literal(''),z.string().url().max(1000).refine(v=>v.startsWith('https://'),'HTTPS logo URL required')]),
+    logo_url:z.union([z.literal(''),z.literal('/api/saas/branding/logo'),z.string().url().max(1000).refine(v=>v.startsWith('https://'),'HTTPS logo URL required')]),
     theme:z.enum(['system','light','dark'])
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the branding settings.'});

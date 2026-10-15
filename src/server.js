@@ -3212,7 +3212,7 @@ app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
   res.status(201).json({ok:true,...created,status:'pending'});
 });
 
-app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
+app.patch('/api/saas/approvals/:id',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
   const parsed=z.object({edited_payload:z.record(z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval changes.'});
   const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);

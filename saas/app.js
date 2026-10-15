@@ -289,6 +289,7 @@ async function loadWorkspaceBranding(){
   const name=$('#branding-display-name'),logo=$('#branding-logo-url'),theme=$('#branding-theme');
   if(name)name.value=b.display_name||'';
   if(logo)logo.value=b.logo_url||'';
+  const preview=$('#branding-logo-preview');if(preview){preview.hidden=!b.logo_url;if(b.logo_url)preview.src=b.logo_url;else preview.removeAttribute('src')};
   if(theme)theme.value=b.theme||'system';
   const label=$('#org-name-side'),avatar=$('#org-avatar-side');
   if(label)label.textContent=b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace';
@@ -308,6 +309,21 @@ async function loadWorkspaceBranding(){
   if(b.theme!=='system')setTheme(b.theme);
   else setTheme(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark');
 }
+$('#upload-workspace-logo')?.addEventListener('click',async()=>{
+  const input=$('#branding-logo-file'),file=input?.files?.[0],button=$('#upload-workspace-logo'),feedback=$('#branding-upload-feedback');
+  if(!file){if(feedback)feedback.textContent='Select a logo image first.';return}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1024*1024){if(feedback)feedback.textContent='Choose a PNG, JPEG or WebP image smaller than 1 MB.';return}
+  const body=new FormData();body.append('logo',file);
+  button.disabled=true;
+  try{
+    const response=await fetch('/api/saas/branding/logo',{method:'POST',body,credentials:'same-origin'});
+    const result=await response.json();
+    if(!response.ok||!result.ok)throw new Error(result.error||'Logo upload failed.');
+    if(feedback)feedback.textContent='Logo uploaded successfully.';
+    await loadWorkspaceBranding();
+  }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
+  finally{button.disabled=false}
+});
 $('#save-workspace-branding')?.addEventListener('click',async()=>{
   const feedback=$('#branding-feedback'),button=$('#save-workspace-branding');
   button.disabled=true;

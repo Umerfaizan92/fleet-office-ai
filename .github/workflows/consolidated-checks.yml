@@ -24,7 +24,7 @@ jobs:
           node-version: '22.22.0'
           cache: npm
       - name: Install locked dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
       - name: Check JavaScript syntax
         run: |
           node --check src/server.js
@@ -35,3 +35,7 @@ jobs:
         run: npm run validate:final
       - name: Verify manifest
         run: npm run verify:manifest
+      - name: Integration tests
+        run: npm run integration:test
+      - name: Runtime smoke test
+        run: npm run smoke:test

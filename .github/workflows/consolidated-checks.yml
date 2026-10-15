@@ -1,0 +1,37 @@
+name: Consolidated development checks
+
+on:
+  push:
+    branches: [consolidated-improvements-2026]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/server.js
+          node --check src/db.js
+          node --check saas/app.js
+          node --check saas/workspace-extras.js
+      - name: Validate release structure
+        run: npm run validate:final
+      - name: Verify manifest
+        run: npm run verify:manifest

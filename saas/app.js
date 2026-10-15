@@ -330,8 +330,13 @@ async function loadWorkers(){
   const visible=d.workers.filter(w=>filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true));
   list.innerHTML=visible.map(w=>{
     const skills=(w.skills||[]).slice(0,5);
+    const active=w.status==='active';
+    const rightsVerified=w.work_rights_status==='verified';
+    const declarationReview=w.declared_work_status==='requires_review';
+    const ready=active&&rightsVerified&&!declarationReview&&Boolean(w.approved_for_scheduling);
+    const statusLabel=!active?String(w.status||'Onboarding').replaceAll('_',' '):ready?'Ready to schedule':declarationReview?'Declaration review required':!rightsVerified?'Work rights review required':'Scheduling approval required';
     return `<article class="row-card" data-worker-id="${esc(w.id)}">
-      <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${w.approved_for_scheduling?'good':'warn'}">${w.approved_for_scheduling?'Ready to schedule':'Onboarding'}</span></header>
+      <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${ready?'good':'warn'}">${esc(statusLabel)}</span></header>
       <p class="muted">Declared status: ${esc(String(w.declared_work_status||'requires_review').replaceAll('_',' '))} · Work rights: ${esc(w.work_rights_status.replaceAll('_',' '))} · Compliance ${w.compliance_summary?.verified||0}/${w.compliance_summary?.required||0}</p>
       <div class="worker-skill-summary">${skills.length?skills.map(s=>`<span class="filter-chip">${esc(s.skill_name)} · ${esc(s.competency)} · ${esc(s.verification_status||'pending')}</span>`).join(''):'<span class="muted">No skills recorded yet.</span>'}</div>
       <div class="row-actions"><button type="button" data-worker-compliance="${esc(w.id)}">Compliance & credentials</button><button type="button" data-worker-skill="${esc(w.id)}">Add / verify skill</button><button type="button" data-worker-invite="${esc(w.id)}" data-worker-email="${esc(w.email||'')}" data-worker-phone="${esc(w.phone||'')}">Send onboarding link</button></div>

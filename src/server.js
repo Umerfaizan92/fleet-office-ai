@@ -2498,10 +2498,10 @@ app.post('/api/saas/account/deletion/confirm',requireSaasUser,(req,res)=>{
   saasAudit(req,'account.deletion_scheduled','organisation',req.saas.organisation_id,{eligible_after:eligibleAfter.toISOString(),automatic:false});
   res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 7-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date.'});
 });
-app.post('/api/saas/account/deletion/cancel',requireSaasUser,(req,res)=>{
+app.post('/api/saas/account/deletion/cancel',requireSaasUser,requireSaasRole('owner'),(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE organisation_id=? AND status='scheduled' ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'No scheduled deletion request was found.'});
-  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=?`).run(new Date().toISOString(),'Customer cancelled account deletion.',row.id);
+  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=? AND organisation_id=? AND status='scheduled'`).run(new Date().toISOString(),'Workspace owner cancelled account deletion.',row.id,req.saas.organisation_id);
   saasAudit(req,'account.deletion_cancelled','organisation',req.saas.organisation_id,{request_id:row.id});
   res.json({ok:true,message:'Account deletion has been cancelled. Your account and data remain preserved.'});
 });

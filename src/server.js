@@ -2078,7 +2078,12 @@ function syncSubscriptionLifecycle(organisationId){
 }
 function requireSaasUser(req,res,next){
   const raw=cookieValue(req,sessionCookieName);if(!raw)return res.status(401).json({ok:false,error:'Sign in required'});
-  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString());
+  // A caller may select only an organisation where their authenticated user has membership.
+  // Never trust a client-supplied organisation ID without this membership join.
+  const suppliedOrganisation=req.get('X-Organisation-Id');
+  if(suppliedOrganisation && !/^[0-9a-f-]{36}$/i.test(suppliedOrganisation))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
+  const selectedOrganisation=suppliedOrganisation||null;
+  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND (? IS NULL OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString(),selectedOrganisation,selectedOrganisation);
   if(!row)return res.status(401).json({ok:false,error:'Session expired'});const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);req.saas=row;
   const state=syncSubscriptionLifecycle(row.organisation_id);req.subscription=state.subscription;req.subscription_lifecycle=state.lifecycle;
   // Account identity and saved workspace data must never become inaccessible merely
@@ -2086,6 +2091,12 @@ function requireSaasUser(req,res,next){
   // at feature/usage entitlement level, not by disabling sign-in or tenant data access.
   next();
 }
+// List the current user's permitted workspaces without exposing another tenant's data.
+app.get('/api/saas/my-organisations',requireSaasUser,(req,res)=>{
+  const rows=db.prepare(`SELECT m.organisation_id,m.role,o.name,o.slug FROM memberships m
+    JOIN organisations o ON o.id=m.organisation_id WHERE m.user_id=? ORDER BY m.created_at`).all(req.saas.user_id);
+  res.json({ok:true,active_organisation_id:req.saas.organisation_id,organisations:rows});
+});
 const base32Alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Encode(buffer){let bits=0,value=0,out='';for(const byte of buffer){value=(value<<8)|byte;bits+=8;while(bits>=5){out+=base32Alphabet[(value>>>(bits-5))&31];bits-=5}}if(bits>0)out+=base32Alphabet[(value<<(5-bits))&31];return out}
 function base32Decode(input){let bits=0,value=0,bytes=[];for(const char of input.replace(/=+$/,'').toUpperCase()){const index=base32Alphabet.indexOf(char);if(index<0)continue;value=(value<<5)|index;bits+=5;if(bits>=8){bytes.push((value>>>(bits-8))&255);bits-=8}}return Buffer.from(bytes)}

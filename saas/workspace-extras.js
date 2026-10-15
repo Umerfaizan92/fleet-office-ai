@@ -65,11 +65,38 @@
 
   function setupStaffChat(){
     if($('#gds-staff-chat'))return;
-    const shell=document.createElement('div');shell.id='gds-staff-chat';shell.className='gds-staff-chat';shell.innerHTML=`<button class="staff-chat-launch" type="button" aria-expanded="false"><span>◎</span><div><b>Office chat</b><small>Internal staff only</small></div></button><section class="staff-chat-panel" hidden aria-label="Office staff chat"><header><div><span class="ai-orb">◎</span><div><b>Office staff chat</b><small>Workspace-internal discussion</small></div></div><div class="staff-chat-window-actions"><button type="button" data-staff-minimise aria-label="Minimise staff chat" title="Minimise">—</button><button type="button" data-staff-close aria-label="Close staff chat" title="Close">×</button></div></header><div class="staff-chat-log"><p>Loading team messages…</p></div><form><textarea rows="2" maxlength="4000" placeholder="Message your team…" required></textarea><button type="submit">Send</button></form></section>`;document.body.append(shell);
+    const shell=document.createElement('div');shell.id='gds-staff-chat';shell.className='gds-staff-chat';shell.innerHTML=`<button class="staff-chat-launch" type="button" aria-expanded="false"><span>◎</span><div><b>Office chat</b><small>Internal staff only</small></div></button><section class="staff-chat-panel" hidden aria-label="Office staff chat"><header><div><span class="ai-orb">◎</span><div><b>Office staff chat</b><small>Workspace-internal discussion</small></div></div><div class="staff-chat-window-actions"><button type="button" data-staff-minimise aria-label="Minimise staff chat" title="Minimise">—</button><button type="button" data-staff-close aria-label="Close staff chat" title="Close">×</button></div></header><details class="staff-directory"><summary>Team availability</summary><div class="staff-directory-list" aria-live="polite">Loading team…</div><form class="staff-availability-form"><label>Status <select name="status"><option value="available">Available</option><option value="busy">Busy</option><option value="unavailable">Unavailable</option><option value="on_leave">On leave</option><option value="day_off">Day off</option><option value="working_from_home">Working from home</option></select></label><label>Short reason (optional) <input name="reason" maxlength="120" placeholder="e.g. On a customer call"></label><label>Return time (optional) <input name="returns_at" type="datetime-local"></label><button type="submit">Update my status</button></form></details><div class="staff-chat-log"><p>Loading team messages…</p></div><form><textarea rows="2" maxlength="4000" placeholder="Message your team…" required></textarea><button type="submit">Send</button></form></section>`;document.body.append(shell);
     const launch=shell.querySelector('.staff-chat-launch'),panel=shell.querySelector('.staff-chat-panel'),log=shell.querySelector('.staff-chat-log'),form=shell.querySelector('form'),ta=shell.querySelector('textarea');let last='';
     async function load(silent=false){try{const d=await api('/api/saas/staff-chat'),rows=d.messages||[];const newest=rows.at(-1)?.id||'';if(silent&&last&&newest&&newest!==last)window.GDSLive?.push('A new internal office-chat message arrived.');last=newest;log.innerHTML=rows.length?rows.map(x=>`<article><div><b>${esc(x.sender_name)}</b><span>${esc(x.sender_role)}</span></div><p>${esc(x.message)}</p><small>${new Date(x.created_at).toLocaleString()}</small></article>`).join(''):'<p>No staff messages yet. Start an internal discussion here.</p>';log.scrollTop=log.scrollHeight}catch(e){log.innerHTML=`<p>${esc(e.message)}</p>`}}
+    const directory=shell.querySelector('.staff-directory-list'),availabilityForm=shell.querySelector('.staff-availability-form');
+    async function loadTeam(){
+      try{
+        const result=await api('/api/saas/staff-availability');
+        directory.innerHTML=(result.staff||[]).map(person=>{
+          const status=person.availability||'unavailable';
+          const label=status.replaceAll('_',' ');
+          const reason=person.reason?' · '+esc(person.reason):'';
+          const returns=person.returns_at?' · Returns '+esc(new Date(person.returns_at).toLocaleString()):'';
+          return '<div class="staff-directory-person"><span class="staff-status-dot" data-status="'+esc(status)+'" aria-hidden="true"></span><span><b>'+esc(person.full_name)+'</b> <small>'+esc(person.designation)+' · '+esc(label)+reason+returns+'</small></span></div>';
+        }).join('')||'<p>No active team members found.</p>';
+      }catch(error){directory.textContent=error.message}
+    }
+    availabilityForm.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const button=availabilityForm.querySelector('button');
+      const formData=new FormData(availabilityForm);
+      const rawReturn=String(formData.get('returns_at')||'');
+      const returns_at=rawReturn?new Date(rawReturn).toISOString():null;
+      button.disabled=true;
+      try{
+        await api('/api/saas/staff-availability/me',{method:'PUT',body:JSON.stringify({status:formData.get('status'),reason:formData.get('reason'),returns_at})});
+        await loadTeam();
+      }catch(error){window.GDSLive?.push(error.message,'error')}
+      finally{button.disabled=false}
+    });
+    shell.querySelector('.staff-directory').addEventListener('toggle',event=>{if(event.target.open)loadTeam()});
     const hidePanel=()=>{panel.hidden=true;launch.hidden=false;launch.setAttribute('aria-expanded','false');window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:''}}))};
-    launch.onclick=()=>{panel.hidden=false;launch.hidden=true;launch.setAttribute('aria-expanded','true');document.querySelector('#gds-copilot .copilot-panel')?.setAttribute('hidden','');const cp=document.querySelector('#gds-copilot .copilot-launch');if(cp)cp.hidden=true;window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:'staff'}}));load();ta.focus()};
+    launch.onclick=()=>{panel.hidden=false;launch.hidden=true;launch.setAttribute('aria-expanded','true');document.querySelector('#gds-copilot .copilot-panel')?.setAttribute('hidden','');const cp=document.querySelector('#gds-copilot .copilot-launch');if(cp)cp.hidden=true;window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:'staff'}}));load();loadTeam();ta.focus()};
     panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','false');panel.setAttribute('aria-label','Office staff chat');
     launch.setAttribute('aria-controls','gds-staff-chat-panel');panel.id='gds-staff-chat-panel';
     window.addEventListener('superpro:floating-chat',e=>{if(e.detail?.active==='copilot'){panel.hidden=true;launch.hidden=true}else if(!e.detail?.active&&panel.hidden)launch.hidden=false});shell.querySelector('[data-staff-close]').onclick=hidePanel;shell.querySelector('[data-staff-minimise]').onclick=hidePanel;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden)hidePanel()});form.onsubmit=async e=>{e.preventDefault();const message=ta.value.trim();if(!message)return;const b=form.querySelector('button');b.disabled=true;try{await api('/api/saas/staff-chat',{method:'POST',body:JSON.stringify({message})});ta.value='';await load();window.GDSLive?.broadcast('Office chat message sent to your workspace team.')}catch(err){window.GDSLive?.push(err.message,'error')}finally{b.disabled=false}};setInterval(()=>{if(!panel.hidden)load(true)},6500);

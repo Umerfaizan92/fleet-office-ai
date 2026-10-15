@@ -155,6 +155,25 @@ async function loadDashboard(){const d=await api('/api/saas/dashboard'),m=d.metr
 
 let industryRegistryCache=[];
 let selectedIndustryCode='custom';
+function refreshWorkerRoleSuggestions(){
+  const list=$('#worker-role-suggestions');
+  if(!list)return;
+  const selected=industryRegistryCache.find(row=>row.code===selectedIndustryCode);
+  const description=[selected?.label,selected?.group,$('#business-type')?.value].filter(Boolean).join(' ').toLowerCase();
+  const groups=[
+    [/polish|metal|fabricat|weld|manufactur/,['Metal Polisher','Fabricator','Workshop Technician','Quality Inspector']],
+    [/construct|build|plumb|electri|trade/,['Tradesperson','Site Supervisor','Apprentice','Project Manager']],
+    [/clean|facilit|maintenance/,['Cleaner','Cleaning Supervisor','Maintenance Technician','Site Manager']],
+    [/transport|logistic|freight|truck|fleet/,['Driver','Fleet Coordinator','Diesel Mechanic','Dispatcher']],
+    [/health|care|disabil|support/,['Support Worker','Care Coordinator','Registered Nurse','Team Leader']],
+    [/hospitality|restaurant|cafe|food/,['Chef','Kitchen Hand','Waitstaff','Shift Supervisor']],
+    [/retail|shop|store/,['Sales Assistant','Store Manager','Stock Controller','Customer Service Officer']],
+    [/technology|software|digital|consult/,['Software Developer','IT Support Specialist','Consultant','Project Coordinator']]
+  ];
+  const matched=groups.filter(([pattern])=>pattern.test(description)).flatMap(([,roles])=>roles);
+  const roles=[...new Set([...matched,'Technician','Supervisor','Manager','Apprentice','Contractor'])];
+  list.replaceChildren(...roles.map(role=>{const option=document.createElement('option');option.value=role;return option}));
+}
 function applyIndustryModules(modules=[]){
   // Industry packs recommend and customise the workspace; they must never hide
   // core customer functionality. Every subscribed/trial workspace keeps access
@@ -264,6 +283,7 @@ async function loadOnboarding(){
 }
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
 async function loadWorkers(){
+  refreshWorkerRoleSuggestions();
   const d=await api('/api/saas/workers'),list=$('#workers');
   const filter=$('#worker-status-filter')?.value||'active';
   const visible=d.workers.filter(w=>filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true));

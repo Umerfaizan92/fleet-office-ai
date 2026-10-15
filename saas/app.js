@@ -60,10 +60,10 @@ function setTheme(theme,{persist=true}={}){
   const resolved=theme==='system'?(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark'):theme;
   document.documentElement.dataset.theme=resolved;
   if(persist)localStorage.setItem('foai-theme',theme);
-  $('.theme-icon use').forEach(u=>u.setAttribute('href',resolved==='dark'?'#i-sun':'#i-moon'));
+  $$('.theme-icon use').forEach(u=>u.setAttribute('href',resolved==='dark'?'#i-sun':'#i-moon'));
 }
 setTheme(localStorage.getItem('foai-theme')||'dark',{persist:false});
-$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
+$$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{
   if(localStorage.getItem('foai-theme')==='system')setTheme('system',{persist:false});
 });

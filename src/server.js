@@ -3719,7 +3719,27 @@ app.post('/api/saas/finance',requireSaasUser,requireSaasRole(...financeRoles),(r
   saasAudit(req,'finance.entry_created','finance_entry',id,{entry_type:parsed.data.entry_type,category:parsed.data.category,amount_cents:amountCents,work_order_id:parsed.data.work_order_id||null});
   res.status(201).json({ok:true,id});
 });
-app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});const offer=db.prepare(`SELECT o.*,w.required_workers,worker.email worker_email FROM job_offers o JOIN work_orders w ON w.id=o.work_order_id AND w.organisation_id=o.organisation_id JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=o.organisation_id WHERE o.id=? AND o.organisation_id=?`).get(req.params.id,req.saas.organisation_id);if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});const manager=workOrderManagerRoles.includes(String(req.saas.role||'').toLowerCase());const ownEmail=String(req.saas.email||'').trim().toLowerCase();if(!manager&&(!ownEmail||ownEmail!==String(offer.worker_email||'').trim().toLowerCase()))return res.status(403).json({ok:false,error:'You cannot respond to another worker’s offer.'});if(offer.status!=='offered')return res.status(409).json({ok:false,error:'This offer has already been answered.'});const now=new Date().toISOString();const updated=db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id);if(!updated.changes)return res.status(409).json({ok:false,error:'This offer has already been answered.'});const accepted=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND status='accepted'`).get(offer.work_order_id).count;if(accepted>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=?`).run(now,offer.work_order_id);saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});res.json({ok:true,accepted_workers:accepted})});
+app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{
+  const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});
+  const result=db.transaction(()=>{
+    const offer=db.prepare(`SELECT o.*,w.required_workers,w.status work_status,worker.user_id worker_user_id,worker.status worker_status FROM job_offers o JOIN work_orders w ON w.id=o.work_order_id AND w.organisation_id=o.organisation_id JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=o.organisation_id WHERE o.id=? AND o.organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+    if(!offer)return {status:404,error:'Offer not found'};
+    const manager=workOrderManagerRoles.includes(String(req.saas.role||'').toLowerCase());
+    if(!manager&&(!offer.worker_user_id||offer.worker_user_id!==req.saas.user_id||offer.worker_status!=='active'))return {status:403,error:'You cannot respond to another worker’s offer.'};
+    if(offer.status!=='offered')return {status:409,error:'This offer has already been answered.'};
+    if(['cancelled','completed'].includes(offer.work_status))return {status:409,error:'This work order is closed.'};
+    const accepted=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
+    if(parsed.data.status==='accepted'&&accepted>=offer.required_workers)return {status:409,error:'This work order is already fully allocated.'};
+    const now=new Date().toISOString();
+    db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id);
+    const count=accepted+(parsed.data.status==='accepted'?1:0);
+    if(count>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=? AND organisation_id=?`).run(now,offer.work_order_id,req.saas.organisation_id);
+    saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});
+    return {status:200,accepted_workers:count};
+  }).immediate();
+  res.status(result.status).json(result.error?{ok:false,error:result.error}:{ok:true,accepted_workers:result.accepted_workers});
+});
 
 app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? ORDER BY t.updated_at DESC`).all(req.saas.organisation_id)}));
 app.get('/api/saas/ai/status',requireSaasUser,(req,res)=>{const status=aiProviderStatus(),free=freeAiModeEnabled(),geminiReady=Boolean(geminiApiKey()),openAiReady=Boolean(openAiSpeechConfig()),speechReady=free?geminiReady:(geminiReady||openAiReady);res.json({ok:true,ai:{configured:status.configured,provider:status.provider,model:status.model,free_mode:free},voice:{server_tts:speechReady,server_stt:speechReady,provider:free?(geminiReady?'gemini-free':null):(openAiReady?'openai':geminiReady?'gemini':null),browser_fallback:true},message:status.configured?'AI provider is operationally configured.':free?'Free AI mode is active. Add GEMINI_API_KEY for server AI; built-in product guidance and browser voice fallbacks remain available.':'AI provider credentials are not configured on this deployment.'})});

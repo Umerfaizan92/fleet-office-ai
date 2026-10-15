@@ -45,3 +45,5 @@ jobs:
         run: npm run smoke:test
       - name: Security contract regression tests
         run: node --test scripts/security-contract.test.mjs
+      - name: Runtime tenant and allocation regression tests
+        run: node --test scripts/runtime-security.test.mjs

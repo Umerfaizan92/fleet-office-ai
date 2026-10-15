@@ -80,6 +80,7 @@ async function boot(){
   if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
   $('#org-name-side').textContent=d.organisation.name;const workspaceAvatar=$('#org-avatar-side');if(workspaceAvatar)workspaceAvatar.textContent=initials(d.organisation.name);$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
 
+  await loadWorkspaceBranding().catch(err=>note('Branding could not be loaded: '+err.message,true));
   const loaders=[
     ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription],['account lifecycle',loadAccountLifecycle]
   ];
@@ -291,7 +292,21 @@ async function loadWorkspaceBranding(){
   if(theme)theme.value=b.theme||'system';
   const label=$('#org-name-side'),avatar=$('#org-avatar-side');
   if(label)label.textContent=b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace';
-  if(avatar)avatar.textContent=initials(b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace');
+  if(avatar){
+    const fallback=initials(b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace');
+    avatar.replaceChildren(document.createTextNode(fallback));
+    if(b.logo_url){
+      const image=document.createElement('img');
+      image.src=b.logo_url;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
+      image.addEventListener('error',()=>image.remove(),{once:true});
+      avatar.replaceChildren(image);
+    }
+  }
+  const canEdit=['owner','admin','administrator'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
+  const section=$('#workspace-branding-settings');
+  if(section)section.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
+  if(b.theme!=='system')setTheme(b.theme);
+  else setTheme(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark');
 }
 $('#save-workspace-branding')?.addEventListener('click',async()=>{
   const feedback=$('#branding-feedback'),button=$('#save-workspace-branding');

@@ -327,7 +327,8 @@ async function loadWorkers(){
   refreshWorkerRoleSuggestions();
   const d=await api('/api/saas/workers'),list=$('#workers');
   const filter=$('#worker-status-filter')?.value||'active';
-  const visible=d.workers.filter(w=>filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true));
+  const search=String($('#worker-directory-search')?.value||'').trim().toLowerCase();
+  const visible=d.workers.filter(w=>(filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true))&&(!search||[w.full_name,w.role_title,w.email,w.phone].some(value=>String(value||'').toLowerCase().includes(search))));
   list.innerHTML=visible.map(w=>{
     const skills=(w.skills||[]).slice(0,5);
     const active=w.status==='active';
@@ -344,6 +345,7 @@ async function loadWorkers(){
   }).join('')||'<div class="empty-state"><b>'+ (d.workers.length?'No workers match this filter':'No workers yet')+'</b><span>'+(d.workers.length?'Choose another status to view existing worker records.':'Add your first worker profile to begin onboarding and eligibility checks.')+'</span></div>';
 }
 $('#worker-status-filter')?.addEventListener('change',()=>loadWorkers().catch(x=>note(x.message,true)));
+$('#worker-directory-search')?.addEventListener('input',()=>loadWorkers().catch(x=>note(x.message,true)));
 $('#industry-code')?.addEventListener('change',refreshWorkerRoleSuggestions);
 $('#business-type')?.addEventListener('input',refreshWorkerRoleSuggestions);
 $('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();if($('#worker-status-filter'))$('#worker-status-filter').value='onboarding';updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};

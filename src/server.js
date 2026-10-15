@@ -3523,6 +3523,7 @@ app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
 });
 
 app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{
+  if(!['owner','admin','administrator','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Work order management permission required.'});
   const parsed=z.object({
     title:z.string().trim().min(2).max(200),address:z.string().max(500).optional(),start_at:z.string().min(10).max(50),
     estimated_hours:z.coerce.number().positive().max(100).optional(),required_workers:z.coerce.number().int().min(1).max(100),
@@ -3537,6 +3538,7 @@ app.post('/api/saas/work-orders',requireSaasUser,(req,res)=>{
 });
 
 app.post('/api/saas/work-orders/:id/offer',requireSaasUser,(req,res)=>{
+  if(!['owner','admin','administrator','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Work order management permission required.'});
   const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);

@@ -276,12 +276,38 @@ $('#check-regulatory-sources')?.addEventListener('click',async()=>{
 async function loadOnboarding(){
   const d=await api('/api/saas/onboarding'),f=$('#onboarding-form'),p=d.profile;installWorkspaceAddressSearch();
   await loadIndustryRegistry(p.industry_code||'custom');
+  await loadWorkspaceBranding();
   for(const k of ['business_type','industry_code','business_structure','team_mode','ai_setup_mode','phone','website','service_area','address_unit','address_street_number','address_street_name','address_suburb','address_state','address_postcode','address_formatted','address_source','brand_voice','approval_mode','ai_instructions'])if(f.elements[k])f.elements[k].value=p[k]||'';
   f.elements.services.value=(p.services||[]).join('\n');if(f.elements.custom_sections)f.elements.custom_sections.value=(p.custom_sections||[]).join('\n');if(f.elements.complete)f.elements.complete.checked=!!p.complete;
     applyIndustryModules(p.workspace_modules||d.industry?.modules||[]);
   await loadRegulatorySources();
 }
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
+async function loadWorkspaceBranding(){
+  const d=await api('/api/saas/branding'),b=d.branding;
+  const name=$('#branding-display-name'),logo=$('#branding-logo-url'),theme=$('#branding-theme');
+  if(name)name.value=b.display_name||'';
+  if(logo)logo.value=b.logo_url||'';
+  if(theme)theme.value=b.theme||'system';
+  const label=$('#org-name-side'),avatar=$('#org-avatar-side');
+  if(label)label.textContent=b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace';
+  if(avatar)avatar.textContent=initials(b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace');
+}
+$('#save-workspace-branding')?.addEventListener('click',async()=>{
+  const feedback=$('#branding-feedback'),button=$('#save-workspace-branding');
+  button.disabled=true;
+  try{
+    const d=await api('/api/saas/branding',{method:'PUT',body:JSON.stringify({
+      display_name:$('#branding-display-name').value.trim(),
+      logo_url:$('#branding-logo-url').value.trim(),
+      theme:$('#branding-theme').value
+    })});
+    if(feedback)feedback.textContent='Workspace appearance saved.';
+    await loadWorkspaceBranding();
+    if(d.branding.theme!=='system')setTheme(d.branding.theme);
+  }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
+  finally{button.disabled=false}
+});
 async function loadWorkers(){
   refreshWorkerRoleSuggestions();
   const d=await api('/api/saas/workers'),list=$('#workers');

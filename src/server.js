@@ -2576,6 +2576,41 @@ app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.objec
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
+const brandingLogoUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:1024*1024,files:1},fileFilter(req,file,cb){if(!['image/png','image/jpeg','image/webp'].includes(file.mimetype))return cb(new Error('Use a PNG, JPEG or WEBP logo.'));cb(null,true)}});
+app.post('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
+  if(!['owner','admin','administrator'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Workspace administrator access required.'});
+  brandingLogoUpload.single('logo')(req,res,error=>{
+    if(error)return res.status(400).json({ok:false,error:error.message});
+    if(!req.file)return res.status(400).json({ok:false,error:'Select a logo image.'});
+    const data=req.file.buffer;
+    const png=data.length>8&&data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+    const jpeg=data.length>3&&data[0]===255&&data[1]===216&&data[2]===255;
+    const webp=data.length>12&&data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP';
+    const mime=png?'image/png':jpeg?'image/jpeg':webp?'image/webp':null;
+    if(!mime||mime!==req.file.mimetype)return res.status(400).json({ok:false,error:'Invalid image content.'});
+    const organisationId=req.saas.organisation_id;
+    const logoDir=path.join(uploadRoot,'branding',organisationId);
+    fs.mkdirSync(logoDir,{recursive:true});
+    const filename=crypto.randomUUID()+(png?'.png':jpeg?'.jpg':'.webp');
+    fs.writeFileSync(path.join(logoDir,filename),data,{flag:'wx',mode:0o600});
+    const url='/api/saas/branding/logo';
+    db.transaction(()=>{
+      db.prepare('UPDATE organisations SET brand_logo_url=?,updated_at=? WHERE id=?').run(url,new Date().toISOString(),organisationId);
+      saasAudit(req,'workspace.branding.logo_uploaded','organisation',organisationId,{mime,bytes:data.length});
+    })();
+    res.json({ok:true,logo_url:url});
+  });
+});
+app.get('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
+  const row=db.prepare('SELECT brand_logo_url FROM organisations WHERE id=?').get(req.saas.organisation_id);
+  if(!row||row.brand_logo_url!=='/api/saas/branding/logo')return res.status(404).end();
+  const dir=path.join(uploadRoot,'branding',req.saas.organisation_id);
+  const files=fs.existsSync(dir)?fs.readdirSync(dir).filter(name=>/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(name)).sort():[];
+  if(!files.length)return res.status(404).end();
+  const filename=files[files.length-1];
+  res.setHeader('Cache-Control','private, no-store');
+  res.type(path.extname(filename)).sendFile(path.join(dir,filename));
+});
 app.get('/api/saas/branding',requireSaasUser,(req,res)=>{
   const row=db.prepare('SELECT name,display_name,brand_logo_url,brand_theme FROM organisations WHERE id=?').get(req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Workspace not found.'});

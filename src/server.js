@@ -2590,8 +2590,15 @@ app.put('/api/saas/branding',requireSaasUser,(req,res)=>{
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the branding settings.'});
   const {display_name,logo_url,theme}=parsed.data;
-  db.prepare('UPDATE organisations SET display_name=?,brand_logo_url=?,brand_theme=?,updated_at=? WHERE id=?').run(display_name,logo_url||null,theme,new Date().toISOString(),req.saas.organisation_id);
-  res.json({ok:true,branding:{display_name,logo_url,theme}});
+  const previous=db.prepare('SELECT name,display_name,brand_logo_url,brand_theme FROM organisations WHERE id=?').get(req.saas.organisation_id);
+  if(!previous)return res.status(404).json({ok:false,error:'Workspace not found.'});
+  const next={display_name,logo_url,theme};
+  const before={display_name:previous.display_name||previous.name,logo_url:previous.brand_logo_url||'',theme:previous.brand_theme||'system'};
+  db.transaction(()=>{
+    db.prepare('UPDATE organisations SET display_name=?,brand_logo_url=?,brand_theme=?,updated_at=? WHERE id=?').run(display_name,logo_url||null,theme,new Date().toISOString(),req.saas.organisation_id);
+    saasAudit(req,'workspace.branding.updated','organisation',req.saas.organisation_id,{changed_fields:Object.keys(next).filter(key=>next[key]!==before[key])});
+  })();
+  res.json({ok:true,branding:next});
 });
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
 app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});

@@ -295,12 +295,12 @@ async function loadWorkers(){
       <div class="worker-skill-summary">${skills.length?skills.map(s=>`<span class="filter-chip">${esc(s.skill_name)} · ${esc(s.competency)} · ${esc(s.verification_status||'pending')}</span>`).join(''):'<span class="muted">No skills recorded yet.</span>'}</div>
       <div class="row-actions"><button type="button" data-worker-compliance="${esc(w.id)}">Compliance & credentials</button><button type="button" data-worker-skill="${esc(w.id)}">Add / verify skill</button><button type="button" data-worker-invite="${esc(w.id)}" data-worker-email="${esc(w.email||'')}" data-worker-phone="${esc(w.phone||'')}">Send onboarding link</button></div>
     </article>`;
-  }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
+  }).join('')||'<div class="empty-state"><b>'+ (d.workers.length?'No workers match this filter':'No workers yet')+'</b><span>'+(d.workers.length?'Choose another status to view existing worker records.':'Add your first worker profile to begin onboarding and eligibility checks.')+'</span></div>';
 }
 $('#worker-status-filter')?.addEventListener('change',()=>loadWorkers().catch(x=>note(x.message,true)));
 $('#industry-code')?.addEventListener('change',refreshWorkerRoleSuggestions);
 $('#business-type')?.addEventListener('input',refreshWorkerRoleSuggestions);
-$('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
+$('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();if($('#worker-status-filter'))$('#worker-status-filter').value='onboarding';updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
 
 function ensureWorkforceDialog(){
   let d=$('#workforce-dialog');if(d)return d;

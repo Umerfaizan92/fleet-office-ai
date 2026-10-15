@@ -39,3 +39,5 @@ jobs:
         run: npm run integration:test
       - name: Runtime smoke test
         run: npm run smoke:test
+      - name: Security contract regression tests
+        run: node --test scripts/security-contract.test.mjs

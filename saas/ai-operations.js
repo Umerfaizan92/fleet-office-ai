@@ -39,7 +39,7 @@
     for(const sentence of sentences){const s=sentence.trim();if(!s)continue;if((cur+' '+s).trim().length<=max){cur=(cur+' '+s).trim();continue}if(cur)chunks.push(cur);if(s.length<=max){cur=s;continue}for(const word of s.split(/\s+/)){if((cur+' '+word).trim().length>max&&cur){chunks.push(cur);cur=word}else cur=(cur+' '+word).trim()}}if(cur)chunks.push(cur);return chunks
   }
   function setStatus(text,source=''){const s=$('[data-spai-status]');if(s)s.textContent=text;const src=$('[data-spai-source]');if(src&&source)src.textContent=source}
-  function stopSpeech(){speechRun++;if(heartbeat){clearInterval(heartbeat);heartbeat=null}if(serverAudio){try{serverAudio.pause();serverAudio.src=''}catch{}serverAudio=null}if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}if(speechSupported){speechSynthesis.cancel();speechSynthesis.resume?.()}}
+  function stopSpeech(){speechRun++;window.SuperProAIClient?.stopSpeech?.();if(heartbeat){clearInterval(heartbeat);heartbeat=null}if(serverAudio){try{serverAudio.pause();serverAudio.src=''}catch{}serverAudio=null}if(serverAudioUrl){try{URL.revokeObjectURL(serverAudioUrl)}catch{}serverAudioUrl=''}if(speechSupported){speechSynthesis.cancel();speechSynthesis.resume?.()}}
   async function speakBrowser(text,lang){
     if(!speechSupported)return false;refreshVoices();const locale=speechLocale(lang),voice=findVoice(locale),chunks=splitSpeech(text);if(!chunks.length)return false;const run=++speechRun;let i=0;
     const next=()=>{if(run!==speechRun||!voiceReplies)return;if(i>=chunks.length){if(heartbeat){clearInterval(heartbeat);heartbeat=null}setStatus('Voice reply finished. Ask another question whenever you are ready.','Device voice');return}const u=new SpeechSynthesisUtterance(chunks[i++]);u.lang=voice?.lang||locale;if(voice)u.voice=voice;u.rate=.96;u.pitch=1;u.onstart=()=>setStatus(`Speaking in ${u.lang}${voice?` · ${voice.name}`:' · device speech service'}`,'Device voice fallback');u.onend=next;u.onerror=e=>{const r=String(e?.error||'').toLowerCase();if(!['canceled','interrupted'].includes(r))setStatus(`Voice playback could not continue in ${locale}. Text remains available.`,'Voice limited')};try{speechSynthesis.resume?.();speechSynthesis.speak(u)}catch{return false}};
@@ -49,10 +49,12 @@
     if(!voiceReplies)return;
     const runtime=window.SuperProAIClient;
     if(runtime){
+      const run=speechRun;
       await runtime.ensurePlaybackContext?.();
+      if(!voiceReplies||run!==speechRun)return;
       return runtime.speak(text,lang,{
         voice:voicePreference(),
-        onStatus:(message,state)=>setStatus(message,state==='speaking'?'AI voice':'Voice')
+        onStatus:(message,state)=>voiceReplies&&run===speechRun&&setStatus(message,state==='speaking'?'AI voice':'Voice')
       });
     }
     stopSpeech();
@@ -71,7 +73,7 @@
       try{
         const result=await runtime.listen({
           language:languageValue(),
-          onStatus:(message,state)=>setStatus(message,state==='transcribing'?'AI transcription':'Voice input'),
+          onStatus:(message,state)=>voiceReplies&&run===speechRun&&setStatus(message,state==='transcribing'?'AI transcription':'Voice input'),
           onListening:(active)=>{listening=active;$('#spai-mic')?.classList.toggle('listening',active)}
         });
         if(result?.text){
@@ -97,9 +99,9 @@
     for(const x of recent){addMessage('user',x.q);addMessage('ai',x.a,'Remembered guidance')}setStatus(`Restored ${recent.length} recent conversation turn${recent.length===1?'':'s'} from expanded workspace memory.`,'Memory active')
   }
   async function ask(question){
-    const q=String(question||'').trim();if(!q)return;const input=$('#spai-input'),send=$('#spai-send');lastLanguage=detectLanguage(q);addMessage('user',q);input.value='';resize();send.disabled=true;const waiting=addMessage('ai','Thinking with product knowledge and conversation context…','Super Pro AI');waiting?.querySelector('.spai-bubble')?.classList.add('typing');setStatus('Reviewing the relevant product, workspace and conversation context…','Thinking');
+    const q=String(question||'').trim();if(!q)return;const input=$('#spai-input'),send=$('#spai-send');if(send.disabled)return;stopSpeech();lastLanguage=detectLanguage(q);addMessage('user',q);input.value='';resize();send.disabled=true;const waiting=addMessage('ai','Thinking with product knowledge and conversation context…','Super Pro AI');waiting?.querySelector('.spai-bubble')?.classList.add('typing');setStatus('Reviewing the relevant product, workspace and conversation context…','Thinking');
     try{
-      const guide=window.GDSProductGuide;if(!guide?.answerAsync)throw new Error('AI guide is not ready.');const result=await guide.answerAsync(q,'workspace',lastTopic,languageValue());lastTopic=result.topic||lastTopic;lastLanguage=result.language||lastLanguage;waiting?.remove();addMessage('ai',result.text,'Super Pro AI');setQuick(result.suggestions||[]);const source=result.source==='configured-ai-provider'?'Connected AI + product memory':result.source==='expanded-product-memory'?'Expanded product memory':'Product guidance';setStatus('Answer ready. Ask a follow-up and the assistant will use the conversation context.',source);paintProviderStatus(result.source);await speak(result.text,lastLanguage)
+      const guide=window.GDSProductGuide;if(!guide?.answerAsync)throw new Error('AI guide is not ready.');const result=await guide.answerAsync(q,'workspace',lastTopic,languageValue());lastTopic=result.topic||lastTopic;lastLanguage=result.language||lastLanguage;waiting?.remove();addMessage('ai',result.text,'Super Pro AI');setQuick(result.suggestions||[]);const source=result.source==='configured-ai-provider'?'Connected AI + product memory':result.source==='expanded-product-memory'?'Expanded product memory':'Product guidance';setStatus('Answer ready. Ask a follow-up and the assistant will use the conversation context.',source);paintProviderStatus(result.source);void speak(result.text,lastLanguage).catch(()=>{if(voiceReplies)setStatus('Text answer is ready. Voice playback is unavailable.','Voice unavailable')})
     }catch(err){waiting?.remove();addMessage('ai','I could not complete that answer. Please try the question again; your previous conversation remains available.','Super Pro AI');setStatus(err.message||'The AI request could not be completed.','Retry available')}finally{send.disabled=false;input.focus()}
   }
   function paintProviderStatus(source){
@@ -144,11 +146,12 @@
     const language=$('#spai-language'),voice=$('#spai-voice-style');const savedLang=localStorage.getItem('superpro_workspace_language');if(savedLang&&[...language.options].some(o=>o.value===savedLang))language.value=savedLang;const savedVoice=localStorage.getItem('superpro_workspace_voice_style');if(savedVoice&&[...voice.options].some(o=>o.value===savedVoice))voice.value=savedVoice;
     language.onchange=()=>{localStorage.setItem('superpro_workspace_language',language.value);lastLanguage=language.value==='auto'?'en':language.value;if(recognition)recognition.lang=speechLocale(lastLanguage);setStatus(language.value==='auto'?'Auto language is active. For microphone accuracy, choose the language you plan to speak.':`Text replies and microphone input are set to ${language.selectedOptions[0].textContent}.`,'Language ready')};
     voice.onchange=()=>{localStorage.setItem('superpro_workspace_voice_style',voice.value);setStatus(`Voice preference: ${voice.selectedOptions[0].textContent.replace('Voice: ','')}. Language matching takes priority.`,'Voice ready')};
+    const speaker=$('#spai-speaker');speaker.textContent=voiceReplies?'🔊':'🔇';speaker.classList.toggle('active',voiceReplies);speaker.setAttribute('aria-pressed',String(voiceReplies));
     $('#spai-speaker').onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_workspace_voice',voiceReplies?'on':'off');const b=$('#spai-speaker');b.textContent=voiceReplies?'🔊':'🔇';b.classList.toggle('active',voiceReplies);b.setAttribute('aria-pressed',String(voiceReplies));if(!voiceReplies){stopSpeech();setStatus('Spoken replies are off. Text answers remain active.','Voice off')}else setStatus('Spoken replies are on. Server AI voice is preferred; the device voice is used only as a fallback.','Voice on')};
     $('#spai-clear').onclick=()=>{stopSpeech();window.GDSProductGuide?.memory?.clear?.('workspace');$('#spai-log').innerHTML='<div class="spai-msg ai"><span class="spai-avatar">AI</span><div class="spai-bubble" dir="auto"><b>Fresh conversation</b><p dir="auto">Conversation memory on this device has been cleared. Ask a new Super Pro question whenever you are ready.</p></div></div>';lastTopic='';setStatus('Fresh conversation ready.','Memory cleared')};
     $('#spai-form').onsubmit=e=>{e.preventDefault();ask($('#spai-input').value)};$('#spai-input').addEventListener('input',resize);$('#spai-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#spai-form').requestSubmit()}});$('#spai-quick').querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
     recognition=initRecognition();$('#spai-mic').onclick=()=>{stopSpeech();const runtime=window.SuperProAIClient;if(runtime?.isListening?.()){runtime.stopListening();return}if(runtime){autoListen();return}if(languageValue()==='auto'){autoListen();return}if(!recognition){setStatus('This browser does not expose speech recognition. Automatic server transcription may still be available; choose Auto language or type your question.','Voice input unavailable');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(languageValue());try{recognition.start()}catch{setStatus('Microphone recognition is already starting.','Voice input')}}};
-    if(speechSupported){refreshVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshVoices)}else{$('#spai-speaker').disabled=true;setStatus('This browser does not expose spoken reply playback. Text and supported microphone input remain available.','Text mode')}
+    if(speechSupported){refreshVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshVoices)}else if(!window.SuperProAIClient){$('#spai-speaker').disabled=true;setStatus('This browser does not expose spoken reply playback. Text and supported microphone input remain available.','Text mode')}
     restoreConversation();refreshProviderStatus();window.dispatchEvent(new CustomEvent('superpro:ai-operations-ready',{detail:{version:VERSION}}));return true
   }
 

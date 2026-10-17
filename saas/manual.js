@@ -4,7 +4,9 @@
     {id:'onboarding',step:'02',title:'Business setup',group:'Setup',copy:'Set the industry profile, services, service area, approval policy, brand voice and permanent AI instructions.',actions:['Review business profile','Confirm approval rules']},
     {id:'workforce',step:'03',title:'People & workforce',group:'Operations',copy:'Add workers and staff, then manage role, work-right, skill and readiness information.',actions:['Add a worker','Review compliance']},
     {id:'jobs',step:'04',title:'Jobs & allocation',group:'Operations',copy:'Create work orders and allocate only workers who meet the configured readiness and skill rules.',actions:['Create work order','Find eligible workers']},
+    {id:'finance',title:'Expenses & profit',group:'Operations',copy:'Review authorised financial entries and job profitability.',actions:['Review finance entries']},
     {id:'assistant',step:'05',title:'AI Operations',group:'Intelligence',copy:'Prepare and organise AI-assisted operational work while keeping consequential actions under human approval.',actions:['Create AI task','Review approval controls']},
+    {id:'approvals',title:'Approvals',group:'Operations',copy:'Review pending requests and decision history. Approval alone does not confirm external delivery.',actions:['Review pending requests']},
     {id:'video',step:'06',title:'Content studio',group:'Growth',copy:'Build platform-aware content specifications from your business media and connected channel strategy.',actions:['Choose media','Create render specification']},
     {id:'integrations',step:'07',title:'Connections',group:'System',copy:'Connect the business channels you use. Customers never paste Super Pro platform developer secrets.',actions:['Choose a platform','Review connector readiness']},
     {id:'governance',step:'08',title:'Trust & governance',group:'Trust',copy:'Review role-matched policies, support cases, escalations and privileged audit evidence.',actions:['Review policies','Open Help Desk']},
@@ -12,6 +14,8 @@
     {id:'manual',step:'10',title:'Digital user manual',group:'Guide',copy:'Use this live map, role-specific instructions and direct navigation to understand the workspace at any time.',actions:['Choose a map destination','Ask Super Pro for guidance']},
     {id:'billing',step:'11',title:'Plans & billing',group:'Account',copy:'Review trial access and plan boundaries. Paid billing stays off until checkout is deliberately activated.',actions:['Review current plan','Review plan access']}
   ];
+
+  views.forEach((view,index)=>{view.step=String(index+1).padStart(2,'0')});
 
   const roleProfiles = {
     owner:{title:'Owner',copy:'Full business oversight. Prioritise security, approval rules, governance, integrations and operating performance.',chips:['Business control','Governance access','Integration oversight','Approval authority']},

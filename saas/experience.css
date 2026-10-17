@@ -132,3 +132,8 @@ html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .co
 #gds-staff-chat .staff-availability-form{display:grid;gap:8px;margin:10px 0}
 #gds-staff-chat .staff-availability-form label{display:grid;gap:3px;font-size:12px}
 #gds-staff-chat .staff-availability-form input,#gds-staff-chat .staff-availability-form select{width:100%;min-width:0;box-sizing:border-box}
+
+/* Keep later visual layers consistent with the selected workspace theme. */
+html[data-theme="light"] :is(.industry-browser-shell,.industry-browser-card,.regulatory-disclosure,.reg-source-row,.guide-language,.staff-chat-launch,.sp-global-trust-footer){background:var(--panel);color:var(--text);border-color:var(--line)}
+html[data-theme="light"] :is(.industry-search-label input,.selected-industry-meta span,.selected-specialties span){background:var(--panel-2);color:var(--text-2);border-color:var(--line)}
+html[data-theme="light"] .regulatory-profile{background:var(--panel-2)!important;border-color:var(--line)!important}

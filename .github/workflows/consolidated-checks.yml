@@ -47,3 +47,5 @@ jobs:
         run: node --test scripts/security-contract.test.mjs
       - name: Runtime tenant and allocation regression tests
         run: node --test scripts/runtime-security.test.mjs
+      - name: Voice cancellation and skill regression tests
+        run: node --test scripts/voice-runtime.test.mjs

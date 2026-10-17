@@ -57,6 +57,10 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   const foreign=await request(outsider,'/api/saas/work-orders');assert.equal(foreign.status,200);assert.deepEqual((await foreign.json()).jobs,[]);
   assert.ok([401,403,404].includes((await request(outsider,'/api/saas/work-orders','GET',undefined,orgA)).status));
   assert.equal((await request(employee,'/api/saas/work-orders','POST',{})).status,403);
+  const settings={business_type:'Test services',services:[],approval_mode:'everything'};
+  assert.equal((await request(employee,'/api/saas/onboarding','PUT',settings)).status,403,'employees cannot change workspace approval policy');
+  assert.equal((await request(owner,'/api/saas/onboarding','PUT',settings)).status,200,'owners retain settings access');
+  assert.equal((await request(owner,'/api/saas/onboarding','PUT',{...settings,website:'Https:\\broken.example'})).status,400,'malformed website is rejected');
   const respond=(actor,id)=>request(actor,`/api/saas/job-offers/${id}/respond`,'POST',{status:'accepted'});
   assert.equal((await respond(employee,sameEmail)).status,403,'matching email is not identity');
   assert.equal((await respond(outsider,own)).status,404);

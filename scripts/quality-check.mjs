@@ -61,7 +61,7 @@ add('account:verified-self-deletion',server.includes('/api/saas/account/deletion
 add('account:workspace-controls',app.includes('start-account-deletion')&&app.includes('loadAccountLifecycle'));
 add('voice:server-stt',server.includes('/api/saas/voice/transcribe')&&server.includes('transcribeWithGemini'));
 add('voice:browser-fallback',intro.includes('startBrowserRecognitionFallback')&&app.includes('browserSpeak'));
-add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&intro.includes('r.onstart=()=>{stopSpeech();')&&ops.includes('stopSpeech()'));
+add('voice:barge-in',intro.includes('stopSpeech();\n    primeSpeech();addMessage')&&/r\.onstart\s*=\s*\(\)\s*=>\s*\{\s*stopSpeech\(\);/.test(intro)&&ops.includes('stopSpeech()'));
 add('voice:male-female-auto',intro.includes('Voice: Female')&&intro.includes('Voice: Male')&&server.includes('geminiVoiceChoice'));
 add('voice:first-attempt-capture',intro.includes('Capture the first word immediately')&&!intro.includes('setTimeout(resolve,650)')&&intro.includes('mediaRecorder.start(120)'));
 add('voice:audio-context-playback',intro.includes('decodeAudioData')&&intro.includes('ensurePlaybackContext'));

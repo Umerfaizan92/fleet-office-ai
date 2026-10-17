@@ -83,3 +83,57 @@
   .copilot-send,.copilot-mic,.staff-chat-panel form button{position:relative;z-index:5}
   .flow-nav{margin-bottom:max(74px,calc(62px + env(safe-area-inset-bottom)))}
 }
+
+/* Accessible workforce status selection */
+.worker-filter-label{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+#worker-status-filter{min-height:40px;min-width:130px;border:1px solid #778397;border-radius:10px;padding:7px 10px;background:var(--panel);color:var(--text);font:inherit}
+#worker-status-filter:focus-visible{outline:3px solid #b78a36;outline-offset:2px}
+html[data-theme='light'] #worker-status-filter{background:#fff;color:#17202c}
+html[data-theme='light'] .staff-chat-panel,html[data-theme='light'] .copilot-panel{background:#fff;color:#17202c}
+html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .copilot-panel textarea{background:#fff;color:#17202c;border-color:#778397}
+
+/* Tenant branding image is decorative; organisation name remains accessible text. */
+#org-avatar-side{display:grid;place-items:center;overflow:hidden}
+#org-avatar-side img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+#workspace-branding-settings input,#workspace-branding-settings select{min-width:0;max-width:100%}
+#workspace-branding-settings [disabled]{opacity:.6;cursor:not-allowed}
+
+/* Owner administration links reuse existing modules and permissions. */
+.owner-control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+.owner-control-grid button{min-height:48px;text-align:left;white-space:normal}
+@media(max-width:600px){.owner-control-grid{grid-template-columns:1fr}}
+
+/* Floating assistant windows: viewport-safe, with reachable composers. */
+#gds-staff-chat .staff-chat-panel,#gds-copilot .copilot-panel{box-sizing:border-box;max-height:min(680px,calc(100dvh - 110px));overflow:hidden}
+#gds-staff-chat .staff-chat-panel{display:flex;flex-direction:column}
+#gds-staff-chat .staff-chat-panel[hidden],#gds-copilot .copilot-panel[hidden]{display:none!important}
+#gds-staff-chat .staff-chat-log{min-height:0;overflow-y:auto;overscroll-behavior:contain;flex:1}
+#gds-staff-chat .staff-chat-panel form{flex-shrink:0}
+@media(max-width:760px){
+ #gds-staff-chat .staff-chat-panel,#gds-copilot .copilot-panel{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:calc(100dvh - 100px - env(safe-area-inset-bottom))!important}
+ #gds-staff-chat .staff-chat-panel textarea,#gds-copilot .copilot-panel textarea{font-size:16px}
+}
+
+/* Owner branding logo upload and preview */
+.branding-logo-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#branding-logo-preview:not([hidden]){display:block;width:88px;height:88px;object-fit:contain;background:#fff;border:1px solid #788397;border-radius:12px;padding:6px}
+#branding-logo-file{max-width:100%;width:100%}
+
+/* Internal staff availability: responsive, accessible and theme-aware. */
+#gds-staff-chat .staff-directory{border-bottom:1px solid var(--border, #8992a0);padding:10px 14px;max-height:42vh;overflow:auto}
+#gds-staff-chat .staff-directory summary{cursor:pointer;font-weight:650}
+#gds-staff-chat .staff-directory-list{display:grid;gap:8px;margin:10px 0}
+#gds-staff-chat .staff-directory-person{display:flex;align-items:flex-start;gap:9px}
+#gds-staff-chat .staff-directory-person small{display:block;opacity:.85;overflow-wrap:anywhere}
+#gds-staff-chat .staff-status-dot{display:inline-block;flex:0 0 10px;height:10px;margin-top:6px;border-radius:50%;background:#b9bcc3;border:1px solid currentColor}
+#gds-staff-chat .staff-status-dot[data-status="available"],#gds-staff-chat .staff-status-dot[data-status="working_from_home"]{background:#198754}
+#gds-staff-chat .staff-status-dot[data-status="busy"]{background:#d9a20b}
+#gds-staff-chat .staff-status-dot[data-status="unavailable"],#gds-staff-chat .staff-status-dot[data-status="on_leave"],#gds-staff-chat .staff-status-dot[data-status="day_off"]{background:#c0392b}
+#gds-staff-chat .staff-availability-form{display:grid;gap:8px;margin:10px 0}
+#gds-staff-chat .staff-availability-form label{display:grid;gap:3px;font-size:12px}
+#gds-staff-chat .staff-availability-form input,#gds-staff-chat .staff-availability-form select{width:100%;min-width:0;box-sizing:border-box}
+
+/* Keep later visual layers consistent with the selected workspace theme. */
+html[data-theme="light"] :is(.industry-browser-shell,.industry-browser-card,.regulatory-disclosure,.reg-source-row,.guide-language,.staff-chat-launch,.sp-global-trust-footer){background:var(--panel);color:var(--text);border-color:var(--line)}
+html[data-theme="light"] :is(.industry-search-label input,.selected-industry-meta span,.selected-specialties span){background:var(--panel-2);color:var(--text-2);border-color:var(--line)}
+html[data-theme="light"] .regulatory-profile{background:var(--panel-2)!important;border-color:var(--line)!important}

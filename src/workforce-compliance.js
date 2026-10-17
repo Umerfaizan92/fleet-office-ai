@@ -114,7 +114,7 @@ function unique(items){
   return items.filter(item=>{const key=cleanSkill(item).toLowerCase();if(!key||seen.has(key))return false;seen.add(key);return true});
 }
 function serviceToSkill(value){
-  const text=cleanSkill(value).replace(/\b(enquiries|customer enquiries|follow-up|coordination)\b/gi,'').replace(/\s+/g,' ').trim();
+  const text=cleanSkill(value).replace(/\b(customer enquiries|enquiries|follow-up|coordination)\b/gi,'').replace(/\s+/g,' ').replace(/^(?:[&,+/\s-]+|and\b)+|(?:[&,+/\s-]+|\band)+$/gi,'').trim();
   if(!text)return null;
   return text.length>4?text:null;
 }

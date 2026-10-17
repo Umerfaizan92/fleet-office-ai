@@ -56,11 +56,21 @@ function installWorkspaceAddressSearch(){
 
 function note(v,bad=false){const e=$('#workspace').hidden?$('#auth-message'):$('#notice');if(!e)return;e.textContent=v;e.style.color=bad?'var(--red)':'var(--green)';clearTimeout(noteTimer);if(e.id==='notice'&&v)noteTimer=setTimeout(()=>e.textContent='',6500)}
 function obj(f){return Object.fromEntries(new FormData(f))} function initials(name='User'){return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'U'}
-function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('foai-theme',theme);$$('.theme-icon use').forEach(u=>u.setAttribute('href',theme==='dark'?'#i-sun':'#i-moon'))} setTheme(localStorage.getItem('foai-theme')||'dark'); $$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
+function setTheme(theme,{persist=true}={}){
+  const resolved=theme==='system'?(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark'):theme;
+  document.documentElement.dataset.theme=resolved;
+  if(persist)localStorage.setItem('foai-theme',theme);
+  $$('.theme-icon use').forEach(u=>u.setAttribute('href',resolved==='dark'?'#i-sun':'#i-moon'));
+}
+setTheme(localStorage.getItem('foai-theme')||'dark',{persist:false});
+$$('.theme-toggle').forEach(b=>b.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')));
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{
+  if(localStorage.getItem('foai-theme')==='system')setTheme('system',{persist:false});
+});
 function closeSidebar(){$('#sidebar')?.classList.remove('open');$('#sidebar-scrim')?.classList.remove('show')} $('#open-sidebar')?.addEventListener('click',()=>{$('#sidebar').classList.add('open');$('#sidebar-scrim').classList.add('show')});$('#close-sidebar')?.addEventListener('click',closeSidebar);$('#sidebar-scrim')?.addEventListener('click',closeSidebar);
 function updateFlowNav(){const index=Math.max(0,viewSequence.indexOf(currentView)),prev=$('#flow-prev'),next=$('#flow-next'),pos=$('#flow-position');if(pos)pos.textContent=`Step ${index+1} of ${viewSequence.length}`;if(prev)prev.disabled=index===0;if(next){next.disabled=index===viewSequence.length-1;next.textContent=index===viewSequence.length-1?'Complete':'Next →'}}
-function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$$('.view').forEach(v=>v.hidden=v.id!==`${name}-view`);const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
-$$('.workspace-nav [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));$$('[data-jump]').forEach(b=>b.onclick=()=>showView(b.dataset.jump));$$('[data-scroll]').forEach(b=>b.onclick=()=>$(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));$('#flow-prev')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i>0)showView(viewSequence[i-1])});$('#flow-next')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i<viewSequence.length-1)showView(viewSequence[i+1])});
+function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$$('.view').forEach(v=>v.hidden=v.id!==`${name}-view`);const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
+$$('.workspace-nav [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));document.addEventListener('click',e=>{const target=e.target.closest('[data-jump]');if(target){e.preventDefault();showView(target.dataset.jump)}});$$('[data-scroll]').forEach(b=>b.onclick=()=>$(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));$('#flow-prev')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i>0)showView(viewSequence[i-1])});$('#flow-next')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i<viewSequence.length-1)showView(viewSequence[i+1])});
 function setAuthMode(mode,initial=false){const target=mode==='register'?'create-account.html':'sign-in.html';if(!initial&&!location.pathname.endsWith(target)){location.href=target;return;}const isRegister=mode==='register';$('#register-form').hidden=!isRegister;$('#login-form').hidden=isRegister;$('#auth-message').textContent='';const h=$('.auth-heading h2'),sub=$('#auth-subtitle');if(h)h.textContent=isRegister?'Create your secure workspace':'Sign in to your workspace';if(sub)sub.textContent=isRegister?'Choose your plan, create your account and start 14 days free. No card is required in this test build.':'Enter your account details to continue to your secure workspace.';const choice=$('.account-choice');if(choice){const label=choice.querySelector('span'),button=choice.querySelector('button');if(label)label.textContent=isRegister?'Already have an account?':'New to Super Pro AI Office Manager?';if(button){button.dataset.authSwitch=isRegister?'login':'register';button.textContent=isRegister?'Sign in':'Join workspace'}}window.scrollTo({top:0,behavior:'smooth'})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-auth-switch]');if(b)setAuthMode(b.dataset.authSwitch)});setAuthMode(location.pathname.endsWith('create-account.html')?'register':'login',true);
 $$('[data-prompt]').forEach(b=>b.onclick=()=>{const f=$('#assistant-form'),t=f?.querySelector('textarea[name="message"]'),title=f?.querySelector('input[name="title"]');if(t){t.value=b.dataset.prompt||'';t.dispatchEvent(new Event('input'));t.focus()}if(title&&b.dataset.title)title.value=b.dataset.title});const aiPrompt=$('#assistant-form textarea[name="message"]'),promptCount=$('#prompt-count');function updatePromptCount(){if(promptCount&&aiPrompt)promptCount.textContent=`${aiPrompt.value.length} characters`}aiPrompt?.addEventListener('input',updatePromptCount);aiPrompt?.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$('#assistant-form')?.requestSubmit()}});updatePromptCount();
@@ -78,8 +88,9 @@ async function boot(){
   document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();
   const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];
   if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
-  $('#org-name-side').textContent=d.organisation.name;$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
+  $('#org-name-side').textContent=d.organisation.name;const workspaceAvatar=$('#org-avatar-side');if(workspaceAvatar)workspaceAvatar.textContent=initials(d.organisation.name);$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';
 
+  await loadWorkspaceBranding().catch(err=>note('Branding could not be loaded: '+err.message,true));
   const loaders=[
     ['dashboard',loadDashboard],['business setup',loadOnboarding],['workforce',loadWorkers],['jobs',loadJobs],['AI operations',loadThreads],['content studio',loadRenders],['subscription',loadSubscription],['account lifecycle',loadAccountLifecycle]
   ];
@@ -155,6 +166,25 @@ async function loadDashboard(){const d=await api('/api/saas/dashboard'),m=d.metr
 
 let industryRegistryCache=[];
 let selectedIndustryCode='custom';
+function refreshWorkerRoleSuggestions(){
+  const list=$('#worker-role-suggestions');
+  if(!list)return;
+  const selected=industryRegistryCache.find(row=>row.code===selectedIndustryCode);
+  const description=[selected?.label,selected?.group,$('#business-type')?.value].filter(Boolean).join(' ').toLowerCase();
+  const groups=[
+    [/polish|metal|fabricat|weld|manufactur/,['Metal Polisher','Fabricator','Workshop Technician','Quality Inspector']],
+    [/construct|build|plumb|electri|trade/,['Tradesperson','Site Supervisor','Apprentice','Project Manager']],
+    [/clean|facilit|maintenance/,['Cleaner','Cleaning Supervisor','Maintenance Technician','Site Manager']],
+    [/transport|logistic|freight|truck|fleet/,['Driver','Fleet Coordinator','Diesel Mechanic','Dispatcher']],
+    [/health|care|disabil|support/,['Support Worker','Care Coordinator','Registered Nurse','Team Leader']],
+    [/hospitality|restaurant|cafe|food/,['Chef','Kitchen Hand','Waitstaff','Shift Supervisor']],
+    [/retail|shop|store/,['Sales Assistant','Store Manager','Stock Controller','Customer Service Officer']],
+    [/technology|software|digital|consult/,['Software Developer','IT Support Specialist','Consultant','Project Coordinator']]
+  ];
+  const matched=groups.filter(([pattern])=>pattern.test(description)).flatMap(([,roles])=>roles);
+  const roles=[...new Set([...matched,'Technician','Supervisor','Manager','Apprentice','Contractor'])];
+  list.replaceChildren(...roles.map(role=>{const option=document.createElement('option');option.value=role;return option}));
+}
 function applyIndustryModules(modules=[]){
   // Industry packs recommend and customise the workspace; they must never hide
   // core customer functionality. Every subscribed/trial workspace keeps access
@@ -257,25 +287,104 @@ $('#check-regulatory-sources')?.addEventListener('click',async()=>{
 async function loadOnboarding(){
   const d=await api('/api/saas/onboarding'),f=$('#onboarding-form'),p=d.profile;installWorkspaceAddressSearch();
   await loadIndustryRegistry(p.industry_code||'custom');
+  await loadWorkspaceBranding();
   for(const k of ['business_type','industry_code','business_structure','team_mode','ai_setup_mode','phone','website','service_area','address_unit','address_street_number','address_street_name','address_suburb','address_state','address_postcode','address_formatted','address_source','brand_voice','approval_mode','ai_instructions'])if(f.elements[k])f.elements[k].value=p[k]||'';
   f.elements.services.value=(p.services||[]).join('\n');if(f.elements.custom_sections)f.elements.custom_sections.value=(p.custom_sections||[]).join('\n');if(f.elements.complete)f.elements.complete.checked=!!p.complete;
     applyIndustryModules(p.workspace_modules||d.industry?.modules||[]);
   await loadRegulatorySources();
 }
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
+async function loadWorkspaceBranding(){
+  const d=await api('/api/saas/branding'),b=d.branding;
+  const name=$('#branding-display-name'),logo=$('#branding-logo-url'),theme=$('#branding-theme');
+  if(name)name.value=b.display_name||'';
+  if(logo)logo.value=b.logo_url||'';
+  const preview=$('#branding-logo-preview');if(preview){preview.hidden=!b.logo_url;if(b.logo_url)preview.src=b.logo_url;else preview.removeAttribute('src')};
+  if(theme)theme.value=b.theme||'system';
+  const label=$('#org-name-side'),avatar=$('#org-avatar-side');
+  if(label)label.textContent=b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace';
+  if(avatar){
+    const fallback=initials(b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace');
+    avatar.replaceChildren(document.createTextNode(fallback));
+    if(b.logo_url){
+      const image=document.createElement('img');
+      image.src=b.logo_url;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
+      image.addEventListener('error',()=>image.remove(),{once:true});
+      avatar.replaceChildren(image);
+    }
+  }
+  const canEdit=['owner','admin','administrator'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
+  const section=$('#workspace-branding-settings');
+  if(section)section.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
+  const ownerControls=$('#owner-control-centre');
+  if(ownerControls)ownerControls.hidden=!canEdit;
+  setTheme(b.theme||'system',{persist:false});
+}
+$('#upload-workspace-logo')?.addEventListener('click',async()=>{
+  const input=$('#branding-logo-file'),file=input?.files?.[0],button=$('#upload-workspace-logo'),feedback=$('#branding-upload-feedback');
+  if(!file){if(feedback)feedback.textContent='Select a logo image first.';return}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1024*1024){if(feedback)feedback.textContent='Choose a PNG, JPEG or WebP image smaller than 1 MB.';return}
+  const body=new FormData();body.append('logo',file);
+  button.disabled=true;
+  try{
+    const response=await fetch('/api/saas/branding/logo',{method:'POST',body,credentials:'same-origin'});
+    const result=await response.json();
+    if(!response.ok||!result.ok)throw new Error(result.error||'Logo upload failed.');
+    if(feedback)feedback.textContent='Logo uploaded successfully.';
+    if($('#branding-logo-url'))$('#branding-logo-url').value=result.logo_url;
+    if(input)input.value='';
+    await loadWorkspaceBranding();
+  }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
+  finally{button.disabled=false}
+});
+$('#save-workspace-branding')?.addEventListener('click',async()=>{
+  const feedback=$('#branding-feedback'),button=$('#save-workspace-branding');
+  button.disabled=true;
+  try{
+    const d=await api('/api/saas/branding',{method:'PUT',body:JSON.stringify({
+      display_name:$('#branding-display-name').value.trim(),
+      logo_url:$('#branding-logo-url').value.trim(),
+      theme:$('#branding-theme').value
+    })});
+    if(feedback)feedback.textContent='Workspace appearance saved.';
+    await loadWorkspaceBranding();
+    if(d.branding.theme!=='system')setTheme(d.branding.theme);
+  }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
+  finally{button.disabled=false}
+});
 async function loadWorkers(){
+  refreshWorkerRoleSuggestions();
   const d=await api('/api/saas/workers'),list=$('#workers');
-  list.innerHTML=d.workers.map(w=>{
+  const filter=$('#worker-status-filter')?.value||'active';
+  const search=String($('#worker-directory-search')?.value||'').trim().toLowerCase();
+  const visible=d.workers.filter(w=>(filter==='all'||(filter==='active'?w.status==='active':filter==='onboarding'?w.status==='onboarding':filter==='inactive'?['inactive','archived','terminated','deactivated'].includes(w.status):true))&&(!search||[w.full_name,w.role_title,w.email,w.phone].some(value=>String(value||'').toLowerCase().includes(search))));
+  list.innerHTML=visible.map(w=>{
     const skills=(w.skills||[]).slice(0,5);
+    const active=w.status==='active';
+    const rightsVerified=w.work_rights_status==='verified';
+    const declarationReview=w.declared_work_status==='requires_review';
+    const ready=active&&rightsVerified&&!declarationReview&&Boolean(w.approved_for_scheduling);
+    const statusLabel=!active?String(w.status||'Onboarding').replaceAll('_',' '):ready?'Ready to schedule':declarationReview?'Declaration review required':!rightsVerified?'Work rights review required':'Scheduling approval required';
     return `<article class="row-card" data-worker-id="${esc(w.id)}">
-      <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${w.approved_for_scheduling?'good':'warn'}">${w.approved_for_scheduling?'Ready to schedule':'Onboarding'}</span></header>
+      <header><div><b>${esc(w.full_name)}</b><div class="muted">${esc(w.role_title)} · ${esc(w.employment_type.replaceAll('_',' '))} · Level ${w.worker_level}</div></div><span class="status ${ready?'good':'warn'}">${esc(statusLabel)}</span></header>
       <p class="muted">Declared status: ${esc(String(w.declared_work_status||'requires_review').replaceAll('_',' '))} · Work rights: ${esc(w.work_rights_status.replaceAll('_',' '))} · Compliance ${w.compliance_summary?.verified||0}/${w.compliance_summary?.required||0}</p>
       <div class="worker-skill-summary">${skills.length?skills.map(s=>`<span class="filter-chip">${esc(s.skill_name)} · ${esc(s.competency)} · ${esc(s.verification_status||'pending')}</span>`).join(''):'<span class="muted">No skills recorded yet.</span>'}</div>
       <div class="row-actions"><button type="button" data-worker-compliance="${esc(w.id)}">Compliance & credentials</button><button type="button" data-worker-skill="${esc(w.id)}">Add / verify skill</button><button type="button" data-worker-invite="${esc(w.id)}" data-worker-email="${esc(w.email||'')}" data-worker-phone="${esc(w.phone||'')}">Send onboarding link</button></div>
     </article>`;
-  }).join('')||'<div class="empty-state"><b>No workers yet</b><span>Add your first worker profile to begin onboarding and eligibility checks.</span></div>';
+  }).join('')||'<div class="empty-state"><b>'+ (d.workers.length?'No workers match this filter':'No workers yet')+'</b><span>'+(d.workers.length?'Choose another status to view existing worker records.':'Add your first worker profile to begin onboarding and eligibility checks.')+'</span></div>';
 }
-$('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
+$('#worker-status-filter')?.addEventListener('change',()=>loadWorkers().catch(x=>note(x.message,true)));
+let workerSearchTimer;
+$('#worker-directory-search')?.addEventListener('input',()=>{
+  clearTimeout(workerSearchTimer);
+  workerSearchTimer=setTimeout(()=>{
+    const input=$('#worker-directory-search');
+    if(input?.isConnected)loadWorkers().catch(x=>note(x.message,true));
+  },220);
+});
+$('#industry-code')?.addEventListener('change',refreshWorkerRoleSuggestions);
+$('#business-type')?.addEventListener('input',refreshWorkerRoleSuggestions);
+$('#worker-form').onsubmit=async e=>{e.preventDefault();try{const created=await api('/api/saas/workers',{method:'POST',body:JSON.stringify(obj(e.target))});e.target.reset();if($('#worker-status-filter'))$('#worker-status-filter').value='onboarding';updateWorkStatusHelp();note('Worker profile created. Complete the compliance verification before scheduling.');await Promise.all([loadWorkers(),loadDashboard()]);if(created.id)await openWorkerCompliance(created.id)}catch(x){note(x.message,true)}};
 
 function ensureWorkforceDialog(){
   let d=$('#workforce-dialog');if(d)return d;
@@ -370,7 +479,7 @@ async function loadJobs(){
   const d=await api('/api/saas/work-orders'),list=$('#jobs');
   list.innerHTML=d.jobs.map(j=>`<article class="row-card"><header><div><b>${esc(j.title)}</b><div class="muted">${new Date(j.start_at).toLocaleString()} · ${j.required_workers} worker${j.required_workers===1?'':'s'} · Level ${j.required_level}+</div></div><span class="status">${esc(j.status.replaceAll('_',' '))}</span></header><p class="muted">${esc(j.address||'No address')} · Skills: ${(j.required_skills||[]).map(esc).join(', ')||'None specified'} · ${j.accepted_workers||0}/${j.required_workers} accepted</p><div class="row-actions"><button type="button" data-offer-job="${esc(j.id)}">Find eligible workers →</button></div></article>`).join('')||'<div class="empty-state"><b>No work orders yet</b><span>Create a job and the eligibility engine will match compliant workers.</span></div>';
 }
-$('#job-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.required_skills=b.required_skills.split('\\n').map(x=>x.trim()).filter(Boolean);try{await api('/api/saas/work-orders',{method:'POST',body:JSON.stringify(b)});e.target.reset();note('Work order added to the allocation pool.');await Promise.all([loadJobs(),loadDashboard(),refreshJobSkillSuggestions()])}catch(x){note(x.message,true)}};
+$('#job-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.required_skills=String(b.required_skills||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);try{await api('/api/saas/work-orders',{method:'POST',body:JSON.stringify(b)});e.target.reset();note('Work order added to the allocation pool.');await Promise.all([loadJobs(),loadDashboard(),refreshJobSkillSuggestions()])}catch(x){note(x.message,true)}};
 $('#jobs')?.addEventListener('click',async e=>{
   const b=e.target.closest('[data-offer-job]');if(!b)return;
   b.disabled=true;b.textContent='Checking eligibility…';
@@ -409,7 +518,7 @@ async function loadFinance(){
   const jobs=$('#finance-job-profit');if(jobs)jobs.innerHTML=d.jobs.map(j=>`<article class="row-card"><header><div><b>${esc(j.title)}</b><div class="muted">Revenue ${money(j.revenue_cents)} · Expenses ${money(j.expense_cents)}</div></div><strong>${money(j.net_profit_cents)}</strong></header></article>`).join('')||'<div class="empty-state"><b>No jobs yet</b><span>Job profit appears when finance entries are linked to work orders.</span></div>';
 }
 $('#finance-form')?.addEventListener('submit',async e=>{e.preventDefault();const b=obj(e.target);try{await api('/api/saas/finance',{method:'POST',body:JSON.stringify(b)});e.target.reset();e.target.elements.occurred_on.value=new Date().toISOString().slice(0,10);note('Finance entry saved to this workspace.');await loadFinance()}catch(x){note(x.message,true)}});
-async function loadSubscription(){try{const d=await api('/api/saas/subscription'),s=d.subscription,life=d.lifecycle||{};if(!s)return;const total=d.trial_days||14,remaining=Number.isFinite(s.trial_remaining_days)?s.trial_remaining_days:0,trialEnd=s.trial_ends_at?new Date(s.trial_ends_at):null,pct=Math.max(0,Math.min(100,((total-remaining)/total)*100));$('#trial-plan-name').textContent=s.plan_name||'Trial';$('#trial-days').textContent=remaining;if($('#sidebar-trial-days'))$('#sidebar-trial-days').textContent=remaining;const descriptions={trialing:`Trial ends ${trialEnd?.toLocaleString()||''}. Full workspace access is active.`,restricted:`Trial ended. Workspace is read-only during the ${d.policy?.post_trial_restrict_days||30}-day recovery period.`,archived:`Workspace is read-only and data is protected in the retention period for up to ${d.policy?.archive_retention_days||183} days.`,restore_window:`Final restoration window is active for ${d.policy?.final_restore_window_days||14} days. Contact support/payment setup to restore access.`,deletion_due:'Retention and restoration windows have ended. Data is marked deletion-due, but this build does not auto-delete; controlled policy/legal review is required.',active:'Paid access is active.'};$('#trial-copy').textContent=descriptions[life.state]||d.note||'Subscription status loaded.';$('#trial-progress-bar').style.width=`${pct}%`;$('#trial-status-pill').textContent=(life.state||s.status||'trialing').replaceAll('_',' ');$('#trial-status-pill').classList.toggle('warn',life.state!=='trialing'&&life.state!=='active');const clock=$('#trial-clock'),label=$('#trial-count-label');if(clock&&label){const target=life.trial_ends_at||life.restricted_until||life.retention_ends_at||life.restore_window_ends_at||life.deletion_due_at;const render=()=>{const ms=target?Math.max(0,new Date(target).getTime()-Date.now()):0,days=Math.floor(ms/86400000),hrs=Math.floor(ms%86400000/3600000),min=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000);clock.textContent=target?`${days}d ${String(hrs).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:'—';label.textContent=life.state==='trialing'?'until trial expiry':'until next lifecycle stage'};render();clearInterval(window.__gdsTrialTimer);window.__gdsTrialTimer=setInterval(render,1000)}try{const providers=await api('/api/saas/billing/providers'),grid=$('#billing-provider-grid');if(grid)grid.innerHTML=providers.providers.map(x=>`<article><b>${esc(x.name)}</b><span class="status-pill ${x.ready?'success':'neutral'}">${x.ready?'Ready':'Connect later'}</span><small>${x.ready?'Platform configuration detected.':'Operator credentials are not configured yet.'}</small></article>`).join('')}catch{}}catch(x){if($('#trial-copy'))$('#trial-copy').textContent='Subscription status is temporarily unavailable.'}}
+async function loadSubscription(){try{const d=await api('/api/saas/subscription'),s=d.subscription,life=d.lifecycle||{};if(!s)return;const total=d.trial_days||14,remaining=Number.isFinite(s.trial_remaining_days)?s.trial_remaining_days:0,trialEnd=s.trial_ends_at?new Date(s.trial_ends_at):null,pct=Math.max(0,Math.min(100,((total-remaining)/total)*100));$('#trial-plan-name').textContent=s.plan_name||'Trial';$('#trial-days').textContent=remaining;if($('#sidebar-trial-days'))$('#sidebar-trial-days').textContent=remaining;const descriptions={trialing:`Trial ends ${trialEnd?.toLocaleString()||''}. Full workspace access is active.`,restricted:`Trial ended. Workspace is read-only during the ${d.policy?.post_trial_restrict_days||30}-day recovery period.`,archived:`Workspace is read-only and data is protected in the retention period for up to ${d.policy?.archive_retention_days||183} days.`,restore_window:`Final restoration window is active for ${d.policy?.final_restore_window_days||14} days. Contact support/payment setup to restore access.`,deletion_due:'Retention and restoration windows have ended. Data is marked deletion-due, but this build does not auto-delete; controlled policy/legal review is required.',preserved:'Trial has ended. Workspace data is preserved indefinitely. No active paid subscription is confirmed.',active:'Paid access is active.'};const footer=$('#subscription-footer');if(footer)footer.textContent=`Subscription: ${(life.state||s.status||'unknown').replaceAll('_',' ')} · External services require configured providers`;$('#trial-copy').textContent=descriptions[life.state]||d.note||'Subscription status loaded.';$('#trial-progress-bar').style.width=`${pct}%`;$('#trial-status-pill').textContent=(life.state||s.status||'trialing').replaceAll('_',' ');$('#trial-status-pill').classList.toggle('warn',life.state!=='trialing'&&life.state!=='active');const clock=$('#trial-clock'),label=$('#trial-count-label');if(clock&&label){const target=life.trial_ends_at||life.restricted_until||life.retention_ends_at||life.restore_window_ends_at||life.deletion_due_at;const render=()=>{const ms=target?Math.max(0,new Date(target).getTime()-Date.now()):0,days=Math.floor(ms/86400000),hrs=Math.floor(ms%86400000/3600000),min=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000);clock.textContent=target?`${days}d ${String(hrs).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:'—';label.textContent=life.state==='trialing'?'until trial expiry':life.state==='preserved'?'data preserved indefinitely':life.state==='active'?'paid access active':'subscription status'};render();clearInterval(window.__gdsTrialTimer);window.__gdsTrialTimer=setInterval(render,1000)}try{const providers=await api('/api/saas/billing/providers'),grid=$('#billing-provider-grid');if(grid)grid.innerHTML=providers.providers.map(x=>`<article><b>${esc(x.name)}</b><span class="status-pill ${x.ready?'success':'neutral'}">${x.ready?'Ready':'Connect later'}</span><small>${x.ready?'Platform configuration detected.':'Operator credentials are not configured yet.'}</small></article>`).join('')}catch{}}catch(x){if($('#trial-copy'))$('#trial-copy').textContent='Subscription status is temporarily unavailable.'}}
 const tooltip=$('#smart-tooltip');function inferredTip(el){if(el.dataset.tip)return el.dataset.tip;const label=(el.getAttribute('aria-label')||el.textContent||'').replace(/\s+/g,' ').trim();if(!label)return'';if(el.matches('[data-view]'))return`Open ${label.replace(/\d+/g,'').trim()} in this workspace.`;if(el.tagName==='A')return`Open ${label}.`;if(el.tagName==='BUTTON')return`${label}.`;return''}function showTip(el,x,y){if(!tooltip||matchMedia('(pointer:coarse)').matches)return;const text=inferredTip(el);if(!text)return;tooltip.textContent=text;tooltip.setAttribute('aria-hidden','false');tooltip.classList.add('show');const pad=14,w=tooltip.offsetWidth||220,h=tooltip.offsetHeight||40;tooltip.style.left=`${Math.min(innerWidth-w-pad,Math.max(pad,x+14))}px`;tooltip.style.top=`${Math.min(innerHeight-h-pad,Math.max(pad,y+16))}px`}function hideTip(){tooltip?.classList.remove('show');tooltip?.setAttribute('aria-hidden','true')}document.addEventListener('pointerover',e=>{const el=e.target.closest('button,a,[data-tip]');if(el)showTip(el,e.clientX,e.clientY)});document.addEventListener('pointermove',e=>{if(tooltip?.classList.contains('show')){const el=e.target.closest('button,a,[data-tip]');if(el)showTip(el,e.clientX,e.clientY)}});document.addEventListener('pointerout',e=>{if(e.target.closest('button,a,[data-tip]'))hideTip()});document.addEventListener('focusin',e=>{const el=e.target.closest('button,a,[data-tip]');if(el){const r=el.getBoundingClientRect();showTip(el,r.left+r.width/2,r.bottom)}});document.addEventListener('focusout',hideTip);
 window.addEventListener('hashchange',()=>{if($('#workspace')&&!$('#workspace').hidden){const requested=location.hash.replace('#','');if(viewSequence.includes(requested))showView(requested,{instant:true})}});
 if(location.pathname.endsWith('workspace.html'))boot();else{$('#welcome').hidden=false;const email=sessionStorage.getItem('gds-new-email');if(email&&location.pathname.endsWith('sign-in.html')){$('#login-form').elements.email.value=email;note('Account created. Sign in to continue.');sessionStorage.removeItem('gds-new-email');}}
@@ -513,8 +622,18 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
 })();;
 $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashboard');note('Review the command centre for current activity and attention items.');});
 
-// Content Studio source library — local workspace organisation layer
-(()=>{const KEY='gds_content_media_library_v3';const seed=[{id:'prev-001',name:'Previous transformation reel',type:'previous',kind:'Video',project:'Fleet media',used:6},{id:'rec-001',name:'Workshop field recording',type:'recording',kind:'Recording',project:'Field capture',used:4},{id:'gen-001',name:'AI social draft 01',type:'generated',kind:'Generated',project:'Content Studio',used:3},{id:'loose-001',name:'Untitled clip 2026-09',type:'loose',kind:'Unorganized',project:'Needs review',used:1}];let assets=[];try{assets=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}if(!assets.length)assets=seed;let mode='previous',selected=null;const save=()=>localStorage.setItem(KEY,JSON.stringify(assets));function draw(){const grid=document.querySelector('#media-library-grid');if(!grid)return;const q=(document.querySelector('#media-library-search')?.value||'').toLowerCase(),sort=document.querySelector('#media-library-sort')?.value||'recent';let list=assets.filter(a=>(mode==='all'||a.type===mode)&&(`${a.name} ${a.project} ${a.kind}`).toLowerCase().includes(q));list.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='type'?a.kind.localeCompare(b.kind):(b.used||0)-(a.used||0));grid.innerHTML=list.map(a=>`<button class="media-asset ${selected===a.id?'selected':''}" data-asset-id="${a.id}" type="button"><span class="asset-preview">${a.type==='recording'?'◉':a.type==='generated'?'✦':a.type==='loose'?'◇':'▶'}</span><span class="asset-badge">${a.kind}</span><span class="asset-copy"><b>${a.name}</b><small>${a.project} · ${a.type==='loose'?'Needs organization':'Ready to reuse'}</small></span></button>`).join('')||'<div class="empty-state"><b>No media in this view</b><span>Use Find previous workspace media or switch source type.</span></div>';document.querySelector('#library-count').textContent=`${assets.length} assets`;grid.querySelectorAll('[data-asset-id]').forEach(b=>b.onclick=()=>selectAsset(b.dataset.assetId))}function selectAsset(id){selected=id;const a=assets.find(x=>x.id===id);if(!a)return;a.used=(a.used||0)+1;save();const input=document.querySelector('#video-form [name="media_id"]');if(input)input.value=a.id;const box=document.querySelector('#library-selection');if(box)box.innerHTML=`<span>Selected: ${a.name}</span><small>${a.kind} · ${a.project} · linked to render specification</small>`;draw()}document.querySelectorAll('[data-source-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.sourceMode;document.querySelectorAll('[data-source-mode]').forEach(x=>x.classList.toggle('active',x===b));draw()});document.querySelector('#media-library-search')?.addEventListener('input',draw);document.querySelector('#media-library-sort')?.addEventListener('change',draw);document.querySelector('#organize-library')?.addEventListener('click',()=>{let n=0;assets=assets.map(a=>{if(a.type==='loose'){n++;return {...a,type:'previous',kind:'Video',project:'AI Organized Library',name:a.name.replace('Untitled','Recovered')}}return a});save();mode='previous';document.querySelectorAll('[data-source-mode]').forEach(x=>x.classList.toggle('active',x.dataset.sourceMode==='previous'));draw();if(typeof note==='function')note(n?`${n} loose asset${n>1?'s':''} organized and moved into the reusable library.`:'No loose media needs organization.')});document.querySelector('#add-demo-assets')?.addEventListener('click',()=>{const stamp=Date.now();assets.push({id:'prev-'+stamp,name:'Recovered previous video',type:'previous',kind:'Video',project:'Previous workspace',used:2},{id:'loose-'+(stamp+1),name:'Imported loose recording',type:'loose',kind:'Unorganized',project:'Workspace import',used:0});save();draw();if(typeof note==='function')note('Previous workspace media indexed. Review Unorganized to clean loose assets.')});document.querySelectorAll('.studio-workflow button').forEach((b,i)=>b.onclick=()=>{document.querySelectorAll('.studio-workflow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const targets=['.source-library-panel','.source-library-panel','#video-form','#video-form','.trend-panel','#renders'];document.querySelector(targets[i])?.scrollIntoView({behavior:'smooth',block:'start'})});save();draw()})();
+// Content Studio: no tenant media index is connected yet. Never fabricate assets.
+(()=>{
+  function draw(){
+    const grid=document.querySelector('#media-library-grid');if(!grid)return;
+    grid.innerHTML='<div class="empty-state"><b>No verified media library connected</b><span>Media discovery and upload are not available in this workspace yet. You can prepare an edit specification using an existing source reference; this does not upload or render a video.</span></div>';
+    document.querySelector('#library-count').textContent='0 verified assets';
+  }
+  document.querySelectorAll('[data-source-mode]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-source-mode]').forEach(x=>x.classList.toggle('active',x===b));draw()});
+  document.querySelector('#media-library-search')?.addEventListener('input',draw);
+  document.querySelector('#media-library-sort')?.addEventListener('change',draw);
+  for(const id of ['organize-library','add-demo-assets'])document.querySelector('#'+id)?.addEventListener('click',()=>note('Media indexing and organisation require a connected tenant media store. No assets were imported or changed.'));
+  document.querySelectorAll('.studio-workflow button').forEach((b,i)=>b.onclick=()=>{document.querySelectorAll('.studio-workflow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const targets=['.source-library-panel','.source-library-panel','#video-form','#video-form','.trend-panel','#renders'];document.querySelector(targets[i])?.scrollIntoView({behavior:'smooth',block:'start'})});draw()})();
 
 
 // v8 premium onboarding, guided tour and persistent AI co-pilot.
@@ -534,6 +653,7 @@ function maybeStartTour(me){
     ['video','Content Studio','Reuse media, create AI-assisted render specifications and optimise content for each connected platform.'],
     ['integrations','Connections','Choose the business platforms you want to use. Customers never enter developer secrets; app-level provider credentials stay protected server-side.'],
     ['governance','Trust & governance','Review role-aware policies, complaints, escalation, security alerts and senior-only tamper-evident audit evidence.'],
+    ['support','Help & complaints','Use support and protected reporting pathways. Review complaint rights and escalation options.'],
     ['manual','Digital user manual','See your live location in the application map, get role-aware instructions, and jump directly to the next task or Help Desk.'],
     ['billing','Plans & billing','Review trial status and plan access. Paid billing remains disabled until a payment provider and explicit authority are configured.']
   ];

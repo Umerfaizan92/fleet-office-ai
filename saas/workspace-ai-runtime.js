@@ -4,6 +4,7 @@
   const localeMap={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',es:'es-ES',fr:'fr-FR'};
   const speechSupported='speechSynthesis'in window&&'SpeechSynthesisUtterance'in window;
   let playbackContext=null,speechRun=0,streamController=null,streamSources=[],fallbackAudio=null,fallbackUrl='',activeCapture=null;
+  const playbackWaiters=new Set();
 
   const detectLanguage=text=>window.GDSProductGuide?.detectLanguage?.(text)||'en';
   const locale=lang=>localeMap[lang]||'en-AU';
@@ -20,6 +21,7 @@
 
   function stopSpeech(){
     speechRun++;
+    for(const finish of [...playbackWaiters])finish();
     try{streamController?.abort()}catch{}streamController=null;
     for(const src of streamSources.splice(0)){try{src.onended=null;src.stop()}catch{}try{src.disconnect()}catch{}}
     if(fallbackAudio){try{fallbackAudio.pause();fallbackAudio.src=''}catch{}fallbackAudio=null}
@@ -52,10 +54,11 @@
     for(const chunk of chunks){
       if(run!==speechRun)return false;
       await new Promise(resolve=>{
+        const finish=()=>{playbackWaiters.delete(finish);resolve()};playbackWaiters.add(finish);
         const u=new SpeechSynthesisUtterance(chunk.trim());u.lang=voice?.lang||locale(lang);if(voice)u.voice=voice;u.rate=.98;
-        u.onstart=()=>onStatus?.(`Speaking in ${u.lang} using device fallback…`,'speaking');
-        u.onend=resolve;u.onerror=resolve;
-        try{speechSynthesis.resume?.();speechSynthesis.speak(u)}catch{resolve()}
+        u.onstart=()=>run===speechRun&&onStatus?.(`Speaking in ${u.lang} using device fallback…`,'speaking');
+        u.onend=finish;u.onerror=finish;
+        try{speechSynthesis.resume?.();speechSynthesis.speak(u)}catch{finish()}
       });
     }
     return run===speechRun;
@@ -65,6 +68,7 @@
     const spoken=cleanSpeech(text);if(!spoken)return false;
     lang=lang==='auto'?detectLanguage(spoken):lang;
     stopSpeech();const run=++speechRun,ctx=await ensurePlaybackContext();
+    if(run!==speechRun)return false;
 
     // Primary path: authenticated Gemini streaming TTS. Start playback as soon
     // as the first PCM chunk arrives instead of waiting for a complete audio file.
@@ -82,7 +86,7 @@
           const reader=response.body.getReader(),decoder=new TextDecoder();
           while(true){
             if(run!==speechRun){controller.abort();clearTimeout(firstTimer);return false}
-            const {value,done}=await reader.read();if(done)break;
+            const {value,done}=await reader.read();if(run!==speechRun)return false;if(done)break;
             pending+=decoder.decode(value,{stream:true});
             const lines=pending.split(/\r?\n/);pending=lines.pop()||'';
             for(const line of lines){
@@ -112,25 +116,36 @@
 
     // Secondary path: buffered server TTS. Browser speech is the last fallback.
     try{
+      const controller=new AbortController();streamController=controller;
       onStatus?.('Preparing spoken reply…','preparing');
       const response=await fetch('/api/saas/voice/speech',{
-        method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},
+        method:'POST',credentials:'same-origin',signal:controller.signal,headers:{'content-type':'application/json'},
         body:JSON.stringify({text:spoken,language:lang,voice})
       });
       if(response.ok&&run===speechRun){
-        const blob=await response.blob();if(blob.size){
-          fallbackUrl=URL.createObjectURL(blob);fallbackAudio=new Audio(fallbackUrl);fallbackAudio.preload='auto';
-          await new Promise((resolve,reject)=>{
-            fallbackAudio.onplay=()=>onStatus?.(`Speaking naturally in ${locale(lang)}…`,'speaking');
-            fallbackAudio.onended=resolve;fallbackAudio.onerror=reject;
-            fallbackAudio.play().catch(reject);
-          });
-          if(fallbackUrl){URL.revokeObjectURL(fallbackUrl);fallbackUrl=''}fallbackAudio=null;
+        const blob=await response.blob();if(run!==speechRun)return false;if(blob.size){
+          const url=URL.createObjectURL(blob),audio=new Audio(url);
+          fallbackUrl=url;fallbackAudio=audio;audio.preload='auto';
+          try{
+            await new Promise((resolve,reject)=>{
+              const finish=()=>{playbackWaiters.delete(finish);resolve()};playbackWaiters.add(finish);
+              const fail=err=>{playbackWaiters.delete(finish);reject(err)};
+              audio.onplay=()=>run===speechRun&&onStatus?.(`Speaking naturally in ${locale(lang)}…`,'speaking');
+              audio.onended=finish;audio.onerror=fail;
+              try{audio.play().catch(fail)}catch(err){fail(err)}
+            });
+          }finally{
+            audio.onplay=audio.onended=audio.onerror=null;
+            try{audio.pause()}catch{}
+            URL.revokeObjectURL(url);
+            if(fallbackAudio===audio){fallbackAudio=null;fallbackUrl=''}
+          }
           if(run===speechRun)onStatus?.('Voice reply finished.','ready');
-          return true;
+          return run===speechRun;
         }
       }
     }catch{}
+    if(run!==speechRun)return false;
     return browserSpeak(spoken,lang,onStatus);
   }
 

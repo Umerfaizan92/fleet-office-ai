@@ -79,12 +79,15 @@ async function boot(){
   let d;
   try{d=await api('/api/saas/me')}
   catch(x){
-    if(x.status===401){location.replace('sign-in.html');return}
+    if(x.status===401){window.SuperProWorkspaceContext?.clear();location.replace('sign-in.html');return}
     $('#welcome').hidden=false;$('#workspace').hidden=true;
     if(x.status&&x.status!==401)note('The workspace service is temporarily unavailable. Please try again.',true);
     return;
   }
+  window.SuperProWorkspaceContext?.bind(d.organisation.id);
   $('#welcome').hidden=true;$('#workspace').hidden=false;window.GDS_SESSION=d;
+  window.dispatchEvent(new CustomEvent('superpro:workspace-ready'));
+  loadBusinessSwitcher().catch(err=>note(err.message,true));
   document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();
   const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];
   if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
@@ -918,3 +921,19 @@ $('#ai-design-business')?.addEventListener('click',async()=>{
   }catch(e){note(e.message,true)}
   finally{button.disabled=false;button.textContent='AI design my setup'}
 });
+
+
+async function loadBusinessSwitcher(){
+  const select=$('#business-switcher');if(!select)return;
+  const data=await api('/api/saas/my-organisations');
+  select.replaceChildren(...data.organisations.map(org=>{
+    const option=document.createElement('option');option.value=org.organisation_id;
+    option.textContent=`${org.name} (${org.role})`;return option;
+  }));
+  select.value=data.active_organisation_id;select.hidden=data.organisations.length<2;
+  select.onchange=async()=>{
+    select.disabled=true;
+    try{await window.SuperProWorkspaceContext.switchTo(select.value)}
+    catch(err){select.value=data.active_organisation_id;select.disabled=false;note(err.message,true)}
+  };
+}

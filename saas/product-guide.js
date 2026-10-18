@@ -169,10 +169,16 @@
   function speechText(value){return plainText(value).replace(/https?:\/\/\S+/gi,'').replace(/\s+/g,' ').trim()}
   function memoryKey(context='public'){
     const scope=String(context||'public').startsWith('workspace')?'workspace':'public';
+    if(scope==='workspace'){
+      const session=window.GDS_SESSION;
+      if(!session?.organisation?.id||!session?.user?.id)return null;
+      return `superpro_ai_memory_current:workspace:${session.organisation.id}:${session.user.id}`;
+    }
     return 'superpro_ai_memory_current:'+scope;
   }
-  function loadMemory(context='public'){try{const v=JSON.parse(localStorage.getItem(memoryKey(context))||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+  function loadMemory(context='public'){if(!memoryKey(context))return [];try{const v=JSON.parse(localStorage.getItem(memoryKey(context))||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
   function saveMemory(context,rows){
+    if(!memoryKey(context))return;
     let out=rows.slice(-120),chars=out.reduce((n,x)=>n+String(x.q||'').length+String(x.a||'').length,0);
     while(out.length>8&&chars>120000){const first=out.shift();chars-=String(first.q||'').length+String(first.a||'').length}
     try{localStorage.setItem(memoryKey(context),JSON.stringify(out))}catch{}
@@ -186,9 +192,9 @@
     const chosen=[...scored,...rows.slice(-4)].filter((x,i,a)=>a.indexOf(x)===i);
     return chosen.map(x=>`Q: ${x.q}\nA: ${x.a}`).join('\n').slice(-maxChars);
   }
-  function clearMemory(context='public'){try{localStorage.removeItem(memoryKey(context))}catch{}}
+  function clearMemory(context='public'){if(!memoryKey(context))return;try{localStorage.removeItem(memoryKey(context))}catch{}}
   function conversationId(context='public'){
-    const scope=String(context||'public').startsWith('workspace')?'workspace':'public',key='superpro_conversation_current:'+scope;
+    const scope=memoryKey(context);if(!scope)return crypto.randomUUID();const key=scope.replace('superpro_ai_memory_current:','superpro_conversation_current:');
     try{let id=localStorage.getItem(key)||'';if(!id){id=crypto?.randomUUID?.()||`sp-${Date.now()}-${Math.random().toString(36).slice(2)}`;localStorage.setItem(key,id)}return id}catch{return `sp-${Date.now()}`}
   }
   async function answerAsync(query,context='public',previousTopic='',language='auto'){

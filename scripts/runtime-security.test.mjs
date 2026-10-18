@@ -57,6 +57,10 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   const foreign=await request(outsider,'/api/saas/work-orders');assert.equal(foreign.status,200);assert.deepEqual((await foreign.json()).jobs,[]);
   assert.ok([401,403,404].includes((await request(outsider,'/api/saas/work-orders','GET',undefined,orgA)).status));
   assert.equal((await request(employee,'/api/saas/work-orders','POST',{})).status,403);
+  db.prepare('INSERT INTO memberships VALUES (?,?,?,?)').run(orgB,owner.id,'employee',now);
+  const switched=await request(owner,'/api/saas/me','GET',undefined,orgB);const identity=await switched.json();
+  assert.equal(identity.organisation.id,orgB);assert.equal(identity.user.role,'employee');assert.equal(identity.user.id,owner.id);
+  assert.equal((await request(owner,'/api/saas/finance','GET',undefined,orgB)).status,403,'owner privilege must not follow user into employee membership');
   const settings={business_type:'Test services',services:[],approval_mode:'everything'};
   assert.equal((await request(employee,'/api/saas/onboarding','PUT',settings)).status,403,'employees cannot change workspace approval policy');
   assert.equal((await request(owner,'/api/saas/onboarding','PUT',settings)).status,200,'owners retain settings access');

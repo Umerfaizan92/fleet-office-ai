@@ -38,3 +38,35 @@ Production must not be updated solely because this document exists.
 
 ## Release evidence
 Each item must be recorded as implemented, tested, blocked by credentials, or failed, with test command, result and commit SHA. Never mark 'complete' on code presence alone. No deployment without explicit go/no-go review.
+
+## Recovered requirements and implementation ledger — 18 October 2026
+
+Earlier conversation requirements were retrieved on 18 October. Assistant completion claims are not acceptance evidence. This ledger consolidates those requirements without creating another versioned application or dropping existing functionality.
+
+The user subsequently explicitly authorised deploying consolidated-improvements-2026 to the existing production URL. That supersedes the earlier production freeze; deployment has NOT happened. Render sign-in was blocked by automatic browser security review. Do not circumvent that block or claim deployment success.
+
+| Requirement group | Current evidence / next acceptance gate |
+|---|---|
+| Employee accounts and Team Directory | Worker records exist; complete expiring single-use invitations, identity linkage, employee login, revocation and role tests. Worker profiles alone are not accounts. |
+| Platform Owner administration | Separate privileged console, strong MFA and audited support access remain unverified; do not treat tenant owner as platform owner. |
+| Business switching | Membership-validated listing/selection exists server-side. Current changes add a visible selector, document-bound API context, full reload on switching and per-business/per-user AI memory. Runtime tests check role changes between memberships; browser acceptance still pending deployment. |
+| Workforce and allocation | Identity-bound offers and atomic capacity enforcement tested; complete employee-specific workflow and field evidence acceptance. |
+| Staff Chat and availability | Existing tenant chat/presence foundation; verify directory, designations, inactive staff, availability and return-time behavior with separate accounts. |
+| Unified inbox / Customer 360 | Must prove deduplicated email, website, phone, SMS, WhatsApp and authorised social ingestion and customer linkage. Provider-readiness indicators are insufficient. |
+| Imports, exports and sync | Implement preview, mapping, validation, deduplication, dry run, checkpoints and rollback for required CSV/XLSX entities and authorised cloud-drive sources. |
+| Cloud storage and backup | Bucket configuration is not proof. Verify private tenant prefixes, access, encryption, upload/download and backup/restore with actual configured provider access. |
+| Subscriptions, cancellations and payments | Existing plan/lifecycle UI is not payment reconciliation. Verify billing events, actual entitlements, recovery/export and legal retention rules; resolve contract-vs-current indefinite-preservation behavior before commercial release. |
+| Full job lifecycle | Verify enquiry → quote → approval → booking → allocation → evidence → invoice → payment → receipt/review, including retries and cancellation. |
+| Finance and profitability | Preserve expenses, revenue, stock/service costs and per-job profit. Verify finance permissions and calculations. |
+| Analytics and referrals | Preserve marketing/staff/customer reporting and referral lineage; distinguish real events from illustrative scores, and reward eligibility from actual approved rewards. |
+| AI workspace and multilingual voice | Preserve solo/team setup, workspace designer, product guide, Co-pilot and receptionist. Voice cancellation regressions pass; real multilingual speech/transcription and receptionist delivery still need evidence. |
+| Maker/Checker and quality gates | Preserve independent checking; prove configured checker behavior rather than equating static quality scores with complete implementation. |
+| Content Studio | Keep edit specifications; no fabricated media or render claims. Complete actual tenant media discovery/storage and licensed rendering pipeline. |
+| Connections | Preserve official OAuth, consent, refresh and revoke. Test actual configured ABR, email, Telnyx, Meta/WhatsApp, TikTok, Google/YouTube, Snapchat/X, payment and website integrations; report unavailable credentials without exposing secrets. |
+| Governance and support | Preserve approvals, Help Desk, protected complaints, audit, security and escalation. Test permissions and execution boundaries. |
+| SEO/GEO/AEO and PWA | Preserve canonical/OpenGraph metadata, structured data, sitemap/robots, Answer Center, indexing controls and private noindex/network-only behavior. Validate against the deployed version. |
+| UI and accessibility | Every page/button/form; desktop/mobile, light/dark, keyboard navigation and errors. Earlier live tests cover owner navigation only, not all roles or mobile layouts. |
+| Cleanup and migration | One canonical implementation; retain legitimate migrations and records. Never delete the repository. Old Render-service removal requires identifying exact obsolete services and respecting deletion confirmation. |
+| Live pilot | Fleet Parlour first; a separately isolated real-estate tenant afterwards. Do not copy Fleet Parlour data into that tenant. |
+
+No row is declared fully complete merely because code exists. Missing credentials, missing implementation and missing live evidence are separate blockers.

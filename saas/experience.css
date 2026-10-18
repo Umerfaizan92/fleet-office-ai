@@ -137,3 +137,5 @@ html[data-theme='light'] .staff-chat-panel textarea,html[data-theme='light'] .co
 html[data-theme="light"] :is(.industry-browser-shell,.industry-browser-card,.regulatory-disclosure,.reg-source-row,.guide-language,.staff-chat-launch,.sp-global-trust-footer){background:var(--panel);color:var(--text);border-color:var(--line)}
 html[data-theme="light"] :is(.industry-search-label input,.selected-industry-meta span,.selected-specialties span){background:var(--panel-2);color:var(--text-2);border-color:var(--line)}
 html[data-theme="light"] .regulatory-profile{background:var(--panel-2)!important;border-color:var(--line)!important}
+
+#business-switcher{display:block;max-width:240px;width:100%;margin-top:5px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:inherit}

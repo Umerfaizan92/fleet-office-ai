@@ -80,3 +80,9 @@ Restored the saved development branch after workspace pruning. Unpublished staff
 - Restored compact business setup with one visible section, keyboard navigation and automatic display of invalid fields. Replaced misleading autosave wording with explicit save guidance.
 - Verification: all 15 Node tests passed, including real-server permission checks; final validation, static quality checks, controlled integration tests and runtime smoke tests passed on Node 24.19. CI on the declared Node 22.22 runtime must also pass.
 - No new live deployment or browser acceptance is claimed. Previously reported deployment authentication review blockage remains unresolved. Actual provider delivery, mobile layouts, all-role acceptance and the other open requirements above remain unverified.
+
+## Deployment verification — 2026-10-18
+
+Commit ba58621 passed both GitHub workflows and a fresh local run of all 15 tests, final validation, controlled integration tests and server smoke tests. Cloud Browser opened all 13 owner navigation pages on the existing production version. This is navigation coverage, not form, role or external provider acceptance. The production interface still shows the older build.
+
+The historical checksum manifest failed against current development files. Regenerated it from tracked repository files (excluding the manifest itself) and enabled manifest verification on every consolidated development check. This records file integrity, not feature completeness. Deployment remains blocked by the previously rejected Render authentication action; no deployment or merge to production has been performed.

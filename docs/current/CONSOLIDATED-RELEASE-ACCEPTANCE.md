@@ -106,3 +106,9 @@ User requested simple task-focused pages, visible controls, minimal scrolling an
 Lists for workers, jobs, finance, staff accounts, connections, approvals, threads and saved render specifications paginate five records at a time and reset when results change. Restored a missing Appearance tab: the earlier compact setup hid its panel without providing navigation to it. Added responsive, theme-variable-based controls and shallow shadows. Content can still scroll when needed on small screens or at high zoom; forms are not clipped to force a viewport fit. The large business-profile form and provider-specific dialogs still need further simplification and visual acceptance.
 
 New regression tests cover preserving form nodes/values, revealing invalid fields, respecting role-hidden panels, pagination and resetting changed results. Full local suite: 17 tests. This is a development UI increment; browser acceptance on the deployed increment and real staff invitation delivery remain outstanding. No claim that all features are complete or visually verified.
+
+## Focused-layout corrections — 2026-10-18
+
+Fixed AI guide registration timing by waiting for its existing ready event before creating section navigation. Included the guide, task form and history as separate choices. Content Studio step controls now reveal the destination section before scrolling. Pagination reveals invalid fields and reacts to child visibility changes. Tests verify explicit section reveal and validation on later list pages.
+
+Split the large business setup into contact, address and workspace-design articles, retained form fields and save semantics, and paginated the industry catalogue. Setup navigation wraps into a visible grid rather than requiring horizontal scrolling. All 17 automated tests pass, alongside validation, quality, controlled integration and smoke checks. Desktop/mobile visual and live delivery acceptance remain pending deployment.

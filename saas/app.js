@@ -640,7 +640,7 @@ $('[aria-label="Notifications"]')?.addEventListener('click',()=>{showView('dashb
   document.querySelector('#media-library-search')?.addEventListener('input',draw);
   document.querySelector('#media-library-sort')?.addEventListener('change',draw);
   for(const id of ['organize-library','add-demo-assets'])document.querySelector('#'+id)?.addEventListener('click',()=>note('Media indexing and organisation require a connected tenant media store. No assets were imported or changed.'));
-  document.querySelectorAll('.studio-workflow button').forEach((b,i)=>b.onclick=()=>{document.querySelectorAll('.studio-workflow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const targets=['.source-library-panel','.source-library-panel','#video-form','#video-form','.trend-panel','#renders'];document.querySelector(targets[i])?.scrollIntoView({behavior:'smooth',block:'start'})});draw()})();
+  document.querySelectorAll('.studio-workflow button').forEach((b,i)=>b.onclick=()=>{document.querySelectorAll('.studio-workflow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const targets=['.source-library-panel','.source-library-panel','#video-form','#video-form','.trend-panel','#renders'];const target=document.querySelector(targets[i]);target?.dispatchEvent(new CustomEvent('superpro:reveal-section',{bubbles:true}));target?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})});draw()})();
 
 
 // v8 premium onboarding, guided tour and persistent AI co-pilot.

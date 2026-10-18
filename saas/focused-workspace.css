@@ -17,3 +17,8 @@
 #team-members,#team-invitations{max-height:none;overflow:visible}
 @media(max-width:600px){.focus-navigation label{flex-basis:100%}.focus-navigation button{flex:1}.focus-navigation{gap:8px}.focus-section{padding:16px}.focus-pagination{gap:8px}}
 @media(prefers-reduced-motion:reduce){.focus-section{transition:none!important}}
+/* Setup navigation remains visible without horizontal scrolling. */
+#onboarding-form.settings-layout{grid-template-columns:minmax(0,1fr)}
+#onboarding-form .settings-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:static;overflow:visible;margin-right:0;gap:8px}
+#onboarding-form .settings-nav button{white-space:normal;min-height:44px}
+@media(max-width:600px){#onboarding-form .settings-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}

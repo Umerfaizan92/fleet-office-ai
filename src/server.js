@@ -1,3 +1,4 @@
+import {installTeamAccounts} from './team-accounts.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -2477,7 +2478,8 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
   const now=new Date();if(user.locked_until&&new Date(user.locked_until)>now)return res.status(423).json({ok:false,error:'This account is temporarily locked after repeated failed sign-in attempts. Try again later.'});
   const supplied=passwordHash(parsed.data.password,user.password_salt),stored=user.password_hash,passwordOk=supplied.length===stored.length&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(stored));
   if(!passwordOk){const nextFailures=Number(user.failed_login_attempts||0)+1,lockedUntil=nextFailures>=5?new Date(now.getTime()+15*60*1000).toISOString():null;db.prepare(`UPDATE users SET failed_login_attempts=?,locked_until=?,updated_at=? WHERE id=?`).run(nextFailures,lockedUntil,now.toISOString(),user.id);return res.status(401).json({ok:false,error:'Invalid sign-in details.'});}
-  if(!user.email_verified||!user.phone_verified)return res.status(403).json({ok:false,error:'This account has not completed email and mobile verification.'});
+  const invitedStaff=db.prepare(`SELECT 1 FROM team_account_invites i JOIN memberships m ON m.user_id=i.accepted_by AND m.organisation_id=i.organisation_id WHERE i.accepted_by=? AND i.status='accepted' AND m.role!='owner' AND NOT EXISTS (SELECT 1 FROM memberships own WHERE own.user_id=i.accepted_by AND own.role='owner') LIMIT 1`).get(user.id);
+  if(!user.email_verified||(!user.phone_verified&&!invitedStaff))return res.status(403).json({ok:false,error:'This account has not completed the required contact verification.'});
   if(user.mfa_enabled&&!parsed.data.mfa_code)return res.status(401).json({ok:false,error:'MFA code required.',mfa_required:true});if(user.mfa_enabled&&!validTotp(user.mfa_secret,parsed.data.mfa_code))return res.status(401).json({ok:false,error:'Invalid MFA code.'});
   db.prepare(`UPDATE users SET failed_login_attempts=0,locked_until=NULL,last_login_at=?,updated_at=? WHERE id=?`).run(now.toISOString(),now.toISOString(),user.id);setSession(res,user.id,req);res.json({ok:true});
 });
@@ -3300,6 +3302,7 @@ app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','ad
 
 
 const workforceSeniorRoles=['owner','admin','manager','super_admin','director'];
+installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification:data=>sendSaasVerificationEmail(env,data)});
 
 function requireWorkerReadAccess(req,res,next){
   const worker=db.prepare('SELECT user_id FROM workers WHERE id=? AND organisation_id=?').get(req.params.id,req.saas.organisation_id);

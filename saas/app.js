@@ -2,9 +2,9 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
-let viewSequence = ['dashboard','onboarding','workforce','jobs','finance','assistant','approvals','video','integrations','governance','support','manual','billing'];
+let viewSequence = ['dashboard','onboarding','workforce','team','jobs','finance','assistant','approvals','video','integrations','governance','support','manual','billing'];
 const pageMeta = {
-  dashboard:['START HERE','Command centre'], onboarding:['SETUP','Business setup'], workforce:['PEOPLE','People & workforce'], jobs:['OPERATIONS','Jobs & allocation'], finance:['FINANCE','Expenses & profit'], assistant:['INTELLIGENCE','AI Operations'], approvals:['CONTROL','Approvals'], video:['CONTENT','Content studio'], integrations:['SYSTEM','Connections'], governance:['TRUST','Trust & governance'], support:['HELP','Help & complaints'], manual:['GUIDE','Digital user manual'], billing:['ACCOUNT','Plans & billing']
+  dashboard:['START HERE','Command centre'], onboarding:['SETUP','Business setup'], workforce:['PEOPLE','People & workforce'], team:['TEAM DIRECTORY','Staff accounts'], jobs:['OPERATIONS','Jobs & allocation'], finance:['FINANCE','Expenses & profit'], assistant:['INTELLIGENCE','AI Operations'], approvals:['CONTROL','Approvals'], video:['CONTENT','Content studio'], integrations:['SYSTEM','Connections'], governance:['TRUST','Trust & governance'], support:['HELP','Help & complaints'], manual:['GUIDE','Digital user manual'], billing:['ACCOUNT','Plans & billing']
 };
 let currentView = 'dashboard';
 let noteTimer;
@@ -68,6 +68,9 @@ window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',
   if(localStorage.getItem('foai-theme')==='system')setTheme('system',{persist:false});
 });
 function closeSidebar(){$('#sidebar')?.classList.remove('open');$('#sidebar-scrim')?.classList.remove('show')} $('#open-sidebar')?.addEventListener('click',()=>{$('#sidebar').classList.add('open');$('#sidebar-scrim').classList.add('show')});$('#close-sidebar')?.addEventListener('click',closeSidebar);$('#sidebar-scrim')?.addEventListener('click',closeSidebar);
+const teamNav=document.createElement('button');teamNav.type='button';teamNav.dataset.view='team';teamNav.innerHTML='<span class="nav-step"></span><span>Staff accounts</span>';
+document.querySelector('.workspace-nav [data-view="workforce"]')?.after(teamNav);
+$$('.workspace-nav [data-view]').forEach((button,index)=>{const step=button.querySelector('.nav-step');if(step)step.textContent=String(index+1).padStart(2,'0')});
 function updateFlowNav(){const index=Math.max(0,viewSequence.indexOf(currentView)),prev=$('#flow-prev'),next=$('#flow-next'),pos=$('#flow-position');if(pos)pos.textContent=`Step ${index+1} of ${viewSequence.length}`;if(prev)prev.disabled=index===0;if(next){next.disabled=index===viewSequence.length-1;next.textContent=index===viewSequence.length-1?'Complete':'Next →'}}
 function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$$('.view').forEach(v=>v.hidden=v.id!==`${name}-view`);const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
 $$('.workspace-nav [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));document.addEventListener('click',e=>{const target=e.target.closest('[data-jump]');if(target){e.preventDefault();showView(target.dataset.jump)}});$$('[data-scroll]').forEach(b=>b.onclick=()=>$(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));$('#flow-prev')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i>0)showView(viewSequence[i-1])});$('#flow-next')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i<viewSequence.length-1)showView(viewSequence[i+1])});
@@ -89,6 +92,7 @@ async function boot(){
   window.dispatchEvent(new CustomEvent('superpro:workspace-ready'));
   loadBusinessSwitcher().catch(err=>note(err.message,true));
   document.documentElement.dataset.userRole=String(d.user.role||'user').toLowerCase();
+  if(d.user.role!=='owner'){viewSequence=viewSequence.filter(v=>v!=='team');document.querySelector('[data-view="team"]')?.remove()}
   const seniorFinanceRoles=['owner','admin','manager','super_admin','director'];
   if(!seniorFinanceRoles.includes(String(d.user.role||'').toLowerCase())){viewSequence=viewSequence.filter(v=>v!=='finance');document.querySelector('[data-view="finance"]')?.remove()}
   $('#org-name-side').textContent=d.organisation.name;const workspaceAvatar=$('#org-avatar-side');if(workspaceAvatar)workspaceAvatar.textContent=initials(d.organisation.name);$('#user-line').textContent=d.user.full_name+' · '+d.user.role+' · '+d.user.email;$('#mfa-status-side').textContent=d.user.mfa_enabled?'Authenticator MFA enabled':'MFA setup recommended';$('#profile-name').textContent=d.user.full_name;$('#profile-role').textContent=d.user.role;$('#profile-avatar').textContent=initials(d.user.full_name);$('#first-name').textContent=d.user.full_name.split(/\s+/)[0]||'there';

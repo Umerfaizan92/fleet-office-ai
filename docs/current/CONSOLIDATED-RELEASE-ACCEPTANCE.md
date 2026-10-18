@@ -86,3 +86,15 @@ Restored the saved development branch after workspace pruning. Unpublished staff
 Commit ba58621 passed both GitHub workflows and a fresh local run of all 15 tests, final validation, controlled integration tests and server smoke tests. Cloud Browser opened all 13 owner navigation pages on the existing production version. This is navigation coverage, not form, role or external provider acceptance. The production interface still shows the older build.
 
 The historical checksum manifest failed against current development files. Regenerated it from tracked repository files (excluding the manifest itself) and enabled manifest verification on every consolidated development check. This records file integrity, not feature completeness. Deployment remains blocked by the previously rejected Render authentication action; no deployment or merge to production has been performed.
+
+## Staff-account implementation and tests — 2026-10-18
+
+Rebuilt the unpublished staff-account implementation as a dedicated owner-only Staff accounts page and compact invitation dialog. Owners create 48-hour, hashed, single-use invitations for admin, manager, employee or contractor roles. Owner and Platform Owner roles cannot be assigned through this route. The invitation is a private shareable link; the UI explicitly states that no invitation email was sent.
+
+New accounts and existing accounts without verified email must verify the invited mailbox. Existing users must authenticate with their current password and MFA when enabled; invitations cannot replace their password. Verification delivery fails honestly if the provider is unavailable. New staff passwords require 14 characters. Owner-invited non-owner accounts may sign in with verified email; owner mobile verification requirements are preserved. No phone-verification or compliance/scheduling approval is fabricated.
+
+Revocation removes only the selected business membership, disables worker scheduling and invalidates pending invitations for that worker. Existing sessions cannot regain access to the revoked business. Other business memberships and historical worker records remain intact.
+
+Automated real-server assertions cover owner-only access, cross-tenant rejection, disallowed roles, hashed tokens, required/wrong email codes, acceptance, replay, expiry, existing password and MFA protection, actual staff login, immediate session access revocation and preservation of other business memberships. Codes are seeded in an isolated test database; these tests do not prove real email delivery. All 15 test cases pass with the expanded assertions. Validation, quality, controlled integration and smoke checks also pass.
+
+This increment is development-only until deployed. The new UI, actual mailbox delivery and full employee acceptance require live testing. Earlier production checks confirmed all 13 owner pages and four compact setup tabs for commit 0a3630e; they do not cover this increment. Other requirement groups remain open.

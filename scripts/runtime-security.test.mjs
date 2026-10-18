@@ -73,6 +73,21 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   assert.equal(db.prepare("SELECT count(*) n FROM job_offers WHERE work_order_id=? AND status='accepted'").get(job).n,1);
   const accepted=db.prepare("SELECT id FROM job_offers WHERE work_order_id=? AND status='accepted'").get(job);
   assert.equal((await respond(owner,accepted.id)).status,409,'replay cannot allocate twice');
+  const employeeWorker=db.prepare('SELECT worker_id FROM job_offers WHERE id=?').get(own).worker_id;
+  const otherWorker=db.prepare('SELECT worker_id FROM job_offers WHERE id=?').get(sameEmail).worker_id;
+  const directory=await (await request(employee,'/api/saas/workers')).json();
+  assert.deepEqual(directory.workers.map(w=>w.id),[employeeWorker],'worker identity, not shared email, controls access');
+  assert.equal((await (await request(owner,'/api/saas/workers')).json()).workers.length,3);
+  for(const resource of ['compliance','skills','documents']){
+   assert.equal((await request(employee,`/api/saas/workers/${employeeWorker}/${resource}`)).status,200);
+   assert.equal((await request(employee,`/api/saas/workers/${otherWorker}/${resource}`)).status,404);
+   assert.equal((await request(owner,`/api/saas/workers/${otherWorker}/${resource}`)).status,200);
+   assert.equal((await request(outsider,`/api/saas/workers/${employeeWorker}/${resource}`)).status,404);
+  }
+  const privateJob=crypto.randomUUID();
+  db.prepare('INSERT INTO work_orders (id,organisation_id,title,start_at,required_workers,created_at,updated_at) VALUES (?,?,?,?,1,?,?)').run(privateJob,orgA,'Unassigned private job',now,now,now);
+  assert.deepEqual((await (await request(employee,'/api/saas/work-orders')).json()).jobs.map(j=>j.id),[job]);
+  assert.equal((await (await request(owner,'/api/saas/work-orders')).json()).jobs.length,2);
  }finally{
   child.kill();await new Promise(resolve=>child.once('exit',resolve));db.close();rmSync(root,{recursive:true,force:true});
  }

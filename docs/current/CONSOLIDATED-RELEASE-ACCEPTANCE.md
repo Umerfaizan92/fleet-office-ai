@@ -70,3 +70,13 @@ The user subsequently explicitly authorised deploying consolidated-improvements-
 | Live pilot | Fleet Parlour first; a separately isolated real-estate tenant afterwards. Do not copy Fleet Parlour data into that tenant. |
 
 No row is declared fully complete merely because code exists. Missing credentials, missing implementation and missing live evidence are separate blockers.
+
+## 2026-10-18 recovery checkpoint
+
+Restored the saved development branch after workspace pruning. Unpublished staff-account invitation work was not recoverable from the older saved archives and remains outstanding.
+
+- Restricted worker lists, compliance, documents and skills to the authenticated employee's immutable worker identity; management roles retain tenant-scoped access. Matching email addresses do not grant access.
+- Restricted employee work-order lists to jobs offered to their linked worker identity.
+- Restored compact business setup with one visible section, keyboard navigation and automatic display of invalid fields. Replaced misleading autosave wording with explicit save guidance.
+- Verification: all 15 Node tests passed, including real-server permission checks; final validation, static quality checks, controlled integration tests and runtime smoke tests passed on Node 24.19. CI on the declared Node 22.22 runtime must also pass.
+- No new live deployment or browser acceptance is claimed. Previously reported deployment authentication review blockage remains unresolved. Actual provider delivery, mobile layouts, all-role acceptance and the other open requirements above remain unverified.

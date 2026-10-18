@@ -25,3 +25,19 @@ test('workspace memory never loads another business, user or legacy unscoped his
  context.window.GDS_SESSION.organisation.id='b';assert.equal(context.loadMemory('workspace').length,0);
  context.window.GDS_SESSION.organisation.id='a';context.window.GDS_SESSION.user.id='u2';assert.equal(context.loadMemory('workspace').length,0);
 });
+
+test('compact setup exposes one panel and reveals invalid fields with keyboard navigation',()=>{
+ const source=readFileSync(new URL('../saas/workspace-extras.js',import.meta.url),'utf8');
+ const code=source.slice(source.indexOf('  function setupSettingsNav('),source.indexOf('  function setupContextHelp('));
+ const element=()=>({attrs:{},handlers:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v},getAttribute(k){return this.attrs[k]},addEventListener(k,fn){this.handlers[k]=fn},focus(){this.focused=true}});
+ const panels=Array.from({length:4},(_,i)=>({...element(),id:`panel-${i}`}));
+ const buttons=panels.map((_,i)=>({...element(),dataset:{settingsTarget:`field-${i}`}}));
+ const nav=element(),form=element();
+ const context={$:s=>s==='.settings-nav'?nav:s==='#onboarding-form'?form:{closest:()=>panels[Number(s.at(-1))]},$$:s=>s.includes('data-settings-target')?buttons:panels};
+ vm.runInNewContext(code+';setupSettingsNav();',context);
+ assert.deepEqual(panels.map(p=>p.hidden),[false,true,true,true]);
+ buttons[0].handlers.keydown({key:'ArrowRight',preventDefault(){}});
+ assert.deepEqual(panels.map(p=>p.hidden),[true,false,true,true]);assert.equal(buttons[1].focused,true);
+ form.handlers.invalid({target:{closest:()=>panels[3]}});
+ assert.deepEqual(panels.map(p=>p.hidden),[true,true,true,false]);
+});

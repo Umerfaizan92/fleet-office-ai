@@ -10,12 +10,36 @@
   }
 
   function setupSettingsNav(){
-    $$('.settings-nav [data-settings-target]').forEach(btn=>btn.addEventListener('click',()=>{
-      const target=$(`#${btn.dataset.settingsTarget}`);if(!target)return;
-      $$('.settings-nav [data-settings-target]').forEach(x=>x.classList.toggle('active',x===btn));
-      target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
-      target.classList.add('section-focus');setTimeout(()=>target.classList.remove('section-focus'),1400);
-    }));
+    const buttons=Array.from($$('.settings-nav [data-settings-target]'));
+    const panels=Array.from($$('#onboarding-form .settings-content > article'));
+    if(!buttons.length||!panels.length)return;
+    const nav=$('.settings-nav');nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Business setup sections');
+    function select(button){
+      const panel=$(`#${button.dataset.settingsTarget}`)?.closest('article');if(!panel)return;
+      panels.forEach(item=>{item.hidden=item!==panel});
+      buttons.forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-selected',String(item===button));item.tabIndex=item===button?0:-1});
+    }
+    buttons.forEach((button,index)=>{
+      const panel=$(`#${button.dataset.settingsTarget}`)?.closest('article');if(!panel)return;
+      button.id=`setup-tab-${index}`;button.setAttribute('role','tab');button.setAttribute('aria-controls',panel.id);
+      panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',button.id);
+      button.addEventListener('click',()=>select(button));
+      button.addEventListener('keydown',event=>{
+        let next=index;
+        if(['ArrowRight','ArrowDown'].includes(event.key))next=(index+1)%buttons.length;
+        else if(['ArrowLeft','ArrowUp'].includes(event.key))next=(index+buttons.length-1)%buttons.length;
+        else if(event.key==='Home')next=0;
+        else if(event.key==='End')next=buttons.length-1;
+        else return;
+        event.preventDefault();select(buttons[next]);buttons[next].focus();
+      });
+    });
+    $('#onboarding-form')?.addEventListener('invalid',event=>{
+      const panel=event.target.closest('article');
+      const button=buttons.find(item=>item.getAttribute('aria-controls')===panel?.id);
+      if(button)select(button);
+    },true);
+    select(buttons[0]);
   }
 
   function setupContextHelp(){

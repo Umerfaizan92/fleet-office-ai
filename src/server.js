@@ -3301,6 +3301,13 @@ app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','ad
 
 const workforceSeniorRoles=['owner','admin','manager','super_admin','director'];
 
+function requireWorkerReadAccess(req,res,next){
+  const worker=db.prepare('SELECT user_id FROM workers WHERE id=? AND organisation_id=?').get(req.params.id,req.saas.organisation_id);
+  if(!worker || (!workforceSeniorRoles.includes(req.saas.role) && worker.user_id!==req.saas.user_id))return res.status(404).json({ok:false,error:'Worker not found'});
+  next();
+}
+
+
 function workforceProfile(orgId){
   const p=db.prepare(`SELECT industry_code,services,custom_sections_json FROM onboarding_profiles WHERE organisation_id=?`).get(orgId)||{};
   return {
@@ -3406,7 +3413,8 @@ function addWorkerOnboardingEvent(invite,eventType,detail={}){
 }
 
 app.get('/api/saas/workers',requireSaasUser,(req,res)=>{
-  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(req.saas.organisation_id);
+  const senior=workforceSeniorRoles.includes(req.saas.role);
+  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ${senior?'':'AND user_id=?'} ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(...(senior?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id]));
   res.json({ok:true,workers:rows.map(x=>workerPublicRow(req.saas.organisation_id,x))});
 });
 
@@ -3436,7 +3444,7 @@ app.post('/api/saas/workers',requireSaasUser,requireSaasRole(...workforceSeniorR
   res.status(201).json({ok:true,id,approved_for_scheduling:state.eligible,compliance:state});
 });
 
-app.get('/api/saas/workers/:id/compliance',requireSaasUser,(req,res)=>{
+app.get('/api/saas/workers/:id/compliance',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
   const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   if(!db.prepare(`SELECT 1 FROM worker_compliance_requirements WHERE worker_id=? LIMIT 1`).get(worker.id))seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
@@ -3489,13 +3497,13 @@ app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workf
   res.json({ok:true});
 });
 
-app.get('/api/saas/workers/:id/skills',requireSaasUser,(req,res)=>{
+app.get('/api/saas/workers/:id/skills',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
   const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,skills:db.prepare(`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(worker.id)});
 });
 
-app.get('/api/saas/workers/:id/documents',requireSaasUser,(req,res)=>{
+app.get('/api/saas/workers/:id/documents',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
   const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,documents:db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(worker.id)});
@@ -3552,7 +3560,9 @@ app.get('/api/saas/work-orders/skill-suggestions',requireSaasUser,(req,res)=>{
 
 const workOrderManagerRoles=['owner','admin','manager','super_admin','director'];
 app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
-  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE organisation_id=? ORDER BY start_at`).all(req.saas.organisation_id).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
+  const senior=workOrderManagerRoles.includes(req.saas.role);
+  const ownOffers=senior?'':`AND EXISTS (SELECT 1 FROM job_offers offered JOIN workers worker ON worker.id=offered.worker_id AND worker.organisation_id=w.organisation_id WHERE offered.work_order_id=w.id AND offered.organisation_id=w.organisation_id AND worker.user_id=?)`;
+  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE w.organisation_id=? ${ownOffers} ORDER BY start_at`).all(...(senior?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id])).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
   res.json({ok:true,jobs});
 });
 

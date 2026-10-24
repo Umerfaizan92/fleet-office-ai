@@ -3445,7 +3445,10 @@ app.get('/api/saas/work-orders/skill-suggestions',requireSaasUser,(req,res)=>{
 });
 
 app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
-  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE organisation_id=? ORDER BY start_at`).all(req.saas.organisation_id).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
+  // Workers only see orders explicitly offered to their linked worker account.
+  const privileged=['owner','admin','manager','super_admin'].includes(String(req.saas.role||'').toLowerCase());
+  const accessFilter=privileged?'':`AND EXISTS (SELECT 1 FROM job_offers o JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=w.organisation_id WHERE o.work_order_id=w.id AND o.organisation_id=w.organisation_id AND worker.user_id=?)`;
+  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.organisation_id=w.organisation_id AND o.status='accepted') accepted_workers FROM work_orders w WHERE w.organisation_id=? ${accessFilter} ORDER BY w.start_at`).all(...(privileged?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id])).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
   res.json({ok:true,jobs});
 });
 
@@ -3614,7 +3617,29 @@ app.post('/api/saas/finance',requireSaasUser,requireSaasRole(...financeRoles),(r
   saasAudit(req,'finance.entry_created','finance_entry',id,{entry_type:parsed.data.entry_type,category:parsed.data.category,amount_cents:amountCents,work_order_id:parsed.data.work_order_id||null});
   res.status(201).json({ok:true,id});
 });
-app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});const offer=db.prepare(`SELECT o.*,w.required_workers FROM job_offers o JOIN work_orders w ON w.id=o.work_order_id WHERE o.id=? AND o.organisation_id=?`).get(req.params.id,req.saas.organisation_id);if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});const now=new Date().toISOString();db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=?`).run(parsed.data.status,now,offer.id);const accepted=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND status='accepted'`).get(offer.work_order_id).count;if(accepted>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=?`).run(now,offer.work_order_id);saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});res.json({ok:true,accepted_workers:accepted})});
+app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{
+  const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});
+  // A worker may respond only to their own offer in their authenticated workspace.
+  // Legacy unlinked worker records cannot self-accept until their account is linked.
+  const offer=db.prepare(`SELECT o.*,wo.required_workers FROM job_offers o
+    JOIN work_orders wo ON wo.id=o.work_order_id AND wo.organisation_id=o.organisation_id
+    JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=o.organisation_id
+    WHERE o.id=? AND o.organisation_id=? AND worker.user_id=? AND worker.status='active'`).get(req.params.id,req.saas.organisation_id,req.saas.user_id);
+  if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});
+  if(offer.status!=='offered')return res.status(409).json({ok:false,error:'Offer has already been answered.'});
+  const now=new Date().toISOString();
+  const accepted=db.transaction(()=>{
+    const changed=db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id).changes;
+    if(changed!==1)return null;
+    const count=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
+    if(count>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=? AND organisation_id=?`).run(now,offer.work_order_id,req.saas.organisation_id);
+    return count;
+  })();
+  if(accepted===null)return res.status(409).json({ok:false,error:'Offer has already been answered.'});
+  saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});
+  res.json({ok:true,accepted_workers:accepted});
+});
 
 app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? ORDER BY t.updated_at DESC`).all(req.saas.organisation_id)}));
 app.get('/api/saas/ai/status',requireSaasUser,(req,res)=>{const status=aiProviderStatus(),free=freeAiModeEnabled(),geminiReady=Boolean(geminiApiKey()),openAiReady=Boolean(openAiSpeechConfig()),speechReady=free?geminiReady:(geminiReady||openAiReady);res.json({ok:true,ai:{configured:status.configured,provider:status.provider,model:status.model,free_mode:free},voice:{server_tts:speechReady,server_stt:speechReady,provider:free?(geminiReady?'gemini-free':null):(openAiReady?'openai':geminiReady?'gemini':null),browser_fallback:true},message:status.configured?'AI provider is operationally configured.':free?'Free AI mode is active. Add GEMINI_API_KEY for server AI; built-in product guidance and browser voice fallbacks remain available.':'AI provider credentials are not configured on this deployment.'})});

@@ -32,6 +32,9 @@ jobs:
       - name: Work order and finance permission contract
         run: node --test scripts/workorder-rbac-contract.test.mjs
 
+      - name: Runtime work order authorisation across seven roles
+        run: node scripts/workorder-runtime-auth.test.mjs
+
       - name: Final validation
         run: npm run validate:final
 

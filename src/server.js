@@ -2078,12 +2078,23 @@ function syncSubscriptionLifecycle(organisationId){
 }
 function requireSaasUser(req,res,next){
   const raw=cookieValue(req,sessionCookieName);if(!raw)return res.status(401).json({ok:false,error:'Sign in required'});
-  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString());
-  if(!row)return res.status(401).json({ok:false,error:'Session expired'});const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);req.saas=row;
+  // A switchable workspace is selected only through an authenticated membership.
+  // Never trust X-Organisation-Id as an authorisation credential on its own.
+  const requestedOrg=String(req.get('X-Organisation-Id')||'').trim();
+  if(requestedOrg&&!/^[a-f0-9-]{36}$/i.test(requestedOrg))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
+  const now=new Date().toISOString(),hash=sha256(raw);
+  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND (?='' OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(hash,now,requestedOrg,requestedOrg);
+  if(!row){
+    if(requestedOrg&&db.prepare(`SELECT 1 FROM user_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active'`).get(hash,now))
+      return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
+    return res.status(401).json({ok:false,error:'Session expired'});
+  }
+  const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);
+  db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);
+  res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);
+  req.saas=row;
   const state=syncSubscriptionLifecycle(row.organisation_id);req.subscription=state.subscription;req.subscription_lifecycle=state.lifecycle;
-  // Account identity and saved workspace data must never become inaccessible merely
-  // because a trial or billing state changes. Commercial plan enforcement belongs
-  // at feature/usage entitlement level, not by disabling sign-in or tenant data access.
+  // Account identity and saved workspace data must remain available after billing changes.
   next();
 }
 const base32Alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -2576,6 +2587,57 @@ app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.objec
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
+// System branding is public; tenant branding is visible only to a signed-in member.
+const defaultSaasBranding=Object.freeze({
+  display_name:'Super Pro AI Office Manager',
+  brand_name:'Super Pro AI Office Manager',
+  logo_url:'/saas/superpro-icon-192.png',
+  primary_color:'#f59e0b',
+  secondary_color:'#1e293b',
+  brand_voice:'professional',
+  theme:'system'
+});
+app.get('/api/saas/branding',(req,res)=>{
+  const session=optionalSaasSession(req);
+  // An unauthenticated request always sees system branding, irrespective of
+  // supplied headers/query parameters. Never make organisation IDs a public lookup.
+  if(!session)return res.json({ok:true,branding:{...defaultSaasBranding}});
+  const selected=String(req.get('X-Organisation-Id')||req.query.organisation_id||session.organisation_id).trim();
+  if(!/^[a-f0-9-]{36}$/i.test(selected))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
+  const member=db.prepare(`SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?`).get(selected,session.user_id);
+  if(!member)return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
+  const brand=db.prepare(`SELECT o.name,o.display_name,o.brand_logo_url,o.brand_theme,p.brand_voice
+    FROM organisations o LEFT JOIN onboarding_profiles p ON p.organisation_id=o.id
+    WHERE o.id=?`).get(selected);
+  if(!brand)return res.status(404).json({ok:false,error:'Organisation not found.'});
+  const displayName=String(brand.display_name||'').trim()||brand.name||defaultSaasBranding.display_name;
+  res.json({ok:true,branding:{
+    ...defaultSaasBranding,
+    display_name:displayName,
+    brand_name:displayName,
+    logo_url:brand.brand_logo_url||defaultSaasBranding.logo_url,
+    theme:['system','light','dark'].includes(brand.brand_theme)?brand.brand_theme:'system',
+    brand_voice:brand.brand_voice||defaultSaasBranding.brand_voice
+  }});
+});
+
+// The authenticated user may list only organisations with an active membership.
+// Include both id (API compatibility) and organisation_id (workspace switcher).
+app.get('/api/saas/my-organisations',requireSaasUser,(req,res)=>{
+  const organisations=db.prepare(`SELECT o.id, o.id organisation_id, o.name, o.slug, m.role
+    FROM memberships m JOIN organisations o ON o.id=m.organisation_id
+    WHERE m.user_id=?
+    ORDER BY o.name ASC`).all(req.saas.user_id);
+  res.json({ok:true,
+    organisations:organisations.length?organisations:[{
+      id:req.saas.organisation_id,organisation_id:req.saas.organisation_id,
+      name:req.saas.organisation_name||'Primary Workspace',
+      slug:req.saas.slug||'',role:req.saas.role
+    }],
+    active_organisation_id:req.saas.organisation_id
+  });
+});
+
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
 app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
 app.get('/api/saas/billing/providers',requireSaasUser,(req,res)=>res.json({ok:true,providers:[{id:'stripe',name:'Stripe',ready:Boolean(env.STRIPE_SECRET_KEY)},{id:'paypal',name:'PayPal',ready:Boolean(env.PAYPAL_CLIENT_ID&&env.PAYPAL_CLIENT_SECRET)},{id:'bank',name:'Direct bank',ready:Boolean(env.PAYMENT_BANK_INSTRUCTIONS)}],customer_secret_entry:false}));

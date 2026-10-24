@@ -2597,6 +2597,21 @@ const defaultSaasBranding=Object.freeze({
   brand_voice:'professional',
   theme:'system'
 });
+
+function saasBrandingForOrganisation(organisationId){
+  const brand=db.prepare('SELECT o.name,o.display_name,o.brand_logo_url,o.brand_theme,o.brand_primary_color,o.brand_secondary_color,p.brand_voice FROM organisations o LEFT JOIN onboarding_profiles p ON p.organisation_id=o.id WHERE o.id=?').get(organisationId);
+  if(!brand)return null;
+  const displayName=String(brand.display_name||'').trim()||brand.name||defaultSaasBranding.display_name;
+  return {
+    ...defaultSaasBranding,display_name:displayName,brand_name:displayName,
+    logo_url:brand.brand_logo_url||defaultSaasBranding.logo_url,
+    theme:['system','light','dark'].includes(brand.brand_theme)?brand.brand_theme:'system',
+    primary_color:brand.brand_primary_color||defaultSaasBranding.primary_color,
+    secondary_color:brand.brand_secondary_color||defaultSaasBranding.secondary_color,
+    brand_voice:brand.brand_voice||defaultSaasBranding.brand_voice
+  };
+}
+
 app.get('/api/saas/branding',(req,res)=>{
   const session=optionalSaasSession(req);
   // An unauthenticated request always sees system branding, irrespective of
@@ -2606,19 +2621,192 @@ app.get('/api/saas/branding',(req,res)=>{
   if(!/^[a-f0-9-]{36}$/i.test(selected))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
   const member=db.prepare(`SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?`).get(selected,session.user_id);
   if(!member)return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
-  const brand=db.prepare(`SELECT o.name,o.display_name,o.brand_logo_url,o.brand_theme,p.brand_voice
-    FROM organisations o LEFT JOIN onboarding_profiles p ON p.organisation_id=o.id
-    WHERE o.id=?`).get(selected);
-  if(!brand)return res.status(404).json({ok:false,error:'Organisation not found.'});
-  const displayName=String(brand.display_name||'').trim()||brand.name||defaultSaasBranding.display_name;
-  res.json({ok:true,branding:{
-    ...defaultSaasBranding,
-    display_name:displayName,
-    brand_name:displayName,
-    logo_url:brand.brand_logo_url||defaultSaasBranding.logo_url,
-    theme:['system','light','dark'].includes(brand.brand_theme)?brand.brand_theme:'system',
-    brand_voice:brand.brand_voice||defaultSaasBranding.brand_voice
-  }});
+  const branding=saasBrandingForOrganisation(selected);
+  if(!branding)return res.status(404).json({ok:false,error:'Organisation not found.'});
+  res.json({ok:true,branding});
+});
+
+
+/*
+ * Tenant branding changes live beside the matching GET route. The database
+ * uses organisations.display_name/brand_logo_url/brand_theme/brand_*_color
+ * and onboarding_profiles.brand_voice (NOT onboarding_profiles.brand_name).
+ */
+const brandingUpdateSchema=z.object({
+  brand_name:z.string().trim().max(160).optional(),
+  display_name:z.string().trim().max(160).optional(), // existing app.js name
+  theme:z.enum(['system','light','dark']).optional(),
+  primary_color:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  secondary_color:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  brand_voice:z.string().trim().max(160).optional(),
+  logo_url:z.string().trim().max(1024).optional() // existing app.js field
+}).refine(value=>Object.values(value).some(v=>v!==undefined),{message:'No branding changes supplied.'});
+
+function allowedBrandLogoUrl(value,organisationId){
+  if(!value||value===defaultSaasBranding.logo_url)return true;
+  // Managed URLs must refer to a logo belonging to this workspace.
+  if(value.startsWith('/api/saas/branding/logo/')){
+    const prefix='/api/saas/branding/logo/'+organisationId+'/';
+    return value.startsWith(prefix)&&/^[-a-f0-9]{36}\.(?:png|jpg|webp|svg)$/i.test(value.slice(prefix.length));
+  }
+  try{
+    const url=new URL(value);
+    return url.protocol==='https:'&&!url.username&&!url.password&&url.hostname.length>0;
+  }catch{return false}
+}
+
+app.put('/api/saas/branding',requireSaasUser,requireSaasRole('owner','admin','super_admin'),(req,res)=>{
+  const parsed=brandingUpdateSchema.safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the branding details.',details:parsed.error.flatten()});
+  const data=parsed.data,organisationId=req.saas.organisation_id;
+  if(data.brand_name!==undefined&&data.display_name!==undefined&&data.brand_name!==data.display_name)
+    return res.status(400).json({ok:false,error:'Brand name and display name must match.'});
+  if(data.logo_url!==undefined&&!allowedBrandLogoUrl(data.logo_url,organisationId))
+    return res.status(400).json({ok:false,error:'Logo URL must be HTTPS or a logo belonging to this workspace.'});
+  const previous=db.prepare('SELECT display_name,brand_logo_url,brand_theme,brand_primary_color,brand_secondary_color FROM organisations WHERE id=?').get(organisationId);
+  if(!previous)return res.status(404).json({ok:false,error:'Organisation not found.'});
+  const brandName=data.display_name??data.brand_name;
+  const next={
+    display_name:brandName===undefined?previous.display_name:(brandName||null),
+    brand_logo_url:data.logo_url===undefined?previous.brand_logo_url:(data.logo_url&&data.logo_url!==defaultSaasBranding.logo_url?data.logo_url:null),
+    brand_theme:data.theme??previous.brand_theme,
+    brand_primary_color:data.primary_color===undefined?previous.brand_primary_color:data.primary_color.toLowerCase(),
+    brand_secondary_color:data.secondary_color===undefined?previous.brand_secondary_color:data.secondary_color.toLowerCase()
+  };
+  const now=new Date().toISOString();
+  db.transaction(()=>{
+    db.prepare('UPDATE organisations SET display_name=?,brand_logo_url=?,brand_theme=?,brand_primary_color=?,brand_secondary_color=?,updated_at=? WHERE id=?')
+      .run(next.display_name,next.brand_logo_url,next.brand_theme,next.brand_primary_color,next.brand_secondary_color,now,organisationId);
+    if(data.brand_voice!==undefined){
+      db.prepare('INSERT INTO onboarding_profiles (organisation_id,brand_voice,updated_at) VALUES (?,?,?) ON CONFLICT(organisation_id) DO UPDATE SET brand_voice=excluded.brand_voice,updated_at=excluded.updated_at')
+        .run(organisationId,data.brand_voice||null,now);
+    }
+    saasAudit(req,'branding.updated','organisation',organisationId,{fields:Object.keys(data)});
+  })();
+  res.json({ok:true,branding:saasBrandingForOrganisation(organisationId)});
+});
+
+// Only a constrained, non-interactive subset of SVG is accepted; no JS, CSS,
+// foreign objects, hrefs, XML entities, network references or event attributes.
+function safeBrandSvg(buffer){
+  const svg=buffer.toString('utf8').trim();
+  if(!/^<svg(?:\s|>)/.test(svg)||!/<\/svg>\s*$/.test(svg)||
+      /<!|<\?|&|[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(svg))return false;
+  const tags=new Set(['svg','g','path','rect','circle','ellipse','line','polyline','polygon']);
+  const attrs=new Set(['xmlns','version','width','height','viewBox','preserveAspectRatio','fill','fill-opacity',
+    'fill-rule','stroke','stroke-width','stroke-linecap','stroke-linejoin','stroke-opacity',
+    'stroke-dasharray','stroke-dashoffset','stroke-miterlimit','opacity','d',
+    'x','y','x1','y1','x2','y2','cx','cy','r','rx','ry','points','transform','id']);
+  let cursor=0,count=0;const stack=[];const tagRe=/<([^<>]+)>/g;
+  for(const match of svg.matchAll(tagRe)){
+    if(svg.slice(cursor,match.index).trim())return false;
+    cursor=match.index+match[0].length;
+    const piece=match[1],tag=piece.match(/^(\/)?([a-z]+)([\s\S]*?)(\/)?$/);
+    if(!tag||!tags.has(tag[2])||++count>200)return false;
+    const [,closing,name,attrString,selfClosing]=tag;
+    if(count===1&&(name!=='svg'||closing))return false;
+    if(closing){
+      if(attrString.trim()||selfClosing||stack.pop()!==name)return false;
+      continue;
+    }
+    if(stack.length===0&&count>1)return false;
+    const seen=new Set();
+    let rest=attrString;
+    while(rest.trim()){
+      const attr=rest.match(/^\s+([A-Za-z][A-Za-z0-9-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/);
+      if(!attr||!attrs.has(attr[1])||seen.has(attr[1]))return false;
+      seen.add(attr[1]);
+      const value=attr[2]??attr[3];
+      if(attr[1]==='xmlns'){
+        if(name!=='svg'||value!=='http://www.w3.org/2000/svg')return false;
+      }else if(!/^[A-Za-z0-9_#.,%+\-\s()]*$/.test(value)||/url\s*\(/i.test(value))return false;
+      rest=rest.slice(attr[0].length);
+    }
+    if(!selfClosing){stack.push(name);if(stack.length>24)return false}
+  }
+  return cursor===svg.length&&stack.length===0&&count>=2;
+}
+
+const brandLogoUpload=multer({
+  storage:multer.memoryStorage(),
+  limits:{fileSize:1024*1024,files:1,fields:0,parts:1},
+  fileFilter(req,file,cb){
+    const allowed=['image/png','image/jpeg','image/webp','image/svg+xml'];
+    if(!allowed.includes(file.mimetype))return cb(new Error('Logo must be PNG, JPEG, WebP or a safe SVG.'));
+    cb(null,true);
+  }
+}).single('logo');
+
+function parseBrandLogo(req,res,next){
+  brandLogoUpload(req,res,error=>{
+    if(error)return res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({
+      ok:false,error:error.code==='LIMIT_FILE_SIZE'?'Logo must be smaller than 1 MB.':'Invalid logo upload.'
+    });
+    next();
+  });
+}
+
+function brandLogoContent(buffer,mime){
+  const png=buffer.length>=24&&buffer.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex'));
+  const jpeg=buffer.length>=4&&buffer.subarray(0,3).equals(Buffer.from('ffd8ff','hex'));
+  const webp=buffer.length>=16&&buffer.toString('ascii',0,4)==='RIFF'&&buffer.toString('ascii',8,12)==='WEBP';
+  if(mime==='image/png'&&png)return {extension:'png',contentType:mime};
+  if(mime==='image/jpeg'&&jpeg)return {extension:'jpg',contentType:mime};
+  if(mime==='image/webp'&&webp)return {extension:'webp',contentType:mime};
+  if(mime==='image/svg+xml'&&safeBrandSvg(buffer))return {extension:'svg',contentType:mime};
+  return null;
+}
+
+app.post('/api/saas/branding/logo',
+  requireSaasUser,requireSaasRole('owner','admin','super_admin'),parseBrandLogo,
+  (req,res)=>{
+    if(!req.file)return res.status(400).json({ok:false,error:'Choose a logo image.'});
+    const checked=brandLogoContent(req.file.buffer,req.file.mimetype);
+    if(!checked)return res.status(415).json({ok:false,error:'Image content does not match its type or the SVG contains unsafe elements.'});
+    const organisationId=req.saas.organisation_id;
+    const filename=crypto.randomUUID()+'.'+checked.extension;
+    const directory=path.join(uploadRoot,'branding',organisationId);
+    const filePath=path.join(directory,filename);
+    const logoUrl='/api/saas/branding/logo/'+organisationId+'/'+filename;
+    try{
+      fs.mkdirSync(directory,{recursive:true,mode:0o700});
+      fs.writeFileSync(filePath,req.file.buffer,{flag:'wx',mode:0o600});
+      db.transaction(()=>{
+        const result=db.prepare('UPDATE organisations SET brand_logo_url=?,updated_at=? WHERE id=?')
+          .run(logoUrl,new Date().toISOString(),organisationId);
+        if(result.changes!==1)throw new Error('Organisation not found');
+        saasAudit(req,'branding.logo_uploaded','organisation',organisationId,{
+          logo_url:logoUrl,type:checked.contentType,size_bytes:req.file.buffer.length
+        });
+      })();
+      res.json({ok:true,logo_url:logoUrl,branding:saasBrandingForOrganisation(organisationId)});
+    }catch(error){
+      try{fs.unlinkSync(filePath)}catch{}
+      console.error('[BRANDING] Logo upload failed:',error.message);
+      res.status(500).json({ok:false,error:'Could not save the logo.'});
+    }
+  }
+);
+
+// Logos are not globally served as static files: membership is checked for
+// every retrieval, including direct image loads in the workspace UI.
+app.get('/api/saas/branding/logo/:organisationId/:filename',requireSaasUser,(req,res)=>{
+  const {organisationId,filename}=req.params;
+  if(!/^[a-f0-9-]{36}$/i.test(organisationId)||!/^[a-f0-9-]{36}\.(png|jpg|webp|svg)$/i.test(filename))
+    return res.status(404).json({ok:false,error:'Logo not found.'});
+  const member=db.prepare('SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?').get(organisationId,req.saas.user_id);
+  if(!member)return res.status(404).json({ok:false,error:'Logo not found.'});
+  const mime={png:'image/png',jpg:'image/jpeg',webp:'image/webp',svg:'image/svg+xml'}[path.extname(filename).slice(1).toLowerCase()];
+  const logoPath=path.join(uploadRoot,'branding',organisationId,filename);
+  if(!fs.existsSync(logoPath))return res.status(404).json({ok:false,error:'Logo not found.'});
+  res.set({
+    'Content-Type':mime,
+    'Content-Security-Policy':"sandbox; default-src 'none'; script-src 'none'; object-src 'none'",
+    'X-Content-Type-Options':'nosniff',
+    'Cache-Control':'private, no-store',
+    'Cross-Origin-Resource-Policy':'same-origin'
+  });
+  res.sendFile(logoPath);
 });
 
 // The authenticated user may list only organisations with an active membership.

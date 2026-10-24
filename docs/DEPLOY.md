@@ -4,7 +4,11 @@ This is the only deployment guide. Older release notes and checklists were archi
 
 ## 1. Before you deploy
 
-1. **Back up the live database** (Render dashboard → the service → Shell: `cp /var/data/super-pro.sqlite /var/data/backup-$(date +%F).sqlite`). Releases 19.x change the database schema. The changes only add things, but a backup costs nothing.
+1. **Back up the live database.** Render dashboard → your service → **Shell** tab, then run this one line (a plain file copy can miss recent changes because the database uses a write-ahead log, so this uses SQLite's own backup):
+   ```bash
+   node -e "const D=require('better-sqlite3');new D('/var/data/super-pro.sqlite').backup('/var/data/backup-'+new Date().toISOString().slice(0,10)+'.sqlite').then(()=>console.log('backup done'))"
+   ```
+   It prints `backup done`. Releases 19.x change the database schema. The changes only add things, but a backup costs nothing.
 2. Run the whole verification suite on your machine:
    ```bash
    npm ci
@@ -61,4 +65,4 @@ On every start the server proves the data folder is writable, opens the database
 
 ## 6. Rollback
 
-Render → Deploys → pick the last good deploy → Rollback. The database is additive-only, so earlier code keeps working against it. To restore data, stop the service and copy the backup from step 1 over `super-pro.sqlite`.
+Render → Deploys → pick the last good deploy → Rollback. The database is additive-only, so earlier code keeps working against it. To restore data, stop the service and copy the backup file from step 1 over `super-pro.sqlite` (delete any `super-pro.sqlite-wal` and `-shm` files next to it first).

@@ -168,7 +168,7 @@ export function runDiagnostics({ db, env = process.env, storage, startedAt = Dat
       ? `${driftCount} schema items were missing${repair ? `; ${schema.patched.length} patched, ${schema.failed.length} could not be patched` : ' (run with repair to patch)'}.`
       : `All ${schema.expectedTables} tables have every expected column, index and trigger.`, { missing: schema.missing, patched: schema.patched, failed: schema.failed });
     const audit = verifyAuditChain(db);
-    add('audit.chain', audit.ok ? 'pass' : 'fail', audit.ok ? `${audit.checked} audit rows verified${audit.truncated ? ' (first 100000 only)' : ''}.` : `${audit.broken.length} audit rows failed verification.`, { checked: audit.checked, broken: audit.broken });
+    add('audit.chain', audit.ok ? 'pass' : 'fail', audit.ok ? `${audit.checked} audit rows verified${audit.legacy ? ` (${audit.legacy} written before the rebuild, checked against their original hash formula)` : ''}${audit.truncated ? ', first 100000 only' : ''}.` : `${audit.broken.length} audit rows failed verification.`, { checked: audit.checked, broken: audit.broken });
     const guarded = db.prepare(`SELECT COUNT(*) n FROM sqlite_master WHERE type='trigger' AND name IN ('audit_logs_no_update','audit_logs_no_delete')`).get().n === 2;
     add('audit.append_only', guarded ? 'pass' : 'fail', guarded ? 'Audit log is protected from edits and early deletion.' : 'Audit log protection triggers are missing.');
   } catch (error) {

@@ -1902,22 +1902,27 @@ export function appendAuditLog(db, entry) {
 }
 
 // Recompute every hash in an organisation's audit chain (all organisations when none is given).
-// Returns { ok, checked, broken: [{ id, reason }], truncated }. Read-only; safe to call on a live database.
+// Rows written before the 19.x rebuild were hashed by the old saas_audit_events code, which put the entity type where the
+// module name now goes. Those rows are still checked, against their original formula, so nothing is skipped or excused.
+// Returns { ok, checked, legacy, broken: [{ id, reason }], truncated }. Read-only; safe to call on a live database.
 export function verifyAuditChain(db, organisationId, { limit = 100000 } = {}) {
   const rows = organisationId === undefined
     ? db.prepare(`SELECT * FROM audit_logs WHERE event_hash IS NOT NULL ORDER BY organisation_id, created_at, rowid LIMIT ?`).all(limit + 1)
     : db.prepare(`SELECT * FROM audit_logs WHERE organisation_id IS ? AND event_hash IS NOT NULL ORDER BY created_at, rowid LIMIT ?`).all(organisationId ?? null, limit + 1);
   const truncated = rows.length > limit;
   if (truncated) rows.pop();
+  const known = new Map(); // organisation -> every event hash seen, so a link is checked by content and not by row order
+  for (const r of rows) { const k = r.organisation_id ?? ''; if (!known.has(k)) known.set(k, new Set()); known.get(k).add(r.event_hash); }
   const broken = [];
-  const previous = new Map();
+  let legacy = 0;
   for (const r of rows) {
-    const key = r.organisation_id ?? '';
-    const expectedPrev = previous.get(key) ?? null;
-    if ((r.prev_hash || null) !== expectedPrev) broken.push({ id: r.id, reason: 'chain link does not match the previous row' });
-    const recomputed = sha256([r.organisation_id || '', r.user_id || '', r.action, r.module, r.entity_id || '', r.metadata_json, r.prev_hash || '', r.created_at, r.id].join('|'));
-    if (recomputed !== r.event_hash) broken.push({ id: r.id, reason: 'row content does not match its hash' });
-    previous.set(key, r.event_hash);
+    const common = [r.organisation_id || '', r.user_id || '', r.action];
+    const tail = [r.entity_id || '', r.metadata_json, r.prev_hash || '', r.created_at, r.id];
+    const current = sha256([...common, r.module, ...tail].join('|')) === r.event_hash;
+    const old = !current && sha256([...common, r.entity_type || '', ...tail].join('|')) === r.event_hash;
+    if (old) legacy += 1;
+    if (!current && !old) broken.push({ id: r.id, reason: 'row content does not match its hash' });
+    if (r.prev_hash && !known.get(r.organisation_id ?? '').has(r.prev_hash)) broken.push({ id: r.id, reason: 'previous row in the chain is missing' });
   }
-  return { ok: broken.length === 0, checked: rows.length, broken: broken.slice(0, 20), truncated };
+  return { ok: broken.length === 0, checked: rows.length, legacy, broken: broken.slice(0, 20), truncated };
 }

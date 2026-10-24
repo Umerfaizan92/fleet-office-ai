@@ -181,6 +181,33 @@ await stage('storage', 'Database migrations, self-healing and persistent-storage
     assert.equal(runDiagnostics({ db, env: {} }).checks.find((c) => c.id === 'audit.chain').status, 'fail');
     db.close();
   });
+  await check('an old database (pre-rebuild audit table) migrates and its audit chain still verifies', async () => {
+    const { default: Database } = await import('better-sqlite3');
+    const file = path.join(tempRoot, 'storage', 'legacy.sqlite');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const raw = new Database(file);
+    raw.exec(`CREATE TABLE saas_audit_events (id TEXT PRIMARY KEY, organisation_id TEXT NOT NULL, actor_user_id TEXT, event_type TEXT NOT NULL, entity_type TEXT, entity_id TEXT, detail_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, prev_hash TEXT, event_hash TEXT)`);
+    // Exactly how the old server hashed: entity type sits where the module name sits today.
+    let prev = null;
+    for (let i = 0; i < 5; i++) {
+      const id = randomUUID(), at = new Date(Date.now() - (10 - i) * 60000).toISOString(), detail = JSON.stringify({ i });
+      const type = i % 2 ? 'branding.updated' : 'worker.created', entity = i % 2 ? 'organisation' : null;
+      const hash = createHash('sha256').update(['org-legacy', 'user-1', type, entity || '', 'e-' + i, detail, prev || '', at, id].join('|')).digest('hex');
+      raw.prepare('INSERT INTO saas_audit_events VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, 'org-legacy', 'user-1', type, entity, 'e-' + i, detail, at, prev, hash);
+      prev = hash;
+    }
+    raw.close();
+    const db = createDb(file);
+    assert.equal(db.prepare(`SELECT COUNT(*) n FROM audit_logs`).get().n, 5, 'legacy rows were not migrated');
+    appendAuditLog(db, { organisation_id: 'org-legacy', action: 'verify.after_migration' }); // new-style row chained onto the old ones
+    const verdict = verifyAuditChain(db);
+    assert.equal(verdict.ok, true, JSON.stringify(verdict.broken));
+    assert.equal(verdict.legacy, 5); assert.equal(verdict.checked, 6);
+    db.exec('DROP TRIGGER audit_logs_no_update');
+    db.prepare(`UPDATE audit_logs SET metadata_json='{"forged":true}' WHERE action='branding.updated' AND rowid=(SELECT MIN(rowid) FROM audit_logs WHERE action='branding.updated')`).run();
+    assert.equal(verifyAuditChain(db).ok, false, 'tampering with a pre-rebuild row must still be detected');
+    db.close();
+  });
   await check('writable persistent disk is used and reported as persistent', () => {
     const persistentRoot = path.join(tempRoot, 'disk-ok'); fs.mkdirSync(persistentRoot);
     const plan = prepareStorage({ env: {}, backendRoot: tempRoot, persistentRoot });

@@ -51,7 +51,8 @@ try{
   addUser.run(outsideUser,'outside-'+outsideUser+'@example.test','Outside Tester','hash','salt',now,now);
   const addMembership=db.prepare('INSERT INTO memberships (organisation_id,user_id,role,created_at) VALUES (?,?,?,?)');
   addMembership.run(orgA,membershipUser,'owner',now);
-  addMembership.run(orgB,membershipUser,'worker',now);
+  // The first membership is the default workspace; a later membership tests switching.
+  addMembership.run(orgB,membershipUser,'worker',new Date(Date.parse(now)+1000).toISOString());
   addMembership.run(orgC,outsideUser,'owner',now);
   function session(userId){
     const token=randomBytes(24).toString('hex');

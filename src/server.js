@@ -1,4 +1,3 @@
-import {installTeamAccounts} from './team-accounts.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -2079,12 +2078,7 @@ function syncSubscriptionLifecycle(organisationId){
 }
 function requireSaasUser(req,res,next){
   const raw=cookieValue(req,sessionCookieName);if(!raw)return res.status(401).json({ok:false,error:'Sign in required'});
-  // A caller may select only an organisation where their authenticated user has membership.
-  // Never trust a client-supplied organisation ID without this membership join.
-  const suppliedOrganisation=req.get('X-Organisation-Id');
-  if(suppliedOrganisation && !/^[0-9a-f-]{36}$/i.test(suppliedOrganisation))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
-  const selectedOrganisation=suppliedOrganisation||null;
-  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND (? IS NULL OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString(),selectedOrganisation,selectedOrganisation);
+  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString());
   if(!row)return res.status(401).json({ok:false,error:'Session expired'});const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);req.saas=row;
   const state=syncSubscriptionLifecycle(row.organisation_id);req.subscription=state.subscription;req.subscription_lifecycle=state.lifecycle;
   // Account identity and saved workspace data must never become inaccessible merely
@@ -2092,12 +2086,6 @@ function requireSaasUser(req,res,next){
   // at feature/usage entitlement level, not by disabling sign-in or tenant data access.
   next();
 }
-// List the current user's permitted workspaces without exposing another tenant's data.
-app.get('/api/saas/my-organisations',requireSaasUser,(req,res)=>{
-  const rows=db.prepare(`SELECT m.organisation_id,m.role,o.name,o.slug FROM memberships m
-    JOIN organisations o ON o.id=m.organisation_id WHERE m.user_id=? ORDER BY m.created_at`).all(req.saas.user_id);
-  res.json({ok:true,active_organisation_id:req.saas.organisation_id,organisations:rows});
-});
 const base32Alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Encode(buffer){let bits=0,value=0,out='';for(const byte of buffer){value=(value<<8)|byte;bits+=8;while(bits>=5){out+=base32Alphabet[(value>>>(bits-5))&31];bits-=5}}if(bits>0)out+=base32Alphabet[(value<<(5-bits))&31];return out}
 function base32Decode(input){let bits=0,value=0,bytes=[];for(const char of input.replace(/=+$/,'').toUpperCase()){const index=base32Alphabet.indexOf(char);if(index<0)continue;value=(value<<5)|index;bits+=5;if(bits>=8){bytes.push((value>>>(bits-8))&255);bits-=8}}return Buffer.from(bytes)}
@@ -2478,8 +2466,7 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
   const now=new Date();if(user.locked_until&&new Date(user.locked_until)>now)return res.status(423).json({ok:false,error:'This account is temporarily locked after repeated failed sign-in attempts. Try again later.'});
   const supplied=passwordHash(parsed.data.password,user.password_salt),stored=user.password_hash,passwordOk=supplied.length===stored.length&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(stored));
   if(!passwordOk){const nextFailures=Number(user.failed_login_attempts||0)+1,lockedUntil=nextFailures>=5?new Date(now.getTime()+15*60*1000).toISOString():null;db.prepare(`UPDATE users SET failed_login_attempts=?,locked_until=?,updated_at=? WHERE id=?`).run(nextFailures,lockedUntil,now.toISOString(),user.id);return res.status(401).json({ok:false,error:'Invalid sign-in details.'});}
-  const invitedStaff=db.prepare(`SELECT 1 FROM team_account_invites i JOIN memberships m ON m.user_id=i.accepted_by AND m.organisation_id=i.organisation_id WHERE i.accepted_by=? AND i.status='accepted' AND m.role!='owner' AND NOT EXISTS (SELECT 1 FROM memberships own WHERE own.user_id=i.accepted_by AND own.role='owner') LIMIT 1`).get(user.id);
-  if(!user.email_verified||(!user.phone_verified&&!invitedStaff))return res.status(403).json({ok:false,error:'This account has not completed the required contact verification.'});
+  if(!user.email_verified||!user.phone_verified)return res.status(403).json({ok:false,error:'This account has not completed email and mobile verification.'});
   if(user.mfa_enabled&&!parsed.data.mfa_code)return res.status(401).json({ok:false,error:'MFA code required.',mfa_required:true});if(user.mfa_enabled&&!validTotp(user.mfa_secret,parsed.data.mfa_code))return res.status(401).json({ok:false,error:'Invalid MFA code.'});
   db.prepare(`UPDATE users SET failed_login_attempts=0,locked_until=NULL,last_login_at=?,updated_at=? WHERE id=?`).run(now.toISOString(),now.toISOString(),user.id);setSession(res,user.id,req);res.json({ok:true});
 });
@@ -2506,15 +2493,15 @@ app.post('/api/saas/account/deletion/confirm',requireSaasUser,(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE id=? AND organisation_id=? AND status='pending_verification'`).get(parsed.data.request_id,req.saas.organisation_id);
   if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'This deletion verification request expired. Start again.'});
   const expected=otpHash(row.id,parsed.data.code);if(expected.length!==row.code_hash.length||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(row.code_hash)))return res.status(401).json({ok:false,error:'The deletion verification code is incorrect.'});
-  const confirmedAt=new Date(),eligibleAfter=new Date(confirmedAt.getTime()+28*DAY_MS);
-  db.prepare(`UPDATE account_deletion_requests SET status='scheduled',confirmed_at=?,eligible_after=?,last_message=? WHERE id=?`).run(confirmedAt.toISOString(),eligibleAfter.toISOString(),'Customer confirmed deletion; 28-day cancellation and export window active.',row.id);
+  const confirmedAt=new Date(),eligibleAfter=new Date(confirmedAt.getTime()+7*DAY_MS);
+  db.prepare(`UPDATE account_deletion_requests SET status='scheduled',confirmed_at=?,eligible_after=?,last_message=? WHERE id=?`).run(confirmedAt.toISOString(),eligibleAfter.toISOString(),'Customer confirmed deletion; seven-day cancellation window active.',row.id);
   saasAudit(req,'account.deletion_scheduled','organisation',req.saas.organisation_id,{eligible_after:eligibleAfter.toISOString(),automatic:false});
-  res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 28-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date. Export your records before the deadline. Applicable legal retention requirements may prevent immediate deletion of some records.'});
+  res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 7-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date.'});
 });
-app.post('/api/saas/account/deletion/cancel',requireSaasUser,requireSaasRole('owner'),(req,res)=>{
+app.post('/api/saas/account/deletion/cancel',requireSaasUser,(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE organisation_id=? AND status='scheduled' ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'No scheduled deletion request was found.'});
-  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=? AND organisation_id=? AND status='scheduled'`).run(new Date().toISOString(),'Workspace owner cancelled account deletion.',row.id,req.saas.organisation_id);
+  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=?`).run(new Date().toISOString(),'Customer cancelled account deletion.',row.id);
   saasAudit(req,'account.deletion_cancelled','organisation',req.saas.organisation_id,{request_id:row.id});
   res.json({ok:true,message:'Account deletion has been cancelled. Your account and data remain preserved.'});
 });
@@ -2584,104 +2571,11 @@ app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{
   }catch(err){console.warn('[PRODUCT GUIDE] AI unavailable:',err.message);return res.json({ok:true,text:localGuideText[language]||localGuideText.en,language,source:'local-multilingual-fallback',configuration_required:true});}
 });
 
-// Staff presence is independent from work-rights and roster approval.
-app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
-  const manager=['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase());
-  const includeInactive=manager&&req.query.include_inactive==='1';
-  const members=db.prepare(`SELECT m.user_id,m.role,u.full_name,u.email,u.status,a.status availability,a.reason,a.returns_at,a.updated_at
-    FROM memberships m JOIN users u ON u.id=m.user_id
-    LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id
-    WHERE m.organisation_id=? AND (u.status='active' OR ?=1) ORDER BY u.full_name`).all(req.saas.organisation_id,includeInactive?1:0);
-  res.json({ok:true,staff:members.map(m=>({user_id:m.user_id,full_name:m.full_name,designation:m.role,account_status:m.status,availability:m.status==='active'?(m.availability||'unavailable'):'unavailable',reason:m.status==='active'?(m.reason||''):'',returns_at:m.status==='active'?(m.returns_at||null):null,updated_at:m.updated_at||null})),can_view_inactive:manager});
-});
-app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
-  const parsed=z.object({status:z.enum(['available','busy','unavailable','on_leave','day_off','working_from_home']),reason:z.string().trim().max(120).default(''),returns_at:z.union([z.string().datetime({offset:true}),z.literal(''),z.null()]).optional()}).safeParse(req.body);
-  if(!parsed.success)return res.status(400).json({ok:false,error:'Check availability, reason and return time.'});
-  const now=new Date().toISOString();
-  db.prepare(`INSERT INTO staff_availability (organisation_id,user_id,status,reason,returns_at,updated_at) VALUES (?,?,?,?,?,?)
-    ON CONFLICT(organisation_id,user_id) DO UPDATE SET status=excluded.status,reason=excluded.reason,returns_at=excluded.returns_at,updated_at=excluded.updated_at`)
-    .run(req.saas.organisation_id,req.saas.user_id,parsed.data.status,parsed.data.reason,parsed.data.returns_at||null,now);
-  saasAudit(req,'staff.availability_updated','user',req.saas.user_id,{status:parsed.data.status,has_reason:Boolean(parsed.data.reason)});
-  res.json({ok:true,status:parsed.data.status,updated_at:now});
-});
 app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const messages=db.prepare(`SELECT id,sender_name,sender_role,message,created_at FROM staff_chat_messages WHERE organisation_id=? ORDER BY created_at DESC LIMIT 80`).all(req.saas.organisation_id).reverse();res.json({ok:true,messages})});
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name,sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:row})});
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
-app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{id:req.saas.user_id,email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
-const brandingLogoUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:1024*1024,files:1},fileFilter(req,file,cb){if(!['image/png','image/jpeg','image/webp'].includes(file.mimetype))return cb(new Error('Use a PNG, JPEG or WEBP logo.'));cb(null,true)}});
-app.post('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
-  if(!['owner','admin','administrator'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Workspace administrator access required.'});
-  brandingLogoUpload.single('logo')(req,res,error=>{
-    if(error)return res.status(400).json({ok:false,error:error.message});
-    if(!req.file)return res.status(400).json({ok:false,error:'Select a logo image.'});
-    const data=req.file.buffer;
-    const png=data.length>8&&data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
-    const jpeg=data.length>3&&data[0]===255&&data[1]===216&&data[2]===255;
-    const webp=data.length>12&&data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP';
-    const mime=png?'image/png':jpeg?'image/jpeg':webp?'image/webp':null;
-    if(!mime||mime!==req.file.mimetype)return res.status(400).json({ok:false,error:'Invalid image content.'});
-    const organisationId=req.saas.organisation_id;
-    const logoDir=path.join(uploadRoot,'branding',organisationId);
-    fs.mkdirSync(logoDir,{recursive:true});
-    const filename=crypto.randomUUID()+(png?'.png':jpeg?'.jpg':'.webp');
-    fs.writeFileSync(path.join(logoDir,filename),data,{flag:'wx',mode:0o600});
-    const url='/api/saas/branding/logo';
-    try{
-      db.transaction(()=>{
-        db.prepare('UPDATE organisations SET brand_logo_url=?,updated_at=? WHERE id=?').run(url,new Date().toISOString(),organisationId);
-        saasAudit(req,'workspace.branding.logo_uploaded','organisation',organisationId,{mime,bytes:data.length});
-      })();
-    }catch(error){
-      try{fs.unlinkSync(path.join(logoDir,filename))}catch{}
-      return res.status(500).json({ok:false,error:'Unable to save the uploaded logo.'});
-    }
-    // Keep the current logo only. Older files are never needed to serve this endpoint.
-    try{
-      for(const previous of fs.readdirSync(logoDir)){
-        if(previous!==filename&&/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(previous))fs.unlinkSync(path.join(logoDir,previous));
-      }
-    }catch(error){console.warn('Branding logo cleanup deferred:',error.message)}
-    res.json({ok:true,logo_url:url});
-  });
-});
-app.get('/api/saas/branding/logo',requireSaasUser,(req,res)=>{
-  const row=db.prepare('SELECT brand_logo_url FROM organisations WHERE id=?').get(req.saas.organisation_id);
-  if(!row||row.brand_logo_url!=='/api/saas/branding/logo')return res.status(404).end();
-  const dir=path.join(uploadRoot,'branding',req.saas.organisation_id);
-  const files=fs.existsSync(dir)?fs.readdirSync(dir).filter(name=>/^[0-9a-f-]{36}\.(png|jpg|webp)$/.test(name)).sort():[];
-  if(!files.length)return res.status(404).end();
-  const filename=files.map(name=>({name,modified:fs.statSync(path.join(dir,name)).mtimeMs})).sort((a,b)=>b.modified-a.modified)[0].name;
-  res.setHeader('Cache-Control','private, no-store');
-  res.type(path.extname(filename)).sendFile(path.join(dir,filename));
-});
-app.get('/api/saas/branding',requireSaasUser,(req,res)=>{
-  const row=db.prepare('SELECT name,display_name,brand_logo_url,brand_theme FROM organisations WHERE id=?').get(req.saas.organisation_id);
-  if(!row)return res.status(404).json({ok:false,error:'Workspace not found.'});
-  res.json({ok:true,branding:{display_name:row.display_name||row.name,logo_url:row.brand_logo_url||'',theme:row.brand_theme||'system'}});
-});
-app.put('/api/saas/branding',requireSaasUser,(req,res)=>{
-  if(!['owner','admin','administrator'].includes(String(req.saas.role||'').toLowerCase()))return res.status(403).json({ok:false,error:'Workspace administrator access required.'});
-  const parsed=z.object({
-    display_name:z.string().trim().min(2).max(120),
-    logo_url:z.union([z.literal(''),z.literal('/api/saas/branding/logo'),z.string().url().max(1000).refine(v=>v.startsWith('https://'),'HTTPS logo URL required')]),
-    theme:z.enum(['system','light','dark'])
-  }).safeParse(req.body);
-  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the branding settings.'});
-  const {display_name,logo_url,theme}=parsed.data;
-  const previous=db.prepare('SELECT name,display_name,brand_logo_url,brand_theme FROM organisations WHERE id=?').get(req.saas.organisation_id);
-  if(!previous)return res.status(404).json({ok:false,error:'Workspace not found.'});
-  const next={display_name,logo_url,theme};
-  const before={display_name:previous.display_name||previous.name,logo_url:previous.brand_logo_url||'',theme:previous.brand_theme||'system'};
-  const changedFields=Object.keys(next).filter(key=>next[key]!==before[key]);
-  if(changedFields.length){
-    db.transaction(()=>{
-      db.prepare('UPDATE organisations SET display_name=?,brand_logo_url=?,brand_theme=?,updated_at=? WHERE id=?').run(display_name,logo_url||null,theme,new Date().toISOString(),req.saas.organisation_id);
-      saasAudit(req,'workspace.branding.updated','organisation',req.saas.organisation_id,{changed_fields:changedFields});
-    })();
-  }
-  res.json({ok:true,branding:next,changed:changedFields.length>0});
-});
+app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
 app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
 app.get('/api/saas/billing/providers',requireSaasUser,(req,res)=>res.json({ok:true,providers:[{id:'stripe',name:'Stripe',ready:Boolean(env.STRIPE_SECRET_KEY)},{id:'paypal',name:'PayPal',ready:Boolean(env.PAYPAL_CLIENT_ID&&env.PAYPAL_CLIENT_SECRET)},{id:'bank',name:'Direct bank',ready:Boolean(env.PAYMENT_BANK_INSTRUCTIONS)}],customer_secret_entry:false}));
@@ -3074,7 +2968,7 @@ setTimeout(processPlatformAnnouncementEmails,20*1000).unref?.();
 setInterval(processPlatformAnnouncementEmails,60*1000).unref?.();
 
 
-app.put('/api/saas/onboarding',requireSaasUser,requireSaasRole('owner','admin','super_admin','manager','director'),(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().trim().max(500).refine(value=>{if(!value)return true;try{const url=new URL(value);return ['http:','https:'].includes(url.protocol)&&!value.includes('\\')&&!url.username&&!url.password}catch{return false}},'Enter a valid HTTP or HTTPS website URL.').optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),approval_rules:z.object({external_messages:z.boolean(),social_publishing:z.boolean(),payments:z.boolean(),quotes_and_invoices:z.boolean(),compliance_changes:z.boolean(),job_changes:z.boolean(),customer_record_changes:z.boolean()}).optional(),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,approval_rules_json=COALESCE(?,approval_rules_json),ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.approval_rules?JSON.stringify(parsed.data.approval_rules):null,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
+app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),approval_rules:z.object({external_messages:z.boolean(),social_publishing:z.boolean(),payments:z.boolean(),quotes_and_invoices:z.boolean(),compliance_changes:z.boolean(),job_changes:z.boolean(),customer_record_changes:z.boolean()}).optional(),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,approval_rules_json=COALESCE(?,approval_rules_json),ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.approval_rules?JSON.stringify(parsed.data.approval_rules):null,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
   const parsed=z.object({
@@ -3161,9 +3055,7 @@ function requireSaasRole(...roles){
 function seniorRole(role){return ['owner','admin','manager','super_admin','director','complaints_officer','privacy_officer','security_officer'].includes(String(role||'').toLowerCase())}
 function optionalSaasSession(req){
   const raw=cookieValue(req,sessionCookieName);if(!raw)return null;
-  const organisation=req.get('X-Organisation-Id')||null;
-  if(organisation&&!/^[0-9a-f-]{36}$/i.test(organisation))return null;
-  return db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.legal_name,o.abn_status FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND (? IS NULL OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString(),organisation,organisation)||null;
+  return db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.legal_name,o.abn_status FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString())||null;
 }
 
 app.get('/api/saas/dashboard',requireSaasUser,(req,res)=>{const org=req.saas.organisation_id;const workers=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND status!='archived'`).get(org).count;const ready=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active'`).get(org).count;const attention=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=0 AND status!='archived'`).get(org).count;const jobs=db.prepare(`SELECT COUNT(*) count FROM work_orders WHERE organisation_id=? AND status IN ('awaiting_allocation','offered')`).get(org).count;const expiring=db.prepare(`SELECT COUNT(*) count FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE w.organisation_id=? AND d.expiry_date IS NOT NULL AND d.expiry_date<=date('now','+30 day')`).get(org).count;res.json({ok:true,metrics:{workers,ready,attention,jobs,expiring}})});
@@ -3247,7 +3139,7 @@ app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
   res.status(201).json({ok:true,...created,status:'pending'});
 });
 
-app.patch('/api/saas/approvals/:id',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
+app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
   const parsed=z.object({edited_payload:z.record(z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval changes.'});
   const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
@@ -3302,14 +3194,6 @@ app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','ad
 
 
 const workforceSeniorRoles=['owner','admin','manager','super_admin','director'];
-installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification:data=>sendSaasVerificationEmail(env,data)});
-
-function requireWorkerReadAccess(req,res,next){
-  const worker=db.prepare('SELECT user_id FROM workers WHERE id=? AND organisation_id=?').get(req.params.id,req.saas.organisation_id);
-  if(!worker || (!workforceSeniorRoles.includes(req.saas.role) && worker.user_id!==req.saas.user_id))return res.status(404).json({ok:false,error:'Worker not found'});
-  next();
-}
-
 
 function workforceProfile(orgId){
   const p=db.prepare(`SELECT industry_code,services,custom_sections_json FROM onboarding_profiles WHERE organisation_id=?`).get(orgId)||{};
@@ -3416,12 +3300,11 @@ function addWorkerOnboardingEvent(invite,eventType,detail={}){
 }
 
 app.get('/api/saas/workers',requireSaasUser,(req,res)=>{
-  const senior=workforceSeniorRoles.includes(req.saas.role);
-  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ${senior?'':'AND user_id=?'} ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(...(senior?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id]));
+  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(req.saas.organisation_id);
   res.json({ok:true,workers:rows.map(x=>workerPublicRow(req.saas.organisation_id,x))});
 });
 
-app.post('/api/saas/workers',requireSaasUser,requireSaasRole(...workforceSeniorRoles),(req,res)=>{
+app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
   const parsed=z.object({
     full_name:z.string().trim().min(2).max(150),
     email:z.string().trim().email().optional().or(z.literal('')),
@@ -3447,7 +3330,7 @@ app.post('/api/saas/workers',requireSaasUser,requireSaasRole(...workforceSeniorR
   res.status(201).json({ok:true,id,approved_for_scheduling:state.eligible,compliance:state});
 });
 
-app.get('/api/saas/workers/:id/compliance',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
+app.get('/api/saas/workers/:id/compliance',requireSaasUser,(req,res)=>{
   const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   if(!db.prepare(`SELECT 1 FROM worker_compliance_requirements WHERE worker_id=? LIMIT 1`).get(worker.id))seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
@@ -3500,13 +3383,13 @@ app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workf
   res.json({ok:true});
 });
 
-app.get('/api/saas/workers/:id/skills',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
+app.get('/api/saas/workers/:id/skills',requireSaasUser,(req,res)=>{
   const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,skills:db.prepare(`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(worker.id)});
 });
 
-app.get('/api/saas/workers/:id/documents',requireSaasUser,requireWorkerReadAccess,(req,res)=>{
+app.get('/api/saas/workers/:id/documents',requireSaasUser,(req,res)=>{
   const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,documents:db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(worker.id)});
@@ -3561,15 +3444,15 @@ app.get('/api/saas/work-orders/skill-suggestions',requireSaasUser,(req,res)=>{
   res.json({ok:true,industry_code:profile.industry_code,suggestions:workforceSkillSuggestions({industryCode:profile.industry_code,jobTitle:title,services:profile.services,customSections:profile.custom_sections})});
 });
 
-const workOrderManagerRoles=['owner','admin','manager','super_admin','director'];
 app.get('/api/saas/work-orders',requireSaasUser,(req,res)=>{
-  const senior=workOrderManagerRoles.includes(req.saas.role);
-  const ownOffers=senior?'':`AND EXISTS (SELECT 1 FROM job_offers offered JOIN workers worker ON worker.id=offered.worker_id AND worker.organisation_id=w.organisation_id WHERE offered.work_order_id=w.id AND offered.organisation_id=w.organisation_id AND worker.user_id=?)`;
-  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.status='accepted') accepted_workers FROM work_orders w WHERE w.organisation_id=? ${ownOffers} ORDER BY start_at`).all(...(senior?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id])).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
+  // Workers only see orders explicitly offered to their linked worker account.
+  const privileged=['owner','admin','manager','super_admin'].includes(String(req.saas.role||'').toLowerCase());
+  const accessFilter=privileged?'':`AND EXISTS (SELECT 1 FROM job_offers o JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=w.organisation_id WHERE o.work_order_id=w.id AND o.organisation_id=w.organisation_id AND worker.user_id=?)`;
+  const jobs=db.prepare(`SELECT w.*,(SELECT COUNT(*) FROM job_offers o WHERE o.work_order_id=w.id AND o.organisation_id=w.organisation_id AND o.status='accepted') accepted_workers FROM work_orders w WHERE w.organisation_id=? ${accessFilter} ORDER BY w.start_at`).all(...(privileged?[req.saas.organisation_id]:[req.saas.organisation_id,req.saas.user_id])).map(x=>({...x,required_skills:safeJson(x.required_skills,[])}));
   res.json({ok:true,jobs});
 });
 
-app.post('/api/saas/work-orders',requireSaasUser,requireSaasRole(...workOrderManagerRoles),(req,res)=>{
+app.post('/api/saas/work-orders',requireSaasUser,requireSaasRole('owner', 'admin', 'manager', 'super_admin'),(req,res)=>{
   const parsed=z.object({
     title:z.string().trim().min(2).max(200),address:z.string().max(500).optional(),start_at:z.string().min(10).max(50),
     estimated_hours:z.coerce.number().positive().max(100).optional(),required_workers:z.coerce.number().int().min(1).max(100),
@@ -3583,7 +3466,7 @@ app.post('/api/saas/work-orders',requireSaasUser,requireSaasRole(...workOrderMan
   res.status(201).json({ok:true,id});
 });
 
-app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole(...workOrderManagerRoles),(req,res)=>{
+app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole('owner', 'admin', 'manager', 'super_admin'),(req,res)=>{
   const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);
@@ -3717,7 +3600,7 @@ app.post('/api/workforce/onboarding/:token/submit',workforceOnboardingLimiter,re
   res.json({ok:true,status:'submitted_for_authorised_review',message:'Your onboarding information has been submitted. Final compliance and scheduling approval must be completed by an authorised reviewer.'});
 });
 
-const financeRoles=['owner','admin','manager','super_admin','director'];
+const financeRoles = ['owner', 'admin', 'super_admin'];
 app.get('/api/saas/finance',requireSaasUser,requireSaasRole(...financeRoles),(req,res)=>{
   const org=req.saas.organisation_id;
   const entries=db.prepare(`SELECT f.*,w.title work_order_title FROM organisation_finance_entries f LEFT JOIN work_orders w ON w.id=f.work_order_id AND w.organisation_id=f.organisation_id WHERE f.organisation_id=? ORDER BY f.occurred_on DESC,f.created_at DESC LIMIT 500`).all(org);
@@ -3737,23 +3620,25 @@ app.post('/api/saas/finance',requireSaasUser,requireSaasRole(...financeRoles),(r
 app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{
   const parsed=z.object({status:z.enum(['accepted','declined'])}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid response.'});
-  const result=db.transaction(()=>{
-    const offer=db.prepare(`SELECT o.*,w.required_workers,w.status work_status,worker.user_id worker_user_id,worker.status worker_status FROM job_offers o JOIN work_orders w ON w.id=o.work_order_id AND w.organisation_id=o.organisation_id JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=o.organisation_id WHERE o.id=? AND o.organisation_id=?`).get(req.params.id,req.saas.organisation_id);
-    if(!offer)return {status:404,error:'Offer not found'};
-    const manager=workOrderManagerRoles.includes(String(req.saas.role||'').toLowerCase());
-    if(!manager&&(!offer.worker_user_id||offer.worker_user_id!==req.saas.user_id||offer.worker_status!=='active'))return {status:403,error:'You cannot respond to another worker’s offer.'};
-    if(offer.status!=='offered')return {status:409,error:'This offer has already been answered.'};
-    if(['cancelled','completed'].includes(offer.work_status))return {status:409,error:'This work order is closed.'};
-    const accepted=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
-    if(parsed.data.status==='accepted'&&accepted>=offer.required_workers)return {status:409,error:'This work order is already fully allocated.'};
-    const now=new Date().toISOString();
-    db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id);
-    const count=accepted+(parsed.data.status==='accepted'?1:0);
+  // A worker may respond only to their own offer in their authenticated workspace.
+  // Legacy unlinked worker records cannot self-accept until their account is linked.
+  const offer=db.prepare(`SELECT o.*,wo.required_workers FROM job_offers o
+    JOIN work_orders wo ON wo.id=o.work_order_id AND wo.organisation_id=o.organisation_id
+    JOIN workers worker ON worker.id=o.worker_id AND worker.organisation_id=o.organisation_id
+    WHERE o.id=? AND o.organisation_id=? AND worker.user_id=? AND worker.status='active'`).get(req.params.id,req.saas.organisation_id,req.saas.user_id);
+  if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});
+  if(offer.status!=='offered')return res.status(409).json({ok:false,error:'Offer has already been answered.'});
+  const now=new Date().toISOString();
+  const accepted=db.transaction(()=>{
+    const changed=db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id).changes;
+    if(changed!==1)return null;
+    const count=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
     if(count>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=? AND organisation_id=?`).run(now,offer.work_order_id,req.saas.organisation_id);
-    saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});
-    return {status:200,accepted_workers:count};
-  }).immediate();
-  res.status(result.status).json(result.error?{ok:false,error:result.error}:{ok:true,accepted_workers:result.accepted_workers});
+    return count;
+  })();
+  if(accepted===null)return res.status(409).json({ok:false,error:'Offer has already been answered.'});
+  saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});
+  res.json({ok:true,accepted_workers:accepted});
 });
 
 app.get('/api/saas/ai/threads',requireSaasUser,(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? ORDER BY t.updated_at DESC`).all(req.saas.organisation_id)}));
@@ -5044,7 +4929,7 @@ app.get('/api/saas/integrations/self-service',requireSaasUser,(req,res)=>{
 
 app.get('/api/saas/platform-capabilities',requireSaasUser,(req,res)=>{const providers=['meta','whatsapp','tiktok','youtube','google_business','snapchat','x','website','email_sms'],free=freeAiModeEnabled(),geminiReady=Boolean(geminiApiKey()),openAiReady=Boolean(openAiSpeechConfig()),voiceReady=free?geminiReady:(geminiReady||openAiReady);res.json({ok:true,credential_scope:'platform_managed',customer_secret_entry:false,secrets_exposed:false,capabilities:Object.fromEntries(providers.map(p=>[p,integrationReadiness(p)])),ai:aiProviderStatus(),voice_server_ready:voiceReady,note:'This endpoint reports readiness only and rejects placeholder deployment values. It never returns credential values.'})});
 
-app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/authorise',requireSaasUser,(req,res)=>{
   const provider=req.params.provider,row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});if(!integrationReadiness(provider))return res.status(409).json({ok:false,error:'This provider is not fully configured on the platform deployment yet. Complete the required server-side credentials/callback settings first.'});
   if(provider==='website'||provider==='email_sms'){const now=new Date().toISOString(),label=provider==='website'?'Platform website endpoint configured':'Platform email/SMS provider configured';db.prepare(`UPDATE organisation_integrations SET status='connected',account_label=?,connected_at=COALESCE(connected_at,?),updated_at=? WHERE organisation_id=? AND provider=?`).run(label,now,now,req.saas.organisation_id,provider);return res.json({ok:true,status:'connected',message:`${label}. Connection is available to this workspace.`})}
   const state=makeOauthState({organisation_id:req.saas.organisation_id,user_id:req.saas.user_id,provider});if(!state)return res.status(503).json({ok:false,error:'Secure OAuth state signing is not configured on this deployment.'});const uri=oauthRedirectUri(provider,req);let authorizeUrl='';
@@ -5070,7 +4955,7 @@ app.get('/api/saas/integrations/oauth/:provider/callback',async(req,res)=>{
 });
 
 
-app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),async(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,async(req,res)=>{
   const provider=req.params.provider;
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
   if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
@@ -5099,7 +4984,7 @@ app.post('/api/saas/integrations/self-service/:provider/test',requireSaasUser,re
   }
 });
 
-app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUser,(req,res)=>{
   const provider=req.params.provider;
   const parsed=z.object({resource_ids:z.array(z.string().trim().min(1).max(300)).max(25)}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose valid provider resources.'});
@@ -5116,7 +5001,7 @@ app.post('/api/saas/integrations/self-service/:provider/resources',requireSaasUs
   res.json({ok:true,provider,selected_resources:selected});
 });
 
-app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),async(req,res)=>{
+app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,async(req,res)=>{
   const provider=req.params.provider;
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,provider);
   if(!row)return res.status(404).json({ok:false,error:'Integration is not supported in this build.'});
@@ -5133,7 +5018,7 @@ app.delete('/api/saas/integrations/self-service/:provider',requireSaasUser,requi
   res.json({ok:true,provider,status:'not_connected',local_credentials_removed:true,remote_revoked:Boolean(remote.remote_revoked),remote_note:remote.reason||null});
 });
 
-app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
+app.post('/api/saas/integrations/self-service/:provider/prepare',requireSaasUser,(req,res)=>{
   const parsed=z.object({account_label:z.string().trim().max(150).optional().or(z.literal('')),capabilities:z.array(z.string().max(80)).max(20).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the connection details.'});
   const row=db.prepare(`SELECT * FROM organisation_integrations WHERE organisation_id=? AND provider=?`).get(req.saas.organisation_id,req.params.provider);

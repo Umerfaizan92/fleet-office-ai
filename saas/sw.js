@@ -1,14 +1,14 @@
-const CACHE='superpro-public-20260919-14';
+const CACHE='superpro-public-20261025-16';
 const PUBLIC=[
   '/saas/',
   '/saas/index.html',
-  '/saas/intro.css?v=8',
-  '/saas/support.css?v=11',
-  '/saas/public-sections.css?v=20260919.6',
-  '/saas/public-voice-install.css?v=20260919.6',
-  '/saas/adaptive.css?v=11',
-  '/saas/brand.css?v=20260919.6',
-  '/saas/experience.css?v=20260919.6',
+  '/saas/intro.css?v=20261024',
+  '/saas/support.css?v=20261024',
+  '/saas/public-sections.css?v=20261024',
+  '/saas/public-voice-install.css?v=20261024',
+  '/saas/adaptive.css?v=20261024',
+  '/saas/brand.css?v=20261025',
+  '/saas/experience.css?v=20261024',
   '/saas/product-guide.js?v=23',
   '/saas/intro.js?v=29',
   '/saas/support.js?v=13',

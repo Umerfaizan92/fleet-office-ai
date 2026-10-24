@@ -9,13 +9,16 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
-import { createDb } from './db.js';
+import { createDb, appendAuditLog } from './db.js';
+import { prepareStorage, runStartupDiagnostics, installDiagnosticsRoute } from './diagnostics.js';
+import { installSaasPlatform, responseEnvelope, recordTelnyxComms, applyApprovalToComms } from './saas-platform.js';
 import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
 import { aiProviderStatus, generateAiText, meaningfulConfigValue, resolveAiProviderConfig } from './ai-provider-shim.js';
 import { createIntegrationRuntime } from './integration-runtime.js';
 import { workforceSkillSuggestions, workStatusRequirements, industryComplianceSuggestions, officialSource } from './workforce-compliance.js';
+import { installTeamAccounts } from './team-accounts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +29,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '..');
 const siteRoot = backendRoot;
 
-dotenv.config({ path: path.join(backendRoot, '.env') });
+// SUPERPRO_SKIP_DOTENV=1 is set by the test runner so automated tests can never pick up real provider keys from a developer's .env.
+if (process.env.SUPERPRO_SKIP_DOTENV !== '1') dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const env = process.env;
 const port = Number(env.PORT || 3000);
@@ -403,28 +407,17 @@ async function handleTelnyxCallAnswered(
 
 
 
-const renderPersistentRoot = fs.existsSync('/var/data') ? '/var/data' : null;
-const databasePath = path.isAbsolute(env.DATABASE_PATH || '')
-  ? env.DATABASE_PATH
-  : path.resolve(
-      backendRoot,
-      env.DATABASE_PATH || (renderPersistentRoot ? '/var/data/super-pro.sqlite' : './data/fleet-parlour.sqlite')
-    );
-
+// Storage is proven writable before the database opens. See src/diagnostics.js for the fallback rules.
+const storagePlan = prepareStorage({ env, backendRoot });
+storagePlan.warnings.forEach(w => console.warn('[STORAGE]', w));
+const databasePath = storagePlan.databasePath;
 const db = createDb(databasePath);
+const startedAtMs = Date.now();
+runStartupDiagnostics({ db, env, storage: storagePlan });
 const socialStats = createSocialStatsService(env, backendRoot);
-const persistentStorageDetected=/^\/var\/data(?:\/|$)/.test(databasePath)||/^\/opt\/render\/project\/src\/storage(?:\/|$)/.test(databasePath);
-if(env.NODE_ENV==='production'&&!persistentStorageDetected){
-  console.warn('[PERSISTENCE] Production database is not on a recognised persistent path. On Render, accounts and sessions can disappear after a deploy/restart unless a persistent disk or managed database is configured.');
-}
+const persistentStorageDetected = storagePlan.persistent;
 
-
-const uploadRoot = path.isAbsolute(env.UPLOAD_DIR || '')
-  ? env.UPLOAD_DIR
-  : path.resolve(
-      backendRoot,
-      env.UPLOAD_DIR || (renderPersistentRoot ? '/var/data/uploads' : './data/uploads')
-    );
+const uploadRoot = storagePlan.uploadRoot;
 
 const maxFileMb = Number(env.MAX_FILE_MB || 8);
 const maxFiles = Number(env.MAX_FILES || 10);
@@ -463,7 +456,7 @@ const allowUnlistedOrigins = env.NODE_ENV !== 'production' && allowedOrigins.len
 */
 
 const tiktokTokenPath =
-  path.join(renderPersistentRoot || path.join(backendRoot, 'data'), 'tiktok-oauth.json');
+  path.join(storagePlan.mounted && !storagePlan.fallback ? storagePlan.persistentRoot : path.join(backendRoot, 'data'), 'tiktok-oauth.json');
 
 const tiktokOauthStates = new Map();
 
@@ -847,9 +840,9 @@ app.use(
           "'none'"
         ],
 
+        // No inline scripts: all page scripts are external files, which blocks injected inline <script>/handlers.
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'",
           'https://cdn.jsdelivr.net'
         ],
 
@@ -907,12 +900,15 @@ app.use(
     limit: '1mb',
     verify: (req, res, buf) => {
       // Telnyx signs the exact raw JSON payload. Keep it only for the webhook route.
-      if (req.originalUrl?.startsWith('/api/webhooks/telnyx')) {
+      if (/^\/api\/webhooks\/(telnyx|inbound-email|whatsapp)/.test(req.originalUrl || '')) {
         req.rawBody = Buffer.from(buf);
       }
     }
   })
 );
+
+// Unified { ok, data?, error? } responses for every /api/saas route (legacy top-level fields are kept during migration).
+app.use('/api/saas', responseEnvelope);
 
 app.use(
   express.urlencoded({
@@ -975,7 +971,9 @@ app.get('/llms.txt',(req,res)=>{
 });
 
 
-function serveSeoPublicHtml(fileName){return (req,res)=>{const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');const file=path.join(siteRoot,'saas',fileName);const html=fs.readFileSync(file,'utf8').replaceAll('__PUBLIC_BASE_URL__',base);res.type('html').send(html)}}
+// Registered ABN for the public structured data. Only emitted when BUSINESS_ABN is a valid 11-digit number; never invented.
+function abnLd(){const d=String(env.BUSINESS_ABN||'').replace(/\s+/g,'');return /^\d{11}$/.test(d)?`,"identifier":{"@type":"PropertyValue","propertyID":"ABN","name":"Australian Business Number","value":"${d}"}`:''}
+function serveSeoPublicHtml(fileName){return (req,res)=>{const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');const file=path.join(siteRoot,'saas',fileName);const html=fs.readFileSync(file,'utf8').replaceAll('__PUBLIC_BASE_URL__',base).replaceAll('__ABN_LD__',abnLd());res.type('html').send(html)}}
 app.get(['/saas','/saas/','/saas/index.html'],serveSeoPublicHtml('index.html'));
 app.get('/saas/answers.html',serveSeoPublicHtml('answers.html'));
 app.use('/saas', express.static(path.join(siteRoot, 'saas'), { extensions: ['html'] }));
@@ -2083,7 +2081,7 @@ function requireSaasUser(req,res,next){
   const requestedOrg=String(req.get('X-Organisation-Id')||'').trim();
   if(requestedOrg&&!/^[a-f0-9-]{36}$/i.test(requestedOrg))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
   const now=new Date().toISOString(),hash=sha256(raw);
-  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND (?='' OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(hash,now,requestedOrg,requestedOrg);
+  const row=db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.business_identifier_type,o.business_identifier,o.legal_name,o.abn_status,o.address_unit,o.address_street_number,o.address_street_name,o.address_suburb,o.address_state,o.address_postcode,o.address_formatted,o.address_source FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND m.status='active' AND (?='' OR m.organisation_id=?) ORDER BY m.created_at LIMIT 1`).get(hash,now,requestedOrg,requestedOrg);
   if(!row){
     if(requestedOrg&&db.prepare(`SELECT 1 FROM user_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active'`).get(hash,now))
       return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
@@ -2429,7 +2427,7 @@ function recoveryLookup({recovery_type,email,phone,business_identifier_type,busi
   }
   const mobile=normalizeAuMobile(phone);if(!mobile)return null;
   const type=String(business_identifier_type||'ABN').toUpperCase(),identifier=normalizeBusinessIdentifier(type,business_identifier);
-  return db.prepare(`SELECT u.* FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE u.phone=? AND u.status='active' AND o.business_identifier_type=? AND o.business_identifier=? ORDER BY m.created_at LIMIT 1`).get(mobile,type,identifier);
+  return db.prepare(`SELECT u.* FROM users u JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE u.phone=? AND u.status='active' AND m.status='active' AND o.business_identifier_type=? AND o.business_identifier=? ORDER BY m.created_at LIMIT 1`).get(mobile,type,identifier);
 }
 async function deliverRecoveryCode({id,user,recoveryType,channel,code}){
   let delivery={sent:false,reason:'not_configured'};
@@ -2477,7 +2475,11 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
   const now=new Date();if(user.locked_until&&new Date(user.locked_until)>now)return res.status(423).json({ok:false,error:'This account is temporarily locked after repeated failed sign-in attempts. Try again later.'});
   const supplied=passwordHash(parsed.data.password,user.password_salt),stored=user.password_hash,passwordOk=supplied.length===stored.length&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(stored));
   if(!passwordOk){const nextFailures=Number(user.failed_login_attempts||0)+1,lockedUntil=nextFailures>=5?new Date(now.getTime()+15*60*1000).toISOString():null;db.prepare(`UPDATE users SET failed_login_attempts=?,locked_until=?,updated_at=? WHERE id=?`).run(nextFailures,lockedUntil,now.toISOString(),user.id);return res.status(401).json({ok:false,error:'Invalid sign-in details.'});}
-  if(!user.email_verified||!user.phone_verified)return res.status(403).json({ok:false,error:'This account has not completed email and mobile verification.'});
+  // Email verification is always required. Mobile verification is required for any business owner and for any account with a mobile number on record.
+  // Invited staff (no mobile, not an owner) are verified through the owner's invitation plus a code sent to their mailbox.
+  const holdsOwnerAccess=Boolean(db.prepare(`SELECT 1 FROM memberships WHERE user_id=? AND lower(role)='owner' LIMIT 1`).get(user.id));
+  if(!user.email_verified||((user.phone||holdsOwnerAccess)&&!user.phone_verified))return res.status(403).json({ok:false,error:'This account has not completed email and mobile verification.'});
+  if(!db.prepare(`SELECT 1 FROM memberships WHERE user_id=? AND status='active' LIMIT 1`).get(user.id))return res.status(403).json({ok:false,error:'Your access to this workspace is not active. Contact the workspace owner.'});
   if(user.mfa_enabled&&!parsed.data.mfa_code)return res.status(401).json({ok:false,error:'MFA code required.',mfa_required:true});if(user.mfa_enabled&&!validTotp(user.mfa_secret,parsed.data.mfa_code))return res.status(401).json({ok:false,error:'Invalid MFA code.'});
   db.prepare(`UPDATE users SET failed_login_attempts=0,locked_until=NULL,last_login_at=?,updated_at=? WHERE id=?`).run(now.toISOString(),now.toISOString(),user.id);setSession(res,user.id,req);res.json({ok:true});
 });
@@ -2509,10 +2511,11 @@ app.post('/api/saas/account/deletion/confirm',requireSaasUser,(req,res)=>{
   saasAudit(req,'account.deletion_scheduled','organisation',req.saas.organisation_id,{eligible_after:eligibleAfter.toISOString(),automatic:false});
   res.json({ok:true,status:'scheduled',eligible_after:eligibleAfter.toISOString(),message:'Deletion is scheduled after a 7-day cancellation window. Your account and data remain intact until then. You can cancel this request before the eligible date.'});
 });
-app.post('/api/saas/account/deletion/cancel',requireSaasUser,(req,res)=>{
+app.post('/api/saas/account/deletion/cancel',requireSaasUser,requireSaasRole('owner'),(req,res)=>{
   const row=db.prepare(`SELECT * FROM account_deletion_requests WHERE organisation_id=? AND status='scheduled' ORDER BY requested_at DESC LIMIT 1`).get(req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'No scheduled deletion request was found.'});
-  db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=?`).run(new Date().toISOString(),'Customer cancelled account deletion.',row.id);
+  const cancelled=db.prepare(`UPDATE account_deletion_requests SET status='cancelled',cancelled_at=?,last_message=? WHERE id=? AND organisation_id=? AND status='scheduled'`).run(new Date().toISOString(),'Customer cancelled account deletion.',row.id,req.saas.organisation_id);
+  if(!cancelled.changes)return res.status(409).json({ok:false,error:'This deletion request can no longer be cancelled.'});
   saasAudit(req,'account.deletion_cancelled','organisation',req.saas.organisation_id,{request_id:row.id});
   res.json({ok:true,message:'Account deletion has been cancelled. Your account and data remain preserved.'});
 });
@@ -2584,7 +2587,7 @@ app.post('/api/product-guide/answer',productGuideLimiter,async(req,res)=>{
 
 app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const messages=db.prepare(`SELECT id,sender_name,sender_role,message,created_at FROM staff_chat_messages WHERE organisation_id=? ORDER BY created_at DESC LIMIT 80`).all(req.saas.organisation_id).reverse();res.json({ok:true,messages})});
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name,sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:row})});
-app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,event_type,entity_type,created_at FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
+app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,action event_type,entity_type,created_at FROM audit_logs WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
 // System branding is public; tenant branding is visible only to a signed-in member.
@@ -2619,7 +2622,7 @@ app.get('/api/saas/branding',(req,res)=>{
   if(!session)return res.json({ok:true,branding:{...defaultSaasBranding}});
   const selected=String(req.get('X-Organisation-Id')||req.query.organisation_id||session.organisation_id).trim();
   if(!/^[a-f0-9-]{36}$/i.test(selected))return res.status(400).json({ok:false,error:'Invalid organisation selection.'});
-  const member=db.prepare(`SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?`).get(selected,session.user_id);
+  const member=db.prepare(`SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=? AND status='active'`).get(selected,session.user_id);
   if(!member)return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
   const branding=saasBrandingForOrganisation(selected);
   if(!branding)return res.status(404).json({ok:false,error:'Organisation not found.'});
@@ -2794,7 +2797,7 @@ app.get('/api/saas/branding/logo/:organisationId/:filename',requireSaasUser,(req
   const {organisationId,filename}=req.params;
   if(!/^[a-f0-9-]{36}$/i.test(organisationId)||!/^[a-f0-9-]{36}\.(png|jpg|webp|svg)$/i.test(filename))
     return res.status(404).json({ok:false,error:'Logo not found.'});
-  const member=db.prepare('SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?').get(organisationId,req.saas.user_id);
+  const member=db.prepare(`SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=? AND status='active'`).get(organisationId,req.saas.user_id);
   if(!member)return res.status(404).json({ok:false,error:'Logo not found.'});
   const mime={png:'image/png',jpg:'image/jpeg',webp:'image/webp',svg:'image/svg+xml'}[path.extname(filename).slice(1).toLowerCase()];
   const logoPath=path.join(uploadRoot,'branding',organisationId,filename);
@@ -2811,6 +2814,25 @@ app.get('/api/saas/branding/logo/:organisationId/:filename',requireSaasUser,(req
 
 // The authenticated user may list only organisations with an active membership.
 // Include both id (API compatibility) and organisation_id (workspace switcher).
+// Staff presence: tenant-scoped directory; each user can only change their own status.
+const staffAvailabilitySchema=z.object({
+  status:z.enum(['available','busy','unavailable','on_leave','day_off','working_from_home']),
+  reason:z.string().trim().max(200).optional().default(''),
+  returns_at:z.string().trim().max(40).nullable().optional().refine(v=>!v||!Number.isNaN(Date.parse(v)),'Invalid return time.')
+});
+app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
+  const manager=seniorRole(req.saas.role);
+  const includeInactive=manager&&req.query.include_inactive==='1';
+  const rows=db.prepare(`SELECT u.id,u.full_name,u.status account_status,m.role,COALESCE(a.status,'unavailable') availability,COALESCE(a.reason,'') reason,a.returns_at FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id WHERE m.organisation_id=? ${includeInactive?'':"AND u.status='active'"} ORDER BY u.full_name COLLATE NOCASE LIMIT 500`).all(req.saas.organisation_id);
+  res.json({ok:true,can_view_inactive:manager,staff:rows.map(r=>({id:r.id,full_name:r.full_name,designation:String(r.role||'').replaceAll('_',' '),account_status:r.account_status,availability:r.availability,reason:r.reason,returns_at:r.returns_at||null}))});
+});
+app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
+  const parsed=staffAvailabilitySchema.safeParse(req.body||{});
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Check the availability status, reason and return time.'});
+  db.prepare(`INSERT INTO staff_availability (organisation_id,user_id,status,reason,returns_at,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(organisation_id,user_id) DO UPDATE SET status=excluded.status,reason=excluded.reason,returns_at=excluded.returns_at,updated_at=excluded.updated_at`)
+    .run(req.saas.organisation_id,req.saas.user_id,parsed.data.status,parsed.data.reason||'',parsed.data.returns_at||null,new Date().toISOString());
+  res.json({ok:true});
+});
 app.get('/api/saas/my-organisations',requireSaasUser,(req,res)=>{
   const organisations=db.prepare(`SELECT o.id, o.id organisation_id, o.name, o.slug, m.role
     FROM memberships m JOIN organisations o ON o.id=m.organisation_id
@@ -3218,7 +3240,7 @@ setTimeout(processPlatformAnnouncementEmails,20*1000).unref?.();
 setInterval(processPlatformAnnouncementEmails,60*1000).unref?.();
 
 
-app.put('/api/saas/onboarding',requireSaasUser,(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().max(500).optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),approval_rules:z.object({external_messages:z.boolean(),social_publishing:z.boolean(),payments:z.boolean(),quotes_and_invoices:z.boolean(),compliance_changes:z.boolean(),job_changes:z.boolean(),customer_record_changes:z.boolean()}).optional(),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,approval_rules_json=COALESCE(?,approval_rules_json),ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.approval_rules?JSON.stringify(parsed.data.approval_rules):null,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
+app.put('/api/saas/onboarding',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{const parsed=z.object({business_type:z.string().trim().min(2).max(150),industry_code:z.string().trim().max(80).default('custom'),business_structure:z.enum(['sole_trader','company','partnership','trust','not_for_profit','other']).default('sole_trader'),team_mode:z.enum(['solo','team']).default('solo'),phone:z.string().max(50).optional(),website:z.string().trim().max(500).refine(v=>{if(!v)return true;if(!/^https?:\/\/[^\s\\]+$/i.test(v))return false;try{const u=new URL(v);return u.protocol==='https:'||u.protocol==='http:'}catch{return false}},'Website must be a valid http(s) address.').optional(),service_area:z.string().max(1000).optional(),address_unit:z.string().max(40).optional(),address_street_number:z.string().max(30).optional(),address_street_name:z.string().max(180).optional(),address_suburb:z.string().max(120).optional(),address_state:z.string().max(80).optional(),address_postcode:z.string().max(12).optional(),address_formatted:z.string().max(500).optional(),address_source:z.string().max(80).optional(),services:z.array(z.string().max(200)).max(100),custom_sections:z.array(z.string().trim().min(1).max(100)).max(30).default([]),ai_setup_mode:z.enum(['assist','manual','ai_first']).default('assist'),brand_voice:z.string().max(2000).optional(),approval_mode:z.enum(['everything','external_actions','custom']),approval_rules:z.object({external_messages:z.boolean(),social_publishing:z.boolean(),payments:z.boolean(),quotes_and_invoices:z.boolean(),compliance_changes:z.boolean(),job_changes:z.boolean(),customer_record_changes:z.boolean()}).optional(),ai_instructions:z.string().max(10000).optional(),complete:z.boolean().default(false)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the onboarding information.'});const now=new Date().toISOString();const selectedIndustry=industryByCode(parsed.data.industry_code);db.prepare(`UPDATE onboarding_profiles SET business_type=?,industry_code=?,workspace_modules_json=?,business_structure=?,team_mode=?,phone=?,website=?,service_area=?,services=?,custom_sections_json=?,ai_setup_mode=?,brand_voice=?,approval_mode=?,approval_rules_json=COALESCE(?,approval_rules_json),ai_instructions=?,completed_at=?,updated_at=? WHERE organisation_id=?`).run(parsed.data.business_type,selectedIndustry.code,JSON.stringify(selectedIndustry.modules||[]),parsed.data.business_structure,parsed.data.team_mode,parsed.data.phone||null,parsed.data.website||null,parsed.data.service_area||null,JSON.stringify(parsed.data.services),JSON.stringify(parsed.data.custom_sections),parsed.data.ai_setup_mode,parsed.data.brand_voice||null,parsed.data.approval_mode,parsed.data.approval_rules?JSON.stringify(parsed.data.approval_rules):null,parsed.data.ai_instructions||null,parsed.data.complete?now:null,now,req.saas.organisation_id);db.prepare(`UPDATE organisations SET address_unit=?,address_street_number=?,address_street_name=?,address_suburb=?,address_state=?,address_postcode=?,address_formatted=?,address_source=?,updated_at=? WHERE id=?`).run(parsed.data.address_unit||null,parsed.data.address_street_number||null,parsed.data.address_street_name||null,parsed.data.address_suburb||null,parsed.data.address_state||null,parsed.data.address_postcode||null,parsed.data.address_formatted||null,parsed.data.address_source||'manual',now,req.saas.organisation_id);saasAudit(req,'onboarding.updated','organisation',req.saas.organisation_id,{industry_code:selectedIndustry.code,business_structure:parsed.data.business_structure,team_mode:parsed.data.team_mode,ai_setup_mode:parsed.data.ai_setup_mode});res.json({ok:true,industry:selectedIndustry})});
 
 app.post('/api/saas/onboarding/ai-design',requireSaasUser,async(req,res)=>{
   const parsed=z.object({
@@ -3285,15 +3307,9 @@ function appendGovernanceLedger(organisationId,eventType,entityType=null,entityI
   return {id,eventHash,prevHash,createdAt:now};
 }
 function saasAudit(req,eventType,entityType=null,entityId=null,detail={}){
-  const now=new Date().toISOString();
-  const detailJson=JSON.stringify(detail ?? {});
-  const last=db.prepare(`SELECT event_hash FROM saas_audit_events WHERE organisation_id=? AND event_hash IS NOT NULL ORDER BY created_at DESC,id DESC LIMIT 1`).get(req.saas.organisation_id);
-  const prevHash=last?.event_hash||null;
-  const id=crypto.randomUUID();
-  const eventHash=sha256([req.saas.organisation_id,req.saas.user_id||'',eventType,entityType||'',entityId||'',detailJson,prevHash||'',now,id].join('|'));
-  db.prepare(`INSERT INTO saas_audit_events (id,organisation_id,actor_user_id,event_type,entity_type,entity_id,detail_json,created_at,prev_hash,event_hash) VALUES (?,?,?,?,?,?,?,?,?,?)`).run(id,req.saas.organisation_id,req.saas.user_id,eventType,entityType,entityId,detailJson,now,prevHash,eventHash);
+  const result=appendAuditLog(db,{organisation_id:req.saas.organisation_id,user_id:req.saas.user_id,user_name:req.saas.full_name,user_role:req.saas.role,action:eventType,module:String(eventType).split('.')[0]||'workspace',entity_type:entityType,entity_id:entityId,ip_address:req.ip,user_agent:req.get?.('user-agent'),metadata:detail??{}});
   appendGovernanceLedger(req.saas.organisation_id,eventType,entityType,entityId,req.saas.user_id,detail);
-  return {id,eventHash};
+  return {id:result.id,eventHash:result.eventHash};
 }
 function requireSaasRole(...roles){
   return (req,res,next)=>{
@@ -3302,10 +3318,13 @@ function requireSaasRole(...roles){
     next();
   };
 }
+// Workforce records contain personal and work-rights data: managers see the whole organisation,
+// every other member sees only the worker record linked to their own login.
+function canManageWorkers(req){return ['owner','admin','manager','super_admin','director'].includes(String(req.saas?.role||'').toLowerCase())}
 function seniorRole(role){return ['owner','admin','manager','super_admin','director','complaints_officer','privacy_officer','security_officer'].includes(String(role||'').toLowerCase())}
 function optionalSaasSession(req){
   const raw=cookieValue(req,sessionCookieName);if(!raw)return null;
-  return db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.legal_name,o.abn_status FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString())||null;
+  return db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.legal_name,o.abn_status FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND m.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString())||null;
 }
 
 app.get('/api/saas/dashboard',requireSaasUser,(req,res)=>{const org=req.saas.organisation_id;const workers=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND status!='archived'`).get(org).count;const ready=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active'`).get(org).count;const attention=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=0 AND status!='archived'`).get(org).count;const jobs=db.prepare(`SELECT COUNT(*) count FROM work_orders WHERE organisation_id=? AND status IN ('awaiting_allocation','offered')`).get(org).count;const expiring=db.prepare(`SELECT COUNT(*) count FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE w.organisation_id=? AND d.expiry_date IS NOT NULL AND d.expiry_date<=date('now','+30 day')`).get(org).count;res.json({ok:true,metrics:{workers,ready,attention,jobs,expiring}})});
@@ -3380,7 +3399,7 @@ app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
     entity_type:z.string().trim().max(80).optional(),
     entity_id:z.string().trim().max(200).optional(),
     risk_level:z.enum(['low','normal','elevated','high','critical']).default('normal'),
-    draft_payload:z.record(z.any()).default({}),
+    draft_payload:z.record(z.string(),z.any()).default({}),
     required_role:z.enum(['senior','owner','admin','manager']).default('senior'),
     expires_at:z.string().trim().max(60).optional()
   }).safeParse(req.body);
@@ -3390,7 +3409,7 @@ app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
 });
 
 app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
-  const parsed=z.object({edited_payload:z.record(z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
+  const parsed=z.object({edited_payload:z.record(z.string(),z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval changes.'});
   const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
@@ -3403,7 +3422,7 @@ app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
 
 app.post('/api/saas/approvals/:id/decision',requireSaasUser,(req,res)=>{
   if(!approvalCanDecide(req.saas.role))return res.status(403).json({ok:false,error:'Only an authorised owner, administrator, manager or director can decide approvals.'});
-  const parsed=z.object({decision:z.enum(['approve','reject']),note:z.string().trim().max(2000).optional(),edited_payload:z.record(z.any()).optional()}).safeParse(req.body);
+  const parsed=z.object({decision:z.enum(['approve','reject']),note:z.string().trim().max(2000).optional(),edited_payload:z.record(z.string(),z.any()).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose approve or reject.'});
   const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
@@ -3415,9 +3434,13 @@ app.post('/api/saas/approvals/:id/decision',requireSaasUser,(req,res)=>{
   }
   const status=parsed.data.decision==='approve'?'approved':'rejected',now=new Date().toISOString();
   const edited=parsed.data.edited_payload?JSON.stringify(parsed.data.edited_payload):row.edited_payload_json;
-  db.prepare(`UPDATE workspace_approvals SET status=?,edited_payload_json=?,decided_by_user_id=?,decided_at=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=?`)
-    .run(status,edited||null,req.saas.user_id,now,parsed.data.note||null,now,row.id,req.saas.organisation_id);
-  addWorkspaceApprovalEvent(req,row.id,status,{note:parsed.data.note||'',source_module:row.source_module,entity_type:row.entity_type,entity_id:row.entity_id});
+  try{db.transaction(()=>{
+    const changed=db.prepare(`UPDATE workspace_approvals SET status=?,edited_payload_json=?,decided_by_user_id=?,decided_at=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=? AND status='pending'`)
+      .run(status,edited||null,req.saas.user_id,now,parsed.data.note||null,now,row.id,req.saas.organisation_id).changes;
+    if(changed!==1)throw Object.assign(new Error('already decided'),{code:'ALREADY_DECIDED'});
+    addWorkspaceApprovalEvent(req,row.id,status,{note:parsed.data.note||'',source_module:row.source_module,entity_type:row.entity_type,entity_id:row.entity_id});
+    applyApprovalToComms(db,row,status,edited);
+  })()}catch(error){if(error.code==='ALREADY_DECIDED')return res.status(409).json({ok:false,error:'This approval was already decided.'});throw error}
   res.json({ok:true,status,executed:false,message:status==='approved'?'Approved. Any external execution remains subject to the connected module/provider action.':'Rejected. No external action was executed.'});
 });
 
@@ -3484,7 +3507,12 @@ function workerComplianceState(orgId,workerId){
   const requiredDocuments=db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? AND required=1 ORDER BY document_type`).all(workerId);
   const blockingDocuments=requiredDocuments.filter(x=>x.verification_status!=='verified'||(x.expiry_date&&x.expiry_date<now));
   const workRights=requirements.filter(x=>x.category==='work_rights');
-  const workRightsVerified=workRights.length>0&&workRights.every(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now));
+  const workRightsDocs=workRights.length>0&&workRights.every(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now));
+  // Visa holders (and anyone still under review) also need a recorded, unexpired VEVO result.
+  const vevoRow=db.prepare(`SELECT declared_work_status,vevo_status,vevo_work_rights_expiry,vevo_conditions FROM workers WHERE id=? AND organisation_id=?`).get(workerId,orgId)||{};
+  const vevoRequired=!['australian_citizen','permanent_resident'].includes(vevoRow.declared_work_status);
+  const vevoOk=['verified','verified_with_conditions'].includes(vevoRow.vevo_status)&&(!vevoRow.vevo_work_rights_expiry||vevoRow.vevo_work_rights_expiry>=now);
+  const workRightsVerified=workRightsDocs&&(!vevoRequired||vevoOk);
   const total=required.length+requiredDocuments.length;
   const verifiedRequirements=required.filter(x=>x.status==='verified'&&(!x.expiry_date||x.expiry_date>=now)).length;
   const verifiedDocuments=requiredDocuments.filter(x=>x.verification_status==='verified'&&(!x.expiry_date||x.expiry_date>=now)).length;
@@ -3498,6 +3526,10 @@ function workerComplianceState(orgId,workerId){
     blocking_requirement_count:blockingRequirements.length,
     blocking_document_count:blockingDocuments.length,
     work_rights_verified:workRightsVerified,
+    work_rights_expired:workRights.some(x=>x.expiry_date&&x.expiry_date<now),
+    vevo_required:vevoRequired,
+    vevo_ok:vevoOk,
+    work_conditions:vevoRow.vevo_status==='verified_with_conditions'?vevoRow.vevo_conditions||'Visa conditions apply':null,
     progress:total?Math.round((verified/total)*100):0,
     eligible:total>0&&blockingRequirements.length===0&&blockingDocuments.length===0&&workRightsVerified
   };
@@ -3550,11 +3582,26 @@ function addWorkerOnboardingEvent(invite,eventType,detail={}){
 }
 
 app.get('/api/saas/workers',requireSaasUser,(req,res)=>{
-  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(req.saas.organisation_id);
+  const own=!canManageWorkers(req);
+  const rows=db.prepare(`SELECT * FROM workers WHERE organisation_id=? ${own?'AND user_id=?':''} ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END,full_name`).all(...(own?[req.saas.organisation_id,req.saas.user_id]:[req.saas.organisation_id]));
   res.json({ok:true,workers:rows.map(x=>workerPublicRow(req.saas.organisation_id,x))});
 });
 
-app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
+function createWorkerWithCompliance(orgId,d){
+  const id=crypto.randomUUID(),now=new Date().toISOString();
+  db.prepare(`INSERT INTO workers (id,organisation_id,full_name,email,phone,role_title,employment_type,worker_level,status,work_rights_status,declared_work_status,onboarding_progress,approved_for_scheduling,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,'review_required',?,0,0,?,?)`)
+    .run(id,orgId,d.full_name,d.email||null,d.phone||null,d.role_title,d.employment_type,d.worker_level,'onboarding',d.work_status,now,now);
+  const docs=[['photo_id',1],['employment_contract',1],['emergency_contact',1]];
+  if(['australian_citizen','permanent_resident','visa_holder'].includes(d.work_status))docs.push(['identity_work_rights_evidence',1]);
+  if(['contractor','subcontractor'].includes(d.employment_type)){docs.push(['abn_details',1],['insurance',1])}
+  const ins=db.prepare(`INSERT INTO worker_documents (id,worker_id,document_type,required,created_at,updated_at) VALUES (?,?,?,?,?,?)`);
+  db.transaction(()=>{for(const [t,r] of docs)ins.run(crypto.randomUUID(),id,t,r,now,now)})();
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=?`).get(id);
+  seedWorkerComplianceRequirements(orgId,worker);
+  const state=recomputeWorkerEligibility(orgId,id);
+  return {id,state};
+}
+app.post('/api/saas/workers',requireSaasUser,requireSaasRole(...workforceSeniorRoles),(req,res)=>{
   const parsed=z.object({
     full_name:z.string().trim().min(2).max(150),
     email:z.string().trim().email().optional().or(z.literal('')),
@@ -3565,23 +3612,14 @@ app.post('/api/saas/workers',requireSaasUser,(req,res)=>{
     work_status:z.enum(['australian_citizen','permanent_resident','visa_holder','requires_review'])
   }).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check worker details.'});
-  const id=crypto.randomUUID(),now=new Date().toISOString();
-  db.prepare(`INSERT INTO workers (id,organisation_id,full_name,email,phone,role_title,employment_type,worker_level,status,work_rights_status,declared_work_status,onboarding_progress,approved_for_scheduling,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,'review_required',?,0,0,?,?)`)
-    .run(id,req.saas.organisation_id,parsed.data.full_name,parsed.data.email||null,parsed.data.phone||null,parsed.data.role_title,parsed.data.employment_type,parsed.data.worker_level,'onboarding',parsed.data.work_status,now,now);
-  const docs=[['photo_id',1],['employment_contract',1],['emergency_contact',1]];
-  if(['australian_citizen','permanent_resident','visa_holder'].includes(parsed.data.work_status))docs.push(['identity_work_rights_evidence',1]);
-  if(['contractor','subcontractor'].includes(parsed.data.employment_type)){docs.push(['abn_details',1],['insurance',1])}
-  const ins=db.prepare(`INSERT INTO worker_documents (id,worker_id,document_type,required,created_at,updated_at) VALUES (?,?,?,?,?,?)`);
-  db.transaction(()=>{for(const [t,r] of docs)ins.run(crypto.randomUUID(),id,t,r,now,now)})();
-  const worker=db.prepare(`SELECT * FROM workers WHERE id=?`).get(id);
-  seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
-  const state=recomputeWorkerEligibility(req.saas.organisation_id,id);
+  const {id,state}=createWorkerWithCompliance(req.saas.organisation_id,parsed.data);
   saasAudit(req,'worker.created','worker',id,{employment_type:parsed.data.employment_type,declared_work_status:parsed.data.work_status});
   res.status(201).json({ok:true,id,approved_for_scheduling:state.eligible,compliance:state});
 });
 
 app.get('/api/saas/workers/:id/compliance',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+  const own=!canManageWorkers(req);
+  const worker=db.prepare(`SELECT * FROM workers WHERE id=? AND organisation_id=? ${own?'AND user_id=?':''}`).get(...(own?[req.params.id,req.saas.organisation_id,req.saas.user_id]:[req.params.id,req.saas.organisation_id]));
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   if(!db.prepare(`SELECT 1 FROM worker_compliance_requirements WHERE worker_id=? LIMIT 1`).get(worker.id))seedWorkerComplianceRequirements(req.saas.organisation_id,worker);
   const state=recomputeWorkerEligibility(req.saas.organisation_id,worker.id);
@@ -3634,13 +3672,15 @@ app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workf
 });
 
 app.get('/api/saas/workers/:id/skills',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+  const own=!canManageWorkers(req);
+  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=? ${own?'AND user_id=?':''}`).get(...(own?[req.params.id,req.saas.organisation_id,req.saas.user_id]:[req.params.id,req.saas.organisation_id]));
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,skills:db.prepare(`SELECT * FROM worker_skills WHERE worker_id=? ORDER BY skill_name`).all(worker.id)});
 });
 
 app.get('/api/saas/workers/:id/documents',requireSaasUser,(req,res)=>{
-  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+  const own=!canManageWorkers(req);
+  const worker=db.prepare(`SELECT id FROM workers WHERE id=? AND organisation_id=? ${own?'AND user_id=?':''}`).get(...(own?[req.params.id,req.saas.organisation_id,req.saas.user_id]:[req.params.id,req.saas.organisation_id]));
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found'});
   res.json({ok:true,documents:db.prepare(`SELECT * FROM worker_documents WHERE worker_id=? ORDER BY required DESC,document_type`).all(worker.id)});
 });
@@ -3730,8 +3770,8 @@ app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole('owne
     return {worker:w,missing_skills:missingSkills,compliance,eligible:missingSkills.length===0&&compliance.blocking_count===0&&compliance.work_rights_verified};
   });
   const eligible=evaluated.filter(x=>x.eligible).map(x=>x.worker),now=new Date().toISOString();
-  const ins=db.prepare(`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at) VALUES (?,?,?,?, 'offered',?)`);
-  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
+  const ins=db.prepare(`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at,offered_by_user_id,work_rights_status_at_offer,vevo_status_at_offer) VALUES (?,?,?,?, 'offered',?,?,?,?)`);
+  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now,req.saas.user_id,w.work_rights_status||null,w.vevo_status||null);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
   saasAudit(req,'work_order.offered','work_order',job.id,{eligible_workers:eligible.length,required_skills:skills});
   res.json({
     ok:true,eligible_workers:eligible.map(w=>({id:w.id,full_name:w.full_name,level:w.worker_level})),offered:eligible.length,
@@ -3878,14 +3918,21 @@ app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{
     WHERE o.id=? AND o.organisation_id=? AND worker.user_id=? AND worker.status='active'`).get(req.params.id,req.saas.organisation_id,req.saas.user_id);
   if(!offer)return res.status(404).json({ok:false,error:'Offer not found'});
   if(offer.status!=='offered')return res.status(409).json({ok:false,error:'Offer has already been answered.'});
+  if(parsed.data.status==='accepted'){const rights=workerComplianceState(req.saas.organisation_id,offer.worker_id);if(rights.work_rights_expired||(rights.vevo_required&&!rights.vevo_ok))return res.status(409).json({ok:false,error:'Your work-rights check is not current, so this job cannot be accepted. Ask your manager to update it.'})}
   const now=new Date().toISOString();
   const accepted=db.transaction(()=>{
+    // Never accept more workers than the job requires (checked inside the transaction so concurrent accepts cannot over-allocate).
+    if(parsed.data.status==='accepted'){
+      const already=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
+      if(already>=offer.required_workers)return -1;
+    }
     const changed=db.prepare(`UPDATE job_offers SET status=?,responded_at=? WHERE id=? AND organisation_id=? AND status='offered'`).run(parsed.data.status,now,offer.id,req.saas.organisation_id).changes;
     if(changed!==1)return null;
     const count=db.prepare(`SELECT COUNT(*) count FROM job_offers WHERE work_order_id=? AND organisation_id=? AND status='accepted'`).get(offer.work_order_id,req.saas.organisation_id).count;
     if(count>=offer.required_workers)db.prepare(`UPDATE work_orders SET status='allocated',updated_at=? WHERE id=? AND organisation_id=?`).run(now,offer.work_order_id,req.saas.organisation_id);
     return count;
   })();
+  if(accepted===-1)return res.status(409).json({ok:false,error:'This job already has all the workers it needs.'});
   if(accepted===null)return res.status(409).json({ok:false,error:'Offer has already been answered.'});
   saasAudit(req,'job_offer.responded','job_offer',offer.id,{status:parsed.data.status});
   res.json({ok:true,accepted_workers:accepted});
@@ -4240,10 +4287,10 @@ app.get('/api/admin/approvals', requireAdmin, (req,res)=>{
   res.json({ok:true,approvals});
 });
 
-app.patch('/api/admin/approvals/:id', requireAdmin, (req,res)=>{const parsed=z.object({edited_payload:z.record(z.any())}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid draft changes.'});const result=db.prepare(`UPDATE approvals SET edited_payload=? WHERE id=? AND status='pending'`).run(JSON.stringify(parsed.data.edited_payload),req.params.id);if(!result.changes)return res.status(404).json({ok:false,error:'Pending approval not found'});res.json({ok:true})});
+app.patch('/api/admin/approvals/:id', requireAdmin, (req,res)=>{const parsed=z.object({edited_payload:z.record(z.string(),z.any())}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid draft changes.'});const result=db.prepare(`UPDATE approvals SET edited_payload=? WHERE id=? AND status='pending'`).run(JSON.stringify(parsed.data.edited_payload),req.params.id);if(!result.changes)return res.status(404).json({ok:false,error:'Pending approval not found'});res.json({ok:true})});
 
 app.post('/api/admin/approvals/:id/decision', requireAdmin, (req,res)=>{
-  const parsed=z.object({decision:z.enum(['approve','reject']),edited_payload:z.record(z.any()).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid approval decision.'});
+  const parsed=z.object({decision:z.enum(['approve','reject']),edited_payload:z.record(z.string(),z.any()).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid approval decision.'});
   const approval=db.prepare(`SELECT * FROM approvals WHERE id=? AND status='pending'`).get(req.params.id);if(!approval)return res.status(404).json({ok:false,error:'Pending approval not found'});
   const payload=parsed.data.edited_payload||JSON.parse(approval.edited_payload||approval.draft_payload),now=new Date().toISOString(),status=parsed.data.decision==='approve'?'approved':'rejected';
   db.transaction(()=>{db.prepare(`UPDATE approvals SET status=?,edited_payload=?,decided_at=? WHERE id=?`).run(status,JSON.stringify(payload),now,approval.id);if(approval.approval_type==='reply'){db.prepare(`UPDATE messages SET body=?,status=?,approved_at=? WHERE id=?`).run(payload.body||'',status,parsed.data.decision==='approve'?now:null,approval.entity_id)}else if(approval.approval_type==='quote'){db.prepare(`UPDATE quotes SET status=?,approved_at=?,updated_at=? WHERE id=?`).run(parsed.data.decision==='approve'?'approved':'draft',parsed.data.decision==='approve'?now:null,now,approval.entity_id)}else if(approval.approval_type==='date_proposal'){db.prepare(`UPDATE date_proposals SET status=? WHERE id=?`).run(parsed.data.decision==='approve'?'approved':'rejected',approval.entity_id)}else if(approval.approval_type==='invoice'){db.prepare(`UPDATE invoices SET status=?,updated_at=? WHERE id=?`).run(parsed.data.decision==='approve'?'approved':'draft',now,approval.entity_id)}else if(['followup','receipt','review_request','thank_you'].includes(approval.approval_type)){db.prepare(`UPDATE automation_tasks SET status=?,payload=? WHERE id=?`).run(parsed.data.decision==='approve'?'approved':'rejected',JSON.stringify(payload),approval.entity_id)}})();
@@ -4790,6 +4837,9 @@ app.post('/api/webhooks/telnyx', (req, res) => {
       return;
     }
 
+    // Tenant inbox: SMS and call logs for activated numbers (never throws into the webhook).
+    try { recordTelnyxComms(db, eventType, payload); } catch (error) { console.error('[TELNYX COMMS]', error.message); }
+
     /*
     |--------------------------------------------------------------------------
     | Voice lifecycle
@@ -5076,7 +5126,7 @@ app.get('/api/saas/governance/overview',requireSaasUser,(req,res)=>{
   const policies=db.prepare(`SELECT p.*,CASE WHEN a.id IS NULL THEN 0 ELSE 1 END acknowledged FROM governance_policies p LEFT JOIN policy_acknowledgements a ON a.policy_id=p.id AND a.organisation_id=? AND a.user_id=? AND a.policy_version=p.version WHERE p.jurisdiction='AU' AND (p.industry='all' OR lower(p.industry)=lower(?)) AND (?=1 OR p.audience='all' OR p.audience='staff' OR lower(p.audience)=lower(?)) ORDER BY p.title`).all(req.saas.organisation_id,req.saas.user_id,industry,senior?1:0,req.saas.role);
   const caseCounts=senior?db.prepare(`SELECT status,severity,COUNT(*) count FROM support_cases WHERE organisation_id=? GROUP BY status,severity`).all(req.saas.organisation_id):[];
   const notifications=senior?db.prepare(`SELECT id,severity,notification_type,title,message,audience_role,status,related_entity_type,related_entity_id,created_at,read_at FROM security_notifications WHERE organisation_id=? AND (audience_role='senior' OR lower(audience_role)=lower(?)) ORDER BY created_at DESC LIMIT 20`).all(req.saas.organisation_id,req.saas.role):[];
-  const audit=senior?db.prepare(`SELECT id,event_type,entity_type,entity_id,created_at,event_hash,prev_hash FROM saas_audit_events WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id):[];
+  const audit=senior?db.prepare(`SELECT id,action event_type,entity_type,entity_id,created_at,event_hash,prev_hash FROM audit_logs WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id):[];
   const ledger=senior?db.prepare(`SELECT id,event_type,entity_type,entity_id,payload_hash,prev_hash,event_hash,created_at FROM governance_ledger WHERE organisation_id=? ORDER BY created_at DESC LIMIT 20`).all(req.saas.organisation_id):[];
   res.json({ok:true,role:req.saas.role,senior_access:senior,industry,policies,case_counts:caseCounts,notifications,audit,ledger,controls:{tenant_isolation:true,append_only_ledger:true,mfa_available:true,privileged_audit_restricted:true,confidential_case_routing:true,legal_review_required:true}});
 });
@@ -5361,7 +5411,7 @@ app.get('/api/admin/search-visibility',requireAdmin,(req,res)=>{
   res.json({ok:true,score:Math.round(passed/Object.keys(checks).length*100),checks,snapshots,principles:{seo:'crawlability, canonical URLs, useful content, performance and structured data',geo:'clear entities, evidence, freshness, citation-ready pages and AI-search monitoring',aeo:'direct answers, semantic headings, concise factual sections and trustworthy source context'},llms_txt_note:'Optional for systems that use it; it is not a Google Search ranking signal.'});
 });
 app.post('/api/admin/search-visibility/snapshot',requireAdmin,(req,res)=>{
-  const parsed=z.object({source:z.enum(['google_search_console','bing_webmaster','bing_ai','manual','other']),metric_key:z.string().trim().min(2).max(100),metric_value:z.coerce.number(),page_url:z.string().max(1000).optional().or(z.literal('')),query_text:z.string().max(1000).optional().or(z.literal('')),metadata:z.record(z.any()).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the search visibility metric.'});const id=crypto.randomUUID();db.prepare(`INSERT INTO search_visibility_snapshots (id,source,metric_key,metric_value,page_url,query_text,captured_at,metadata_json) VALUES (?,?,?,?,?,?,?,?)`).run(id,parsed.data.source,parsed.data.metric_key,parsed.data.metric_value,parsed.data.page_url||null,parsed.data.query_text||null,new Date().toISOString(),JSON.stringify(parsed.data.metadata||{}));res.status(201).json({ok:true,id});
+  const parsed=z.object({source:z.enum(['google_search_console','bing_webmaster','bing_ai','manual','other']),metric_key:z.string().trim().min(2).max(100),metric_value:z.coerce.number(),page_url:z.string().max(1000).optional().or(z.literal('')),query_text:z.string().max(1000).optional().or(z.literal('')),metadata:z.record(z.string(),z.any()).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Check the search visibility metric.'});const id=crypto.randomUUID();db.prepare(`INSERT INTO search_visibility_snapshots (id,source,metric_key,metric_value,page_url,query_text,captured_at,metadata_json) VALUES (?,?,?,?,?,?,?,?)`).run(id,parsed.data.source,parsed.data.metric_key,parsed.data.metric_value,parsed.data.page_url||null,parsed.data.query_text||null,new Date().toISOString(),JSON.stringify(parsed.data.metadata||{}));res.status(201).json({ok:true,id});
 });
 app.post('/api/admin/search-visibility/indexnow',requireAdmin,async(req,res)=>{
   const key=String(env.INDEXNOW_KEY||'').trim();if(!key)return res.status(409).json({ok:false,error:'INDEXNOW_KEY is not configured.'});const base=(env.PUBLIC_BASE_URL||'').replace(/\/$/,'');if(!/^https:\/\//i.test(base))return res.status(409).json({ok:false,error:'PUBLIC_BASE_URL must be the live HTTPS domain before IndexNow submission.'});const urls=Array.isArray(req.body?.urls)?req.body.urls:[`${base}/saas/`,`${base}/saas/answers.html`];const host=new URL(base).host;try{const r=await fetch('https://api.indexnow.org/indexnow',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({host,key,keyLocation:`${base}/indexnow-key.txt`,urlList:urls.slice(0,10000)})});if(!r.ok&&r.status!==202)return res.status(502).json({ok:false,error:`IndexNow returned HTTP ${r.status}`});res.json({ok:true,submitted:urls.length,status:r.status})}catch(err){res.status(502).json({ok:false,error:'IndexNow submission failed.'})}
@@ -5371,6 +5421,12 @@ app.get('/api/saas/referrals',requireSaasUser,(req,res)=>{
   let row=db.prepare(`SELECT * FROM referral_codes WHERE organisation_id=?`).get(req.saas.organisation_id);if(!row){const code=`SP-${req.saas.organisation_id.replace(/-/g,'').slice(0,8).toUpperCase()}`,now=new Date().toISOString();row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,owner_user_id:req.saas.user_id,code,status:'active',created_at:now,updated_at:now};db.prepare(`INSERT OR IGNORE INTO referral_codes (id,organisation_id,owner_user_id,code,status,created_at,updated_at) VALUES (@id,@organisation_id,@owner_user_id,@code,@status,@created_at,@updated_at)`).run(row)}const events=db.prepare(`SELECT * FROM referral_events WHERE referrer_code=? OR direct_referrer_code=? ORDER BY level,created_at DESC`).all(row.code,row.code);res.json({ok:true,code:row.code,events,lineage_note:'Referral events retain the original/root referral code plus the direct inviter code and level where available.',reward_policy:'Referral rewards/discounts are promotional and remain configurable. Rewards are not earned until the referred account meets the published qualification rules.'});
 });
 
+
+installDiagnosticsRoute(app,{db,env,storage:storagePlan,requireAdmin,startedAt:startedAtMs});
+installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles});
+
+// Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
+installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification:payload=>sendSaasVerificationEmail(env,payload)});
 
 /*
 |--------------------------------------------------------------------------

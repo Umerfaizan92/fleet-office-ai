@@ -52,3 +52,6 @@ jobs:
 
       - name: Runtime smoke test
         run: npm run smoke:test
+
+      - name: Full regression suite
+        run: npm test

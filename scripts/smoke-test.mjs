@@ -64,6 +64,6 @@ try {
     sleep(1500)
   ]).catch(() => {});
   if (child.exitCode === null) child.kill('SIGKILL');
-  fs.rmSync(tempRoot, { recursive: true, force: true });
+  try { fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* Windows may still hold a file */ }
 }
 if (failed) process.exit(1);

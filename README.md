@@ -1,82 +1,48 @@
 # Super Pro AI Office Manager
 
-Current release: **18.0.1**
+Multi-tenant office manager for Australian service businesses. One workspace for operations, workforce compliance, finance and governance:
 
-Super Pro AI Office Manager is the current consolidated Fleet Office AI codebase for service-business operations. The repository now uses current descriptive runtime filenames instead of stacked v11–v17 browser patches.
+- **Operations:** command dashboard, AI receptionist, omnichannel inbox (email, SMS, WhatsApp, voice logs), dispatch and job offers.
+- **Workforce:** staff records, document and licence tracking, Fair Work and VEVO work-rights checks, skills and growth.
+- **Finance:** job ledger and billing.
+- **Governance:** human approvals for every AI action that leaves the building, a tamper-evident audit log, privacy requests and statutory retention, data migration (CSV/JSON import with a dry run), and an owner-only export and backup hub.
 
+The brand name is still provisional. It lives in `package.json` (`name`, `description`), `render.yaml` (`name`) and the `saas/` pages.
 
-## 18.0.1 production hardening
-
-- Product Guide Auto microphone capture now begins immediately instead of waiting before recording the first utterance.
-- Spoken server replies use an unlocked Web Audio playback path first, with HTML audio and browser speech fallbacks.
-- Pressing the microphone interrupts current AI audio at pointer-down time.
-- Public PWA/cache versions were bumped so deployed browsers receive the voice fix.
-- Render production Blueprint uses one paid instance with a persistent `/var/data` disk for SQLite and uploads.
-- Production CORS no longer becomes wildcard-permissive when `ALLOWED_ORIGINS` is omitted.
-- Gemini-only deployments now report server voice readiness consistently in platform capabilities.
-- Session TTL now follows the bounded `SESSION_TTL_DAYS` environment setting.
-- The integrity manifest can be checked with `npm run verify:manifest`.
-
-## Current architecture
-
-- One multilingual Product Guide core: `saas/product-guide.js`
-- Public product experience: `saas/intro.js`
-- Workspace application: `saas/app.js`
-- Workspace AI Operations: `saas/ai-operations.js`
-- Shared SaaS runtime: `saas/common.js`
-- Install/PWA runtime: `saas/install.js`
-- Workspace supplemental runtime: `saas/workspace-extras.js`
-- Central AI-provider policy: `src/ai-provider-shim.js`
-- Backend/API and integrations: `src/server.js`
-
-The old versioned browser wrappers and duplicated guide patches have been removed after their required behavior was consolidated into the current files.
-
-## AI and multilingual behavior
-
-With `FREE_AI_MODE=1`, the application is strict free-first:
-- a configured `GEMINI_API_KEY` (or `GOOGLE_AI_API_KEY`) is used for server AI text;
-- Gemini is used for server speech transcription and TTS when configured;
-- exhausted OpenAI credentials are not called in strict free mode;
-- if the server AI provider is unavailable, Product Guide and AI Operations use safe built-in fallbacks;
-- browser/device speech recognition and speech synthesis remain fallback options where supported.
-
-Selected reply language takes priority. Auto detection includes native scripts plus common Roman/transliterated Urdu and Punjabi patterns.
-
-## External connections
-
-OAuth/callback foundations exist for supported provider connections, but a connection is live only after its real provider credentials, redirect URI, permissions/app review and customer authorisation succeed. The UI must not represent an unverified connector as live.
-
-## Security
-
-Never commit:
-- `.env` or real API/provider secrets;
-- access/refresh tokens;
-- customer databases or uploads;
-- runtime logs containing private information.
-
-Use `.env.example` only as a variable template.
-
-## Validation
-
-After every production change run:
+## Run it locally
 
 ```bash
 npm ci
-npm run validate:final
-npm run quality:check
-npm run smoke:test
-npm run check:config
-npm start
+cp .env.example .env     # then fill in your own values; never commit .env
+npm start                # http://localhost:3000
 ```
 
-Then smoke-test the deployed environment using `docs/current/TEST_CHECKLIST.md`.
+## Verify it
 
-## Current documentation
+```bash
+npm test                 # everything: syntax, migrations, permissions, end-to-end pipeline, contract tests
+npm run test:fast        # same without the slower contract-test suite
+```
 
-- `docs/current/RELEASE.md`
-- `docs/current/DEPLOY.md`
-- `docs/current/TEST_CHECKLIST.md`
-- `docs/reference/PRODUCTION_SECURITY_CHECKLIST.md`
-- `docs/reference/PLATFORM_KEY_CONTROL.md`
+## Deploy it
 
-Historical version-specific build notes are intentionally not part of the current production tree.
+See [`docs/DEPLOY.md`](docs/DEPLOY.md). Short version: Render blueprint (`render.yaml`), Node 22, persistent disk at `/var/data`, build command `npm ci && npm test`.
+
+## Layout
+
+| Path | What it is |
+|---|---|
+| `src/server.js` | HTTP server and most API routes |
+| `src/db.js` | database schema, migrations, append-only hash-chained audit log |
+| `src/saas-platform.js` | data export, privacy and erasure, VEVO, omnichannel inbox and webhooks, AI gate, migration API |
+| `src/diagnostics.js` | startup storage checks, schema self-healing, `GET /api/saas/health/diagnostics` |
+| `saas/` | the web application (workspace, sign-in, public pages) |
+| `office/` | the office view |
+| `scripts/verify-all.mjs` | the single verification entry point |
+| `scripts/purge-legacy.ps1`, `.sh` | archive-then-delete cleanup of superseded files (`legacy-files.txt` is the list) |
+| `docs/github-ci.yml` | one-file replacement for the two older GitHub workflows (copy to `.github/workflows/ci.yml`) |
+| `docs/reference/` | security checklist, key control, comms architecture, user manual |
+
+## Security
+
+Never commit `.env`, API keys, tokens, customer databases, uploads or logs. Secrets are generated by Render or supplied as environment variables. Compliance features support, but do not replace, advice from a qualified Australian lawyer or accountant.

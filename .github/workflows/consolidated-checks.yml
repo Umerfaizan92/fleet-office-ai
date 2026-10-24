@@ -39,11 +39,7 @@ jobs:
         run: npm run integration:test
       - name: Runtime smoke test
         run: npm run smoke:test
-      - name: Security contract regression tests
-        run: node --test scripts/security-contract.test.mjs
-      - name: Runtime tenant and allocation regression tests
-        run: node --test scripts/runtime-security.test.mjs
-      - name: Voice cancellation and skill regression tests
-        run: node --test scripts/voice-runtime.test.mjs
-      - name: Business selection and memory isolation tests
-        run: node --test scripts/workspace-context.test.mjs
+      - name: Full regression suite (security contract, tenant boundaries, RBAC, branding, voice, workspace)
+        run: npm test
+      - name: Dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,22 @@
+# Files the one-click purge archives and then deletes. One entry per line; shared by purge-legacy.ps1 and purge-legacy.sh.
+#   path/to/file      a single file
+#   path/to/folder/   every file inside a folder
+#   glob:*.bak        any file with that name pattern, anywhere (except protected folders)
+# Never touched whatever is listed here: .env*, node_modules, .git, data, uploads, *.sqlite / *.db files.
+
+# Superseded audit reports, changelogs and validation reports (each described an older release; the current state is in README.md and docs/DEPLOY.md)
+FLEET-PARLOUR-AUDIT-REPORT.md
+docs/current/
+docs/reference/SECURITY_GOVERNANCE_UPGRADE.md
+
+# Editor / OS / tool leftovers
+glob:*.orig
+glob:*.rej
+glob:*.bak
+glob:*~
+glob:npm-debug.log*
+glob:.DS_Store
+glob:Thumbs.db
+
+# Superseded by scripts/generate-admin-key.mjs
+GENERATE-ADMIN-KEY.mjs

@@ -1,0 +1,36 @@
+# Single replacement for the two older workflows. To adopt it: copy this file to .github/workflows/ci.yml, delete consolidated-checks.yml and super-pro-validation.yml, and commit. (Kept here because tooling cannot write into .github.)
+name: CI
+
+on:
+  push:
+    branches: [main, consolidated-improvements-2026]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # scripts/verify-all.mjs: syntax, migrations, storage fallback, permission matrix, end-to-end pipeline, contract tests, final validation, quality gate
+      - name: Verify everything
+        run: npm test
+      - name: Integration runtime tests
+        run: npm run integration:test
+      - name: Runtime smoke test
+        run: npm run smoke:test
+      - name: Dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high

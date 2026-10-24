@@ -51,7 +51,7 @@ try{
     cookies[role]='fp_session='+token;userIds[role]=userId;
   }
   const workerId=randomUUID();
-  db.prepare('INSERT INTO workers (id,organisation_id,user_id,full_name,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)')
+  db.prepare('INSERT INTO workers (id,organisation_id,user_id,full_name,status,declared_work_status,created_at,updated_at) VALUES (?,?,?,?,?,\'australian_citizen\',?,?)')
     .run(workerId,a,userIds.worker,'Assigned Worker','active',now,now);
   const workOrder=db.prepare('INSERT INTO work_orders (id,organisation_id,title,start_at,created_at,updated_at) VALUES (?,?,?,?,?,?)');
   const assigned=randomUUID(), hidden=randomUUID(), otherTenant=randomUUID();
@@ -120,5 +120,5 @@ try{
   if(child.exitCode===null)child.kill('SIGTERM');
   await Promise.race([new Promise(resolve=>child.once('exit',resolve)),delay(1500)]).catch(()=>{});
   if(child.exitCode===null)child.kill('SIGKILL');
-  fs.rmSync(tempRoot,{recursive:true,force:true});
+  try{fs.rmSync(tempRoot,{recursive:true,force:true,maxRetries:10,retryDelay:200})}catch{/* Windows may still hold a file for a moment; leftover temp files are harmless */};
 }

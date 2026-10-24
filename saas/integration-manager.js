@@ -20,7 +20,7 @@
     '.integration-resource-list label>span{display:grid;gap:2px}.integration-resource-list small{color:#8f9bab}',
     '.integration-requirements-inline{grid-column:1/-1;margin-top:8px;padding:9px 10px;border:1px solid rgba(232,190,105,.25);border-radius:10px;background:rgba(232,190,105,.06);color:#c8b88e;line-height:1.5}',
     '.integration-health-pass{color:#72d39a}.integration-health-fail{color:#ff8f8f}',
-    '.integration-manager-status{font-size:11px;line-height:1.5;color:#9aa5b4;overflow-wrap:anywhere}'
+    '.integration-manager-status{font-size:12px;line-height:1.5;color:#9aa5b4;overflow-wrap:anywhere}'
   ].join('');
   document.head.append(style);
 

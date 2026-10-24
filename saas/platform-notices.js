@@ -19,7 +19,7 @@
     '.platform-notice-item{padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:#111923}',
     '.platform-notice-item.unread{border-color:rgba(232,190,105,.45);box-shadow:inset 3px 0 0 #e8be69}',
     '.platform-notice-item.warning,.platform-notice-item.critical{border-color:rgba(239,174,114,.45)}',
-    '.platform-notice-meta{display:flex;justify-content:space-between;gap:10px;text-transform:uppercase;font-size:10px;color:#d8b465}',
+    '.platform-notice-meta{display:flex;justify-content:space-between;gap:10px;text-transform:uppercase;font-size:12px;color:#d8b465}',
     '.platform-notice-item h3{margin:8px 0 6px}.platform-notice-item small{display:block;margin:8px 0;color:#8c98a8}',
     '.platform-notice-item details{margin:10px 0;padding:10px;border-radius:10px;background:#0b1118}',
     '.platform-notice-item summary{cursor:pointer;font-weight:800}',

@@ -38,6 +38,9 @@ jobs:
       - name: SaaS branding and multi-organisation runtime contract
         run: node scripts/saas-branding-organisations.test.mjs
 
+      - name: Branding edit and logo upload runtime permissions
+        run: node scripts/branding-update-logo.test.mjs
+
       - name: Final validation
         run: npm run validate:final
 

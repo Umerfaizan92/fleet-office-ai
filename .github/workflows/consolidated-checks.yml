@@ -2,9 +2,9 @@ name: Consolidated development checks
 
 on:
   push:
-    branches: [consolidated-improvements-2026]
+    branches: [consolidated-improvements-2026, architecture-reset-step1-20261024]
   pull_request:
-    branches: [main]
+    branches: [main, consolidated-improvements-2026]
 
 permissions:
   contents: read
@@ -39,6 +39,8 @@ jobs:
         run: npm run integration:test
       - name: Runtime smoke test
         run: npm run smoke:test
+      - name: Architectural reset conflict guards
+        run: node --test scripts/architecture-contract.test.mjs
       - name: Security contract regression tests
         run: node --test scripts/security-contract.test.mjs
       - name: Runtime tenant and allocation regression tests

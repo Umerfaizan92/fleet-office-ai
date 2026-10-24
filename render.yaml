@@ -6,7 +6,8 @@ services:
     # Persistent SQLite requires a paid web-service plan.
     plan: 0.5c-512mb
     numInstances: 1
-    buildCommand: npm ci && npm run validate:final && npm run quality:check && npm run integration:test && npm run smoke:test
+    # npm test runs scripts/verify-all.mjs: syntax, migrations, RBAC and the end-to-end pipeline. A failure stops the deploy before it goes live.
+    buildCommand: npm ci && npm test
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeployTrigger: off
@@ -23,6 +24,9 @@ services:
         sync: false
       - key: DATABASE_PATH
         value: "/var/data/super-pro.sqlite"
+      # Refuse to start on non-durable storage if the disk is missing or unwritable (instead of silently losing customer records).
+      - key: REQUIRE_PERSISTENT_DISK
+        value: "1"
       - key: UPLOAD_DIR
         value: "/var/data/uploads"
       - key: MAX_FILE_MB
@@ -48,6 +52,14 @@ services:
       - key: SAAS_VERIFICATION_TEST_MODE
         value: "0"
       - key: SAAS_VERIFY_FROM
+        sync: false
+      # Australian business number shown in public structured data (leave blank until registered).
+      - key: BUSINESS_ABN
+        sync: false
+      # Shared secrets for signed inbound webhooks. Create each yourself and paste the same value into the provider.
+      - key: INBOUND_EMAIL_WEBHOOK_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
         sync: false
       - key: TRIAL_DAYS
         value: "14"

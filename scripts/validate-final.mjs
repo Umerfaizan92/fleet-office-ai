@@ -12,7 +12,7 @@ const required=[
   'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js','saas/worker-onboarding.html','saas/worker-onboarding.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manual.js','saas/support.js','saas/adaptive.css','saas/governance.css','saas/manifest.webmanifest','saas/sw.js',
-  'saas/superpro-icon-192.png','saas/superpro-icon-512.png',
+  'saas/superpro-icon-192.png','saas/superpro-icon-512.png','saas/workspace-nav.js','saas/workspace-ui.js','saas/workspace-comms.js','saas/workspace-migration.js','saas/workspace-exports.js','saas/workspace-views.css','saas/workspace-nav.css','saas/workspace-fx.js','src/saas-platform.js','src/diagnostics.js','scripts/verify-all.mjs','scripts/purge-legacy.sh','scripts/purge-legacy.ps1','scripts/legacy-files.txt','scripts/generate-admin-key.mjs','docs/DEPLOY.md','docs/github-ci.yml','.gitattributes',
   'office/index.html','office/office.js','office/office.css','office/office-extras.js','office/office-records.js','office/office-insights.js',
   'office/office-theme.css','office/office-records.css','office/office-layout.css','office/office-insights.css',
   'scripts/quality-check.mjs','scripts/quality-ratchet.mjs','scripts/check-config.mjs','scripts/smoke-test.mjs','scripts/verify-manifest.mjs'
@@ -73,7 +73,7 @@ for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/
 for(const token of ['plan: 0.5c-512mb','numInstances: 1','mountPath: /var/data','value: "/var/data/super-pro.sqlite"','value: "/var/data/uploads"'])if(!render.includes(token))failures.push('render.yaml missing production persistence token '+token);
 if(intro.includes('setTimeout(resolve,650)')||!intro.includes('Capture the first word immediately')||!intro.includes('No speech detected. Microphone stopped'))failures.push('intro.js microphone capture/auto-stop protections are incomplete');
 if(!intro.includes('decodeAudioData')||!intro.includes('ensurePlaybackContext'))failures.push('intro.js missing unlocked Web Audio playback path');
-if(!index.includes('intro.js?v=29')||!sw.includes('intro.js?v=29')||!sw.includes('superpro-public-20260919-14'))failures.push('public voice cache version was not bumped');
+if(!index.includes('intro.js?v=29')||!sw.includes('intro.js?v=29')||!sw.includes('superpro-public-20261025-16'))failures.push('public voice cache version was not bumped');
 
 const env=read('.env.example');
 for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-flash','GEMINI_STT_MODEL=gemini-3.5-transcribe','GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);
@@ -105,7 +105,7 @@ if(!app.includes('Compliance & credentials')||!app.includes('Send onboarding lin
 if(!read('saas/worker-onboarding.html').includes('LIMITED ACCESS')||!read('saas/worker-onboarding.js').includes('/api/workforce/onboarding/'))failures.push('Isolated worker onboarding page is incomplete');
 if(!read('src/workforce-compliance.js').includes('workforceSkillSuggestions')||!read('src/workforce-compliance.js').includes('workStatusRequirements'))failures.push('Industry workforce compliance catalogue is incomplete');
 const approvalsUi=read('saas/approvals.js');
-if(!workspace.includes('data-view="approvals"')||!app.includes("'approvals'")||!app.includes("approvals:['CONTROL','Approvals']"))failures.push('Approvals must remain a first-class workspace page');
+if(!read('saas/workspace-nav.js').includes("view:'approvals'"))failures.push('Approvals must remain a first-class workspace page');
 if(!db.includes('workspace_approvals')||!db.includes('workspace_approval_events')||!server.includes('approvalCanDecide'))failures.push('tenant-scoped approval backend is incomplete');
 if(!approvalsUi.includes('APPROVAL POLICY')||!approvalsUi.includes('View history')||!approvalsUi.includes("data-approval-decision"))failures.push('Approvals queue/history/policy UI is incomplete');
 if(server.includes("app.get('/api/saas/approvals', requireAdmin"))failures.push('SaaS approvals must not use the legacy global admin approval endpoint');

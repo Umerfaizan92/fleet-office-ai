@@ -47,7 +47,7 @@ add('business:industry-registry-live',server.includes('/api/saas/industry-regist
 add('business:onboarding-read-write',server.includes("app.get('/api/saas/onboarding'")&&server.includes("app.put('/api/saas/onboarding'")&&app.includes('loadOnboarding'));
 add('business:regulatory-watch',server.includes('/api/saas/regulatory/sources')&&server.includes('/api/saas/regulatory/check')&&db.includes('regulatory_source_snapshots')&&app.includes('check-regulatory-sources'));
 add('business:core-modules-never-hidden',!app.includes('button.hidden=!always&&!allowed.has(view)')&&app.includes("button.hidden=false"));
-add('approvals:first-class-page',workspace.includes('id="approvals-view"')&&workspace.includes('data-view="approvals"')&&app.includes("'approvals'")&&workspace.includes('approvals.js'));
+add('approvals:first-class-page',workspace.includes('id="approvals-view"')&&read('saas/workspace-nav.js').includes("view:'approvals'")&&workspace.includes('approvals.js'));
 add('approvals:tenant-backend',db.includes('workspace_approvals')&&db.includes('workspace_approval_events')&&server.includes("app.get('/api/saas/approvals'")&&server.includes("app.post('/api/saas/approvals/:id/decision'"));
 add('approvals:history-policy',approvalsUi.includes('View history')&&approvalsUi.includes('APPROVAL POLICY')&&server.includes("app.put('/api/saas/approvals/policy'"));
 add('approvals:role-controlled',server.includes('approvalCanDecide')&&server.includes('Only an authorised owner, administrator, manager or director can decide approvals.'));
@@ -82,7 +82,7 @@ add('config:all-runtime-env-documented',read('.env.example').includes('META_ACCE
 add('security:session-ttl-env',server.includes('Number(env.SESSION_TTL_DAYS||7)'));
 add('security:sessions',server.includes('HttpOnly')&&server.includes('SameSite=Strict'));
 add('security:mfa',server.includes('/api/saas/mfa/setup')&&server.includes('/api/saas/mfa/verify'));
-add('governance:audit',server.includes('governance_ledger')&&server.includes('saas_audit_events'));
+add('governance:audit',server.includes('governance_ledger')&&server.includes('audit_logs'));
 add('workforce:jobs',server.includes('/api/saas/workers')&&server.includes('/api/saas/work-orders'));
 add('workforce:interactive-actions',app.includes('data-worker-compliance')&&app.includes('data-worker-skill')&&!app.includes('onclick="completeCompliance(')&&!app.includes('onclick="addSkill('));
 add('workforce:senior-compliance-control',server.includes("app.patch('/api/saas/workers/:id/compliance/:requirementId',requireSaasUser,requireSaasRole(...workforceSeniorRoles)")&&server.includes("app.post('/api/saas/workers/:id/skills',requireSaasUser,requireSaasRole(...workforceSeniorRoles)"));

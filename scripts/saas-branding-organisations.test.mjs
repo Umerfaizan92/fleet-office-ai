@@ -123,5 +123,5 @@ try{
   if(child.exitCode===null)child.kill('SIGTERM');
   await Promise.race([new Promise(resolve=>child.once('exit',resolve)),sleep(1500)]).catch(()=>{});
   if(child.exitCode===null)child.kill('SIGKILL');
-  fs.rmSync(root,{recursive:true,force:true});
+  try{fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:200})}catch{/* Windows may still hold a file for a moment; leftover temp files are harmless */};
 }

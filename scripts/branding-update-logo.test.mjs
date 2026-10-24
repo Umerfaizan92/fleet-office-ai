@@ -123,8 +123,8 @@ try{
   assert.equal((await expectStatus(edit,'owner','GET',undefined,200)).data.branding.logo_url,'https://example.org/sample.png');
   await expectStatus(edit,'owner','PUT',{logo_url:''},200);
   assert.equal((await expectStatus(edit,'owner','GET',undefined,200)).data.branding.logo_url,'/saas/superpro-icon-192.png');
-  assert.ok(db.prepare('SELECT COUNT(*) count FROM saas_audit_events WHERE organisation_id=? AND event_type=?').get(a,'branding.updated').count>=3);
-  assert.ok(db.prepare('SELECT COUNT(*) count FROM saas_audit_events WHERE organisation_id=? AND event_type=?').get(a,'branding.logo_uploaded').count>=2);
+  assert.ok(db.prepare('SELECT COUNT(*) count FROM audit_logs WHERE organisation_id=? AND action=?').get(a,'branding.updated').count>=3);
+  assert.ok(db.prepare('SELECT COUNT(*) count FROM audit_logs WHERE organisation_id=? AND action=?').get(a,'branding.logo_uploaded').count>=2);
   console.log('BRANDING EDIT/LOGO TEST PASSED: roles, tenant isolation, DB values, upload signatures and limits, SVG protection, storage, audit.');
 }catch(error){
   console.error('BRANDING EDIT/LOGO TEST FAILED:',error?.stack||error);
@@ -135,5 +135,5 @@ try{
   if(child.exitCode===null)child.kill('SIGTERM');
   await Promise.race([new Promise(resolve=>child.once('exit',resolve)),sleep(1500)]).catch(()=>{});
   if(child.exitCode===null)child.kill('SIGKILL');
-  fs.rmSync(root,{recursive:true,force:true});
+  try{fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:200})}catch{/* Windows may still hold a file for a moment; leftover temp files are harmless */};
 }

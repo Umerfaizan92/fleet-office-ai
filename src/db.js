@@ -1,13 +1,29 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
 
-export function createDb(databasePath) {
-  const absolute = path.resolve(databasePath);
-  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+// Single place that decides where the database lives.
+// DATABASE_PATH wins. Otherwise /var/data/app.sqlite (the Render persistent disk) when that disk is mounted,
+// and ./data/app.sqlite for local development so a missing /var/data never crashes a laptop.
+export function resolveDatabasePath(env = process.env) {
+  if (env.DATABASE_PATH) return env.DATABASE_PATH;
+  return fs.existsSync('/var/data') ? '/var/data/app.sqlite' : './data/app.sqlite';
+}
+
+export const AUDIT_RETENTION_YEARS = 7; // Fair Work Act 2009 (Cth) s 535 and Fair Work Regulations 2009: employee records kept 7 years.
+
+export function createDb(databasePath = resolveDatabasePath()) {
+  const inMemory = databasePath === ':memory:';
+  const absolute = inMemory ? databasePath : path.resolve(databasePath);
+  if (!inMemory) fs.mkdirSync(path.dirname(absolute), { recursive: true });
   const db = new Database(absolute);
-  db.pragma('journal_mode = WAL');
+  if (!inMemory) db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
+  // Atomic bootstrap: every statement below plus the unified compliance layer commit together or not at all.
+  db.exec('BEGIN IMMEDIATE');
+  try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS enquiries (
       id TEXT PRIMARY KEY,
@@ -689,11 +705,6 @@ export function createDb(databasePath) {
       FOREIGN KEY(work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE, FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS saas_audit_events (
-      id TEXT PRIMARY KEY, organisation_id TEXT NOT NULL, actor_user_id TEXT, event_type TEXT NOT NULL, entity_type TEXT, entity_id TEXT,
-      detail_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
-      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE, FOREIGN KEY(actor_user_id) REFERENCES users(id) ON DELETE SET NULL
-    );
 
     CREATE TABLE IF NOT EXISTS ai_threads (
       id TEXT PRIMARY KEY,
@@ -992,7 +1003,6 @@ export function createDb(databasePath) {
     CREATE INDEX IF NOT EXISTS idx_job_offers_worker ON job_offers(worker_id,status);
     CREATE INDEX IF NOT EXISTS idx_org_finance_date ON organisation_finance_entries(organisation_id, occurred_on DESC);
     CREATE INDEX IF NOT EXISTS idx_org_finance_work_order ON organisation_finance_entries(organisation_id, work_order_id, occurred_on DESC);
-    CREATE INDEX IF NOT EXISTS idx_saas_audit_org ON saas_audit_events(organisation_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_threads_org ON ai_threads(organisation_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_render_jobs_org ON video_render_jobs(organisation_id, updated_at DESC);
 
@@ -1086,14 +1096,6 @@ export function createDb(databasePath) {
     if (!subscriptionColumns.has(name)) db.exec(`ALTER TABLE organisation_subscriptions ADD COLUMN ${name} ${definition}`);
   }
 
-  const auditColumns = new Set(db.prepare(`PRAGMA table_info(saas_audit_events)`).all().map((column) => column.name));
-  for (const [name, definition] of [
-    ['prev_hash', `TEXT`],
-    ['event_hash', `TEXT`]
-  ]) {
-    if (!auditColumns.has(name)) db.exec(`ALTER TABLE saas_audit_events ADD COLUMN ${name} ${definition}`);
-  }
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_saas_audit_hash ON saas_audit_events(event_hash) WHERE event_hash IS NOT NULL`);
 
 
   const supportCaseColumns = new Set(db.prepare(`PRAGMA table_info(support_cases)`).all().map((column) => column.name));
@@ -1624,5 +1626,298 @@ export function createDb(databasePath) {
       ON platform_announcement_deliveries(status,created_at);
   `);
 
+  applyUnifiedSchema(db);
+  db.exec('COMMIT');
+  } catch (error) {
+    try { db.exec('ROLLBACK'); } catch { /* nothing open */ }
+    db.close();
+    throw error;
+  }
   return db;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Unified compliance layer (Step 3). Additive and idempotent: it never drops customer tables.
+   Runs inside the createDb transaction.
+   --------------------------------------------------------------------------------------------- */
+const tableExists = (db, name) => Boolean(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name=?`).get(name));
+const columnsOf = (db, table) => new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name));
+
+function addColumns(db, table, defs) {
+  const have = columnsOf(db, table);
+  for (const [name, definition] of defs) if (!have.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+}
+
+// Create an index unless an existing index already leads with the same columns (prevents duplicate indexes).
+function ensureIndex(db, table, columns, { unique = false } = {}) {
+  const want = columns.join(',');
+  for (const idx of db.prepare(`PRAGMA index_list(${table})`).all()) {
+    const cols = db.prepare(`PRAGMA index_info(${idx.name})`).all().map((c) => c.name).join(',');
+    if (cols === want || cols.startsWith(`${want},`)) return;
+  }
+  db.exec(`CREATE ${unique ? 'UNIQUE ' : ''}INDEX IF NOT EXISTS idx_${table}_${columns.join('_')} ON ${table}(${want})`);
+}
+
+const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
+const plusYearsIso = (iso, years) => { const d = new Date(iso); d.setUTCFullYear(d.getUTCFullYear() + years); return d.toISOString(); };
+
+const APP_REGISTRY = [
+  [1, 'Open and transparent management of personal information', 'Privacy policy, trust centre and policy-acknowledgement records are published in the workspace.'],
+  [2, 'Anonymity and pseudonymity', 'Public enquiry forms collect only the details needed to respond.'],
+  [3, 'Collection of solicited personal information', 'Collection is limited to the fields each form requires; sensitive fields are role-gated.'],
+  [4, 'Dealing with unsolicited personal information', 'Unsolicited uploads are handled through the support and complaints process.'],
+  [5, 'Notification of the collection of personal information', 'Collection notices are shown at sign-up and worker onboarding; consent is recorded in this table.'],
+  [6, 'Use or disclosure of personal information', 'Disclosure to processors is listed on the sub-processors page; external AI actions need human approval.'],
+  [7, 'Direct marketing', 'Newsletter and marketing consent is recorded with a withdrawal date.'],
+  [8, 'Cross-border disclosure of personal information', 'Overseas processors are listed on the sub-processors page.'],
+  [9, 'Adoption, use or disclosure of government related identifiers', 'ABN/ACN and visa details are used only for verification and work-rights checks.'],
+  [10, 'Quality of personal information', 'Users can correct their own profile; owners can correct worker records.'],
+  [11, 'Security of personal information', 'Scrypt password hashing, encrypted integration tokens, tenant isolation, role-based access and append-only audit_logs. Destruction follows the retention terms.'],
+  [12, 'Access to personal information', 'Access requests are logged here with a 30-day response target.'],
+  [13, 'Correction of personal information', 'Correction requests are logged here with a 30-day response target.']
+];
+const RETENTION_TERMS = [
+  ['fair_work_employee_records', 'Employee and worker records (hours, pay, leave, classification)', 7 * 365, 'Fair Work Act 2009 (Cth) s 535 and Fair Work Regulations 2009: keep for 7 years.'],
+  ['audit_logs', 'Security and administrative audit trail', 7 * 365, 'Aligned to the 7-year employee record period. Rows cannot be changed, and cannot be deleted before this date.'],
+  ['vevo_check_results', 'VEVO / work-rights check results held for workers', 7 * 365, 'Aligned to employee records. Only the result is stored; the check itself is made on the Department of Home Affairs VEVO service.'],
+  ['privacy_requests', 'Access, correction and deletion request records', 7 * 365, 'Kept as evidence that the request was handled within time.']
+];
+
+function applyUnifiedSchema(db) {
+  const now = new Date().toISOString();
+
+  // --- tenancy and identity: add what is missing, never duplicate what exists ---
+  addColumns(db, 'memberships', [['status', `TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','invited','suspended','revoked'))`]]);
+  addColumns(db, 'onboarding_profiles', [['custom_sections', `TEXT NOT NULL DEFAULT '[]'`]]);
+
+  // --- workers: Fair Work retention and VEVO result record ---
+  // The platform does not call VEVO. A person with the worker's consent runs the check on the government service
+  // and a senior user records the outcome here.
+  addColumns(db, 'workers', [
+    ['vevo_status', `TEXT NOT NULL DEFAULT 'not_checked' CHECK(vevo_status IN ('not_checked','pending','verified','verified_with_conditions','not_permitted','expired'))`],
+    ['vevo_checked_at', 'TEXT'],
+    ['vevo_checked_by_user_id', 'TEXT'],
+    ['vevo_reference', 'TEXT'],
+    ['vevo_work_rights_expiry', 'TEXT'],
+    ['vevo_conditions', 'TEXT'],
+    ['vevo_consent_id', 'TEXT'],
+    ['fair_work_retain_until', 'TEXT'],
+    ['legal_hold', 'INTEGER NOT NULL DEFAULT 0']
+  ]);
+
+  // --- work orders and offers: Australian compliance fields (skill tags already live in required_skills) ---
+  addColumns(db, 'work_orders', [
+    ['award_reference', 'TEXT'], ['award_classification', 'TEXT'], ['employment_basis', 'TEXT'],
+    ['site_state', 'TEXT'], ['licence_required', 'TEXT'], ['whs_induction_required', 'INTEGER NOT NULL DEFAULT 0'],
+    ['min_engagement_hours', 'REAL'], ['created_by_user_id', 'TEXT']
+  ]);
+  addColumns(db, 'job_offers', [
+    ['offered_by_user_id', 'TEXT'], ['expires_at', 'TEXT'], ['decline_reason', 'TEXT'],
+    ['work_rights_status_at_offer', 'TEXT'], ['vevo_status_at_offer', 'TEXT']
+  ]);
+
+  // --- human-in-the-loop desk: record AI provenance and a content hash for tamper evidence ---
+  addColumns(db, 'workspace_approvals', [['ai_generated', 'INTEGER NOT NULL DEFAULT 1'], ['ai_model', 'TEXT'], ['content_hash', 'TEXT']]);
+
+  // --- audit_logs: immutable, append-only, hash-chained, 7-year retention ---
+  // Deliberately no foreign keys: audit history must survive deletion of the user or organisation.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT,
+      user_id TEXT,
+      user_name TEXT,
+      user_role TEXT,
+      action TEXT NOT NULL,
+      module TEXT NOT NULL DEFAULT 'workspace',
+      entity_type TEXT,
+      entity_id TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      retention_until TEXT NOT NULL,
+      prev_hash TEXT,
+      event_hash TEXT UNIQUE
+    );
+    CREATE TRIGGER IF NOT EXISTS audit_logs_no_update BEFORE UPDATE ON audit_logs
+    BEGIN SELECT RAISE(ABORT, 'audit_logs is append-only'); END;
+    CREATE TRIGGER IF NOT EXISTS audit_logs_no_delete BEFORE DELETE ON audit_logs
+    WHEN OLD.retention_until > strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    BEGIN SELECT RAISE(ABORT, 'audit_logs rows are retained for 7 years'); END;
+  `);
+  ensureIndex(db, 'audit_logs', ['organisation_id', 'created_at']);
+  ensureIndex(db, 'audit_logs', ['user_id', 'created_at']);
+  ensureIndex(db, 'audit_logs', ['action']);
+  ensureIndex(db, 'audit_logs', ['retention_until']);
+
+  // One-time move of the old saas_audit_events table into audit_logs, then retire it (verified by row count).
+  if (tableExists(db, 'saas_audit_events')) {
+    const legacy = db.prepare('SELECT COUNT(*) n FROM saas_audit_events').get().n;
+    db.exec(`
+      INSERT OR IGNORE INTO audit_logs (id,organisation_id,user_id,user_name,user_role,action,module,entity_type,entity_id,metadata_json,created_at,retention_until,prev_hash,event_hash)
+      SELECT e.id,e.organisation_id,e.actor_user_id,u.full_name,m.role,e.event_type,
+             CASE WHEN instr(e.event_type,'.')>0 THEN substr(e.event_type,1,instr(e.event_type,'.')-1) ELSE 'workspace' END,
+             e.entity_type,e.entity_id,COALESCE(e.detail_json,'{}'),e.created_at,
+             strftime('%Y-%m-%dT%H:%M:%fZ',e.created_at,'+${AUDIT_RETENTION_YEARS} years'),e.prev_hash,e.event_hash
+      FROM saas_audit_events e
+      LEFT JOIN users u ON u.id=e.actor_user_id
+      LEFT JOIN memberships m ON m.user_id=e.actor_user_id AND m.organisation_id=e.organisation_id
+    `);
+    const moved = db.prepare(`SELECT COUNT(*) n FROM audit_logs WHERE id IN (SELECT id FROM saas_audit_events)`).get().n;
+    if (moved !== legacy) throw new Error(`audit migration incomplete: ${moved}/${legacy} rows copied; rolling back`);
+    db.exec('DROP TABLE saas_audit_events');
+  }
+
+  // --- privacy_governance: one registry for APP controls, consents, retention terms and privacy requests ---
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS privacy_governance (
+      id TEXT PRIMARY KEY,
+      record_type TEXT NOT NULL CHECK(record_type IN ('app_registry','consent','retention_term','access_request','correction_request','deletion_request')),
+      organisation_id TEXT,
+      user_id TEXT,
+      worker_id TEXT,
+      subject_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      detail TEXT,
+      app_number INTEGER CHECK(app_number BETWEEN 1 AND 13),
+      purpose TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      version TEXT,
+      granted_at TEXT,
+      withdrawn_at TEXT,
+      retention_days INTEGER,
+      retention_basis TEXT,
+      legal_hold INTEGER NOT NULL DEFAULT 0,
+      requested_at TEXT,
+      due_at TEXT,
+      completed_at TEXT,
+      related_id TEXT,
+      evidence_json TEXT NOT NULL DEFAULT '{}',
+      needs_legal_review INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE SET NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_privacy_platform_unique ON privacy_governance(record_type,subject_key) WHERE organisation_id IS NULL;
+  `);
+  ensureIndex(db, 'privacy_governance', ['organisation_id', 'record_type', 'status']);
+  ensureIndex(db, 'privacy_governance', ['user_id', 'record_type']);
+  ensureIndex(db, 'privacy_governance', ['due_at']);
+  const seed = db.prepare(`INSERT OR IGNORE INTO privacy_governance (id,record_type,subject_key,title,detail,app_number,status,retention_days,retention_basis,needs_legal_review,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`);
+  for (const [n, title, control] of APP_REGISTRY) seed.run(`app-${n}`, 'app_registry', `APP${n}`, `APP ${n}: ${title}`, control, n, 'needs_review', null, null, now, now);
+  for (const [key, title, days, basis] of RETENTION_TERMS) seed.run(`ret-${key}`, 'retention_term', key, title, basis, null, 'active', days, basis, now, now);
+
+  // --- omnichannel inbox: tenant-scoped threads and messages (voice, email, SMS, WhatsApp) ---
+  // The older conversations/messages tables belong to the single-business office and carry no organisation_id, so they are not reused.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS comms_channels (
+      organisation_id TEXT NOT NULL,
+      channel TEXT NOT NULL CHECK(channel IN ('voice','email','sms','whatsapp')),
+      address TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','active','disabled')),
+      requested_by_user_id TEXT,
+      activated_at TEXT,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(organisation_id,channel),
+      UNIQUE(channel,address),
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS comms_threads (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      channel TEXT NOT NULL CHECK(channel IN ('voice','email','sms','whatsapp')),
+      contact_address TEXT NOT NULL,
+      contact_name TEXT,
+      subject TEXT,
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','needs_reply','closed')),
+      assigned_user_id TEXT,
+      last_message_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(organisation_id,channel,contact_address),
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS comms_messages (
+      id TEXT PRIMARY KEY,
+      organisation_id TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      direction TEXT NOT NULL CHECK(direction IN ('inbound','outbound')),
+      kind TEXT NOT NULL DEFAULT 'message' CHECK(kind IN ('message','call_log')),
+      body TEXT NOT NULL DEFAULT '',
+      summary TEXT,
+      provider TEXT,
+      external_message_id TEXT,
+      duration_seconds INTEGER,
+      status TEXT NOT NULL DEFAULT 'received' CHECK(status IN ('received','draft','pending_approval','approved','rejected','sending','sent','failed')),
+      approval_id TEXT,
+      ai_generated INTEGER NOT NULL DEFAULT 0,
+      created_by_user_id TEXT,
+      occurred_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE,
+      FOREIGN KEY(thread_id) REFERENCES comms_threads(id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_comms_messages_external ON comms_messages(organisation_id,provider,external_message_id) WHERE external_message_id IS NOT NULL;
+  `);
+  ensureIndex(db, 'comms_threads', ['organisation_id', 'status', 'last_message_at']);
+  ensureIndex(db, 'comms_messages', ['thread_id', 'occurred_at']);
+  ensureIndex(db, 'comms_messages', ['organisation_id', 'status']);
+
+  // --- indexes for the high-frequency filters (skipped when an equivalent index already exists) ---
+  for (const [table, cols] of [
+    ['memberships', ['user_id', 'status']], ['memberships', ['organisation_id', 'status']],
+    ['workers', ['organisation_id', 'status']], ['workers', ['user_id']], ['workers', ['organisation_id', 'vevo_status']],
+    ['work_orders', ['organisation_id', 'status']], ['job_offers', ['organisation_id', 'status']], ['job_offers', ['worker_id', 'status']],
+    ['workspace_approvals', ['organisation_id', 'status']], ['workspace_approvals', ['requested_by_user_id']]
+  ]) if (tableExists(db, table)) ensureIndex(db, table, cols);
+
+  // Fair Work: stamp a retain-until date on worker records that do not have one (7 years from creation).
+  const missing = db.prepare(`SELECT id,created_at FROM workers WHERE fair_work_retain_until IS NULL`).all();
+  const stamp = db.prepare(`UPDATE workers SET fair_work_retain_until=? WHERE id=?`);
+  for (const w of missing) stamp.run(plusYearsIso(w.created_at || now, AUDIT_RETENTION_YEARS), w.id);
+}
+
+// Append one audit row. Chains each organisation's rows by hash so tampering is detectable.
+export function appendAuditLog(db, entry) {
+  const run = db.transaction(() => {
+    const created = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const meta = JSON.stringify(entry.metadata ?? {});
+    const org = entry.organisation_id ?? null;
+    const moduleName = entry.module || (String(entry.action).includes('.') ? String(entry.action).split('.')[0] : 'workspace');
+    const last = db.prepare(`SELECT event_hash FROM audit_logs WHERE organisation_id IS ? AND event_hash IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1`).get(org);
+    const prev = last?.event_hash || null;
+    const hash = sha256([org || '', entry.user_id || '', entry.action, moduleName, entry.entity_id || '', meta, prev || '', created, id].join('|'));
+    db.prepare(`INSERT INTO audit_logs (id,organisation_id,user_id,user_name,user_role,action,module,entity_type,entity_id,ip_address,user_agent,metadata_json,created_at,retention_until,prev_hash,event_hash)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      id, org, entry.user_id ?? null, entry.user_name ?? null, entry.user_role ?? null, entry.action, moduleName,
+      entry.entity_type ?? null, entry.entity_id ?? null, entry.ip_address ?? null, String(entry.user_agent ?? '').slice(0, 300) || null,
+      meta, created, plusYearsIso(created, AUDIT_RETENTION_YEARS), prev, hash);
+    return { id, eventHash: hash };
+  });
+  return run();
+}
+
+// Recompute every hash in an organisation's audit chain (all organisations when none is given).
+// Returns { ok, checked, broken: [{ id, reason }], truncated }. Read-only; safe to call on a live database.
+export function verifyAuditChain(db, organisationId, { limit = 100000 } = {}) {
+  const rows = organisationId === undefined
+    ? db.prepare(`SELECT * FROM audit_logs WHERE event_hash IS NOT NULL ORDER BY organisation_id, created_at, rowid LIMIT ?`).all(limit + 1)
+    : db.prepare(`SELECT * FROM audit_logs WHERE organisation_id IS ? AND event_hash IS NOT NULL ORDER BY created_at, rowid LIMIT ?`).all(organisationId ?? null, limit + 1);
+  const truncated = rows.length > limit;
+  if (truncated) rows.pop();
+  const broken = [];
+  const previous = new Map();
+  for (const r of rows) {
+    const key = r.organisation_id ?? '';
+    const expectedPrev = previous.get(key) ?? null;
+    if ((r.prev_hash || null) !== expectedPrev) broken.push({ id: r.id, reason: 'chain link does not match the previous row' });
+    const recomputed = sha256([r.organisation_id || '', r.user_id || '', r.action, r.module, r.entity_id || '', r.metadata_json, r.prev_hash || '', r.created_at, r.id].join('|'));
+    if (recomputed !== r.event_hash) broken.push({ id: r.id, reason: 'row content does not match its hash' });
+    previous.set(key, r.event_hash);
+  }
+  return { ok: broken.length === 0, checked: rows.length, broken: broken.slice(0, 20), truncated };
 }

@@ -1,19 +1,39 @@
 {
   "name": "super-pro-ai-office-manager",
-  "version": "18.0.1",
+  "version": "19.0.0",
+  "description": "Multi-tenant AI office manager for Australian service businesses: workforce compliance (Fair Work, VEVO), omnichannel inbox with human-approved AI drafts, job ledger and a tamper-evident audit trail.",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Umerfaizan92/fleet-office-ai.git"
+  },
+  "keywords": [
+    "office-manager",
+    "workforce-compliance",
+    "fair-work",
+    "vevo",
+    "privacy-act",
+    "omnichannel",
+    "ai-assistant",
+    "sqlite",
+    "render"
+  ],
   "scripts": {
-    "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node scripts/verify-all.mjs",
+    "test:fast": "node scripts/verify-all.mjs --fast",
+    "test:unit": "node --test --test-concurrency=1 scripts/*.test.mjs",
     "check:config": "node scripts/check-config.mjs",
     "validate:final": "node scripts/validate-final.mjs",
-    "generate:admin-key": "node GENERATE-ADMIN-KEY.mjs",
     "quality:check": "node scripts/quality-check.mjs && node scripts/quality-ratchet.mjs",
-    "audit:search": "node scripts/quality-check.mjs",
-    "verify:manifest": "node scripts/verify-manifest.mjs",
     "smoke:test": "node scripts/smoke-test.mjs",
-    "integration:test": "node scripts/test-integrations.mjs"
+    "integration:test": "node scripts/test-integrations.mjs",
+    "generate:admin-key": "node scripts/generate-admin-key.mjs",
+    "manifest:update": "node scripts/update-manifest.mjs",
+    "verify:manifest": "node scripts/verify-manifest.mjs"
   },
   "engines": {
     "node": "22.22.0"
@@ -28,9 +48,12 @@
     "multer": "^2.0.2",
     "nodemailer": "^10.0.9",
     "resend": "^6.28.0",
-    "zod": "^3.24.2"
+    "zod": "^4.6.7"
   },
   "overrides": {
     "qs": "^6.15.4"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.4.1": true
   }
 }

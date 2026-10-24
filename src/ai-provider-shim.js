@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(here, '..', '.env') });
+if (process.env.SUPERPRO_SKIP_DOTENV !== '1') dotenv.config({ path: path.resolve(here, '..', '.env') });
 
 const env = process.env;
 

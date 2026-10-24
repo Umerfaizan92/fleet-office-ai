@@ -7,7 +7,7 @@
 <meta content="noindex,nofollow" name="robots"/>
 <meta content="#0b0d11" name="theme-color"/>
 <title>Super Pro AI Office Manager — AI Operating System for Service Businesses</title>
-<link href="team-accounts.css" rel="stylesheet"/><link href="app.css" rel="stylesheet"/><link href="workspace-theme.css?v=20260919.4" rel="stylesheet"/>
+<link href="team-accounts.css" rel="stylesheet"/><link href="app.css?v=20261024.step7" rel="stylesheet"/><link href="workspace-theme.css?v=20260919.4" rel="stylesheet"/>
 <meta content="Secure AI operating system for service businesses: customers, workforce, jobs, compliance, communications and human-approved AI workflows." name="description"/><link rel="stylesheet" href="journey.css?v=8"/><link rel="stylesheet" href="governance.css?v=9"/><link rel="stylesheet" href="support.css?v=11"><link rel="stylesheet" href="manual.css?v=10"><link rel="stylesheet" href="adaptive.css?v=11"><link rel="stylesheet" href="brand.css?v=20260919.4"><link rel="stylesheet" href="experience.css?v=20260919.4"><link rel="stylesheet" href="focused-workspace.css"/>
 <script defer src="focused-workspace.js"></script>
 </head>
@@ -25,6 +25,7 @@
 <symbol id="i-search" viewbox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></symbol>
 <symbol id="i-sun" viewbox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></symbol>
 <symbol id="i-moon" viewbox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"></path></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM19.4 15.2l1.2.9-1.8 3.1-1.5-.5a8.7 8.7 0 0 1-2.2 1.3l-.3 1.6h-3.6l-.3-1.6a8.7 8.7 0 0 1-2.2-1.3l-1.5.5-1.8-3.1 1.2-.9a8.8 8.8 0 0 1 0-2.5l-1.2-.9 1.8-3.1 1.5.5a8.7 8.7 0 0 1 2.2-1.3l.3-1.6h3.6l.3 1.6a8.7 8.7 0 0 1 2.2 1.3l1.5-.5 1.8 3.1-1.2.9a8.8 8.8 0 0 1 0 2.5z"/></symbol>
 <symbol id="i-menu" viewbox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></symbol>
 <symbol id="i-arrow" viewbox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
 <symbol id="i-check" viewbox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
@@ -94,6 +95,7 @@
 <nav aria-label="Workspace navigation" class="workspace-nav"><span class="nav-label">START HERE</span>
 <button class="active" data-view="dashboard"><span class="nav-step">01</span><span>Command centre</span></button>
 <button data-view="onboarding"><span class="nav-step">02</span><span>Business setup</span></button>
+<button type="button" data-view="settings"><span class="nav-step">03</span><span><svg class="settings-nav-icon" aria-hidden="true"><use href="#i-settings"></use></svg>Workspace Settings</span></button>
 <span class="nav-label">RUN THE BUSINESS</span>
 <button data-view="workforce"><span class="nav-step">03</span><span>People &amp; workforce</span></button>
 <button data-view="jobs"><span class="nav-step">04</span><span>Jobs &amp; allocation</span><span class="nav-badge" id="nav-jobs">0</span></button>
@@ -187,12 +189,40 @@
 Vehicles
 Properties
 Appointments"></textarea></label></div><div class="industry-template-preview" id="ai-design-preview"><b>AI workspace designer</b><span>Describe your business, then ask AI to propose services and sections. Nothing is saved until you review and save.</span><button type="button" id="ai-design-business" class="primary-button compact">AI design my setup</button></div></article>
-<article class="panel form-section" id="workspace-branding-settings"><div class="form-section-head"><span class="section-number">★</span><div><h2>Workspace appearance</h2><p>Customise the display identity without changing your registered legal business name.</p></div></div><div class="form-grid"><label><span>Business display name</span><input id="branding-display-name" maxlength="120" placeholder="Your business name" autocomplete="organization"/></label><label><span>Business logo (PNG, JPEG or WebP; maximum 1 MB)</span><input id="branding-logo-file" type="file" accept="image/png,image/jpeg,image/webp"/></label><div class="full branding-logo-preview"><img id="branding-logo-preview" alt="Current business logo" hidden/><button type="button" class="secondary-button" id="upload-workspace-logo">Upload logo</button><small id="branding-upload-feedback" role="status" aria-live="polite"></small></div><label><span>Logo URL (HTTPS, optional alternative)</span><input id="branding-logo-url" type="url" maxlength="1000" placeholder="https://example.com/logo.png"/></label><label><span>Workspace theme</span><select id="branding-theme"><option value="system">System preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div class="full"><button class="secondary-button" id="save-workspace-branding" type="button">Save appearance</button><small id="branding-feedback" role="status" aria-live="polite"></small></div></div></article>
+<article class="panel form-section" id="workspace-branding-settings"><div class="form-section-head"><span class="section-number">★</span><div><h2>Workspace appearance</h2><p>Manage your business name, brand colours, theme and logo from a dedicated settings page.</p></div></div><button type="button" class="secondary-button" data-jump="settings">Open Workspace Settings →</button></article>
 <article class="panel form-section" id="onboarding-services-brand"><div class="form-section-head"><span class="section-number">02</span><div><h2>Services &amp; brand</h2><p>Define what the business does and how it should communicate.</p></div><button type="button" class="context-ai-help" data-context-help="Services and brand settings">Ask AI about this section</button></div><div class="form-grid"><label class="full"><span>Services <em>one per line</em></span><textarea name="services" placeholder="Truck polishing\nBullbar restoration\nFleet maintenance" rows="5"></textarea></label><label class="full"><span>Brand voice</span><textarea name="brand_voice" placeholder="Professional, direct, premium and helpful" rows="4"></textarea></label></div></article>
 <article class="panel form-section" id="onboarding-controls-ai"><div class="form-section-head"><span class="section-number">03</span><div><h2>Approval controls</h2><p>Set how much human approval the system requires.</p></div><button type="button" class="context-ai-help" data-context-help="Approval controls and permanent AI instructions">Ask AI about this section</button></div><div class="form-grid"><label id="onboarding-approval-mode"><span>Approval mode</span><select name="approval_mode"><option value="everything">Approve everything</option><option value="external_actions">Approve external actions</option><option value="custom">Custom</option></select></label></div></article><article class="panel form-section" id="onboarding-ai-panel"><div class="form-section-head"><span class="section-number">04</span><div><h2>AI preferences</h2><p>Set permanent instructions for your workspace assistant.</p></div></div><div class="form-grid"><label class="full" id="onboarding-ai-preferences"><span>Permanent AI instructions</span><textarea name="ai_instructions" placeholder="Always protect margin, never send external messages without approval…" rows="6"></textarea></label><label class="toggle-row full"><input name="complete" type="checkbox"/><span class="toggle-ui"></span><span><b>Mark business setup complete</b><small>You can still update settings later.</small></span></label></div></article>
 <div class="sticky-save"><span>Changes apply to this workspace only.</span><button class="primary-button compact" type="submit">Save workspace settings</button></div>
 </div>
 </form>
+</section>
+<section class="view workspace-view" id="view-settings" hidden>
+  <div class="page-heading">
+    <div><p class="kicker">WORKSPACE SETTINGS</p><h1>Branding &amp; Profile</h1><p>Update this workspace's public-facing identity. Your registered legal business details are unchanged.</p></div>
+    <span class="status-pill neutral">Organisation-specific</span>
+  </div>
+  <article class="panel form-section branding-settings-panel">
+    <form id="workspace-branding-form" class="form-grid branding-settings-grid">
+      <label><span>Business display name / Brand name</span><input id="branding-display-name" name="display_name" maxlength="160" autocomplete="organization" placeholder="Your business brand" required /></label>
+      <label><span>Workspace theme</span><select id="branding-theme" name="theme"><option value="system">System preference</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label><span>Primary brand colour</span><input id="branding-primary-color" name="primary_color" type="color" value="#f59e0b" /></label>
+      <label><span>Secondary brand colour</span><input id="branding-secondary-color" name="secondary_color" type="color" value="#1e293b" /></label>
+      <label class="full"><span>Brand voice (optional)</span><input id="branding-voice" name="brand_voice" maxlength="160" placeholder="Professional, friendly, clear" /></label>
+      <label class="full"><span>Logo image (PNG, JPEG or WebP, maximum 1 MB)</span><input id="branding-logo-file" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+      <div class="full branding-logo-controls">
+        <div class="branding-image-box"><img id="branding-logo-preview" alt="Your workspace logo preview" hidden /></div>
+        <div class="branding-image-actions">
+          <button type="button" class="secondary-button compact" id="upload-workspace-logo">Upload logo</button>
+          <small id="branding-upload-feedback" role="status" aria-live="polite">Choose a logo to preview it before uploading.</small>
+        </div>
+      </div>
+      <label class="full"><span>Logo URL (optional HTTPS image or uploaded workspace logo)</span><input id="branding-logo-url" name="logo_url" type="text" maxlength="1024" placeholder="https://example.com/logo.png" /></label>
+      <div class="full branding-save-row">
+        <button id="save-workspace-branding" class="primary-button compact" type="submit">Save Branding</button>
+        <span id="branding-feedback" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </article>
 </section>
 <section class="view" hidden="" id="workforce-view">
 <div class="page-heading"><div><p class="kicker">PEOPLE &amp; WORKFORCE</p><h1>Build a compliant, job-ready team</h1><p>Manage worker profiles, employment type, skills and scheduling eligibility.</p></div><button class="primary-button compact" data-scroll="#worker-form" type="button">+ Add worker</button></div>
@@ -343,7 +373,7 @@ Appointments"></textarea></label></div><div class="industry-template-preview" id
 </section>
 <dialog class="modal" id="mfa-dialog"><form method="dialog"><div class="modal-icon"><svg><use href="#i-shield"></use></svg></div><h2>Protect your workspace</h2><p>Store this secret in your authenticator app, then enter a six-digit code to verify setup.</p><code id="mfa-secret"></code><label><span>Authenticator code</span><input autocomplete="one-time-code" id="mfa-code" inputmode="numeric" placeholder="000000"/></label><div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button compact" id="verify-mfa" type="button">Verify MFA</button></div></form></dialog>
 <script defer src="workspace-context.js?v=20261018.1"></script>
-<script defer src="product-guide.js?v=20260919.10"></script><script defer src="workspace-ai-runtime.js?v=20260919.1"></script><script defer src="app.js?v=20260919.10"></script>
+<script defer src="product-guide.js?v=20260919.10"></script><script defer src="workspace-ai-runtime.js?v=20260919.1"></script><script defer src="app.js?v=20261024.step7"></script>
 <script defer src="team-accounts.js"></script><script defer src="ai-operations.js?v=20260919.10"></script><script defer src="approvals.js?v=20260920.1"></script><script defer src="integration-manager.js?v=20260919.1"></script><script defer src="platform-notices.js?v=20260919.1"></script><script defer src="manual.js?v=14"></script>
 <div aria-hidden="true" class="smart-tooltip" id="smart-tooltip" role="tooltip"></div><script defer src="support.js?v=13"></script><script defer src="workspace-extras.js?v=20260919.10"></script><script defer src="common.js?v=20260919.10"></script></body>
 </html>

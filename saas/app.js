@@ -2,9 +2,9 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const esc = (v) => String(v ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
-let viewSequence = ['dashboard','onboarding','workforce','team','jobs','finance','assistant','approvals','video','integrations','governance','support','manual','billing'];
+let viewSequence = ['dashboard','onboarding','settings','workforce','team','jobs','finance','assistant','approvals','video','integrations','governance','support','manual','billing'];
 const pageMeta = {
-  dashboard:['START HERE','Command centre'], onboarding:['SETUP','Business setup'], workforce:['PEOPLE','People & workforce'], team:['TEAM DIRECTORY','Staff accounts'], jobs:['OPERATIONS','Jobs & allocation'], finance:['FINANCE','Expenses & profit'], assistant:['INTELLIGENCE','AI Operations'], approvals:['CONTROL','Approvals'], video:['CONTENT','Content studio'], integrations:['SYSTEM','Connections'], governance:['TRUST','Trust & governance'], support:['HELP','Help & complaints'], manual:['GUIDE','Digital user manual'], billing:['ACCOUNT','Plans & billing']
+  dashboard:['START HERE','Command centre'], onboarding:['SETUP','Business setup'], settings:['PROFILE','Workspace Settings'], workforce:['PEOPLE','People & workforce'], team:['TEAM DIRECTORY','Staff accounts'], jobs:['OPERATIONS','Jobs & allocation'], finance:['FINANCE','Expenses & profit'], assistant:['INTELLIGENCE','AI Operations'], approvals:['CONTROL','Approvals'], video:['CONTENT','Content studio'], integrations:['SYSTEM','Connections'], governance:['TRUST','Trust & governance'], support:['HELP','Help & complaints'], manual:['GUIDE','Digital user manual'], billing:['ACCOUNT','Plans & billing']
 };
 let currentView = 'dashboard';
 let noteTimer;
@@ -16,7 +16,7 @@ function enhanceShell(){
   const choice=$('.account-choice'); if(choice)choice.innerHTML='<span>Already have an account?</span><button class="auth-switch-link" type="button" data-auth-switch="login">Sign in</button>';
   const reg=$('#register-form'),login=$('#login-form'); if(reg&&!reg.querySelector('.auth-alt-action'))reg.insertAdjacentHTML('beforeend','<p class="auth-alt-action">Already have an account? <button type="button" data-auth-switch="login">Sign in securely</button></p>'); if(login&&!login.querySelector('.auth-alt-action'))login.insertAdjacentHTML('beforeend','<p class="auth-alt-action">Don\'t have an account? <button type="button" data-auth-switch="register">Join workspace</button></p>');
   const visual=$('.auth-visual'); if(visual&&!visual.querySelector('.office-preview'))visual.querySelector('.auth-copy')?.insertAdjacentHTML('afterend','<div class="office-preview"><div class="office-preview-bar"><span><i></i> Live operations desk</span><small>Workspace preview</small></div><div class="office-preview-grid"><article><span class="preview-label">INCOMING</span><b>Customer call</b><small>AI receptionist · ready for approval</small><span class="preview-status live">Live</span></article><article><span class="preview-label">TODAY</span><b>4 jobs scheduled</b><small>2 allocated · 2 awaiting team</small><span class="preview-status">Operations</span></article><article><span class="preview-label">WORKFORCE</span><b>Team ready</b><small>Compliance, skills and availability checked</small><span class="preview-status good">Ready</span></article></div></div>');
-  const nav=$('.workspace-nav'); if(nav)nav.innerHTML='<span class="nav-label">START HERE</span><button data-view="dashboard" class="active" type="button"><span class="nav-step">01</span><span>Command centre</span></button><button data-view="onboarding" type="button"><span class="nav-step">02</span><span>Business setup</span></button><span class="nav-label">RUN THE BUSINESS</span><button data-view="workforce" type="button"><span class="nav-step">03</span><span>People & workforce</span></button><button data-view="jobs" type="button"><span class="nav-step">04</span><span>Jobs & allocation</span><span class="nav-badge" id="nav-jobs">0</span></button><button data-view="finance" type="button"><span class="nav-step">05</span><span>Expenses & profit</span></button><button data-view="assistant" type="button"><span class="nav-step">06</span><span>AI Operations</span></button><button data-view="approvals" type="button"><span class="nav-step">07</span><span>Approvals</span><span class="nav-badge" id="nav-approvals">0</span></button><span class="nav-label">GROW & CONNECT</span><button data-view="video" type="button"><span class="nav-step">08</span><span>Content studio</span></button><button data-view="integrations" type="button"><span class="nav-step">09</span><span>Connections</span></button><span class="nav-label">TRUST & ACCOUNT</span><button data-view="governance" type="button"><span class="nav-step">10</span><span>Trust & governance</span></button><button data-view="support" type="button"><span class="nav-step">11</span><span>Help & complaints</span></button><button data-view="manual" type="button"><span class="nav-step">12</span><span>Digital user manual</span></button><button data-view="billing" type="button"><span class="nav-step">13</span><span>Plans & billing</span></button>';
+  const nav=$('.workspace-nav'); if(nav)nav.innerHTML='<span class="nav-label">START HERE</span><button data-view="dashboard" class="active" type="button"><span class="nav-step">01</span><span>Command centre</span></button><button data-view="onboarding" type="button"><span class="nav-step">02</span><span>Business setup</span></button><button data-view="settings" type="button"><span class="nav-step">03</span><span><svg class="settings-nav-icon" aria-hidden="true"><use href="#i-settings"></use></svg>Workspace Settings</span></button><span class="nav-label">RUN THE BUSINESS</span><button data-view="workforce" type="button"><span class="nav-step">03</span><span>People & workforce</span></button><button data-view="jobs" type="button"><span class="nav-step">04</span><span>Jobs & allocation</span><span class="nav-badge" id="nav-jobs">0</span></button><button data-view="finance" type="button"><span class="nav-step">05</span><span>Expenses & profit</span></button><button data-view="assistant" type="button"><span class="nav-step">06</span><span>AI Operations</span></button><button data-view="approvals" type="button"><span class="nav-step">07</span><span>Approvals</span><span class="nav-badge" id="nav-approvals">0</span></button><span class="nav-label">GROW & CONNECT</span><button data-view="video" type="button"><span class="nav-step">08</span><span>Content studio</span></button><button data-view="integrations" type="button"><span class="nav-step">09</span><span>Connections</span></button><span class="nav-label">TRUST & ACCOUNT</span><button data-view="governance" type="button"><span class="nav-step">10</span><span>Trust & governance</span></button><button data-view="support" type="button"><span class="nav-step">11</span><span>Help & complaints</span></button><button data-view="manual" type="button"><span class="nav-step">12</span><span>Digital user manual</span></button><button data-view="billing" type="button"><span class="nav-step">13</span><span>Plans & billing</span></button>';
   const main=$('main.content-wrap'); if(main&&!$('#billing-view'))main.insertAdjacentHTML('beforeend',`<section id="billing-view" class="view" hidden><div class="page-heading"><div><p class="kicker">PLANS & BILLING</p><h1>Your 14-day launch trial</h1><p>Test the operating system before activating a paid subscription. Billing remains disabled until a payment provider and final pricing are approved.</p></div><span class="status-pill neutral" id="trial-status-pill">Trial active</span></div><div class="trial-hero panel"><div><span class="panel-kicker">CURRENT ACCESS</span><h2 id="trial-plan-name">Trial</h2><p id="trial-copy">Loading trial status…</p></div><div class="trial-count"><strong id="trial-days">14</strong><span>days remaining</span></div><div class="trial-progress"><span id="trial-progress-bar"></span></div></div><div class="pricing-grid"><article class="pricing-card"><span class="pricing-tag">ESSENTIAL</span><h2>Starter · A$99</h2><p>For solo operators and small service teams.</p><ul><li>CRM & enquiries</li><li>Quotes, bookings and jobs</li><li>Core workforce records</li><li>Approval-controlled AI</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article><article class="pricing-card featured"><span class="pricing-tag">RECOMMENDED</span><h2>Operations · A$199</h2><p>For growing teams that need workforce, compliance and automation.</p><ul><li>Everything in Starter</li><li>Job pool & eligibility</li><li>Compliance & onboarding</li><li>AI Operations workflows</li></ul><button class="primary-button" type="button" disabled>Payment provider required</button></article><article class="pricing-card"><span class="pricing-tag">ADVANCED</span><h2>Scale · A$349</h2><p>For larger multi-team service businesses.</p><ul><li>Everything in Operations</li><li>Advanced permissions</li><li>Higher usage limits</li><li>Priority integrations</li></ul><button class="secondary-button" type="button" disabled>Billing not enabled</button></article></div><article class="panel billing-safety"><span class="feature-icon"><svg><use href="#i-shield"/></svg></span><div><h2>No surprise billing</h2><p>No charge occurs until an approved payment processor, final AUD pricing, GST treatment and customer consent are connected.</p></div></article>
   <article class="panel" id="account-lifecycle-panel">
     <div class="panel-head"><div><span class="panel-kicker">ACCOUNT & DATA SAFETY</span><h2>Your workspace stays yours</h2></div><span class="status-pill good" id="account-preservation-status">Preserved</span></div>
@@ -72,7 +72,7 @@ const teamNav=document.createElement('button');teamNav.type='button';teamNav.dat
 document.querySelector('.workspace-nav [data-view="workforce"]')?.after(teamNav);
 $$('.workspace-nav [data-view]').forEach((button,index)=>{const step=button.querySelector('.nav-step');if(step)step.textContent=String(index+1).padStart(2,'0')});
 function updateFlowNav(){const index=Math.max(0,viewSequence.indexOf(currentView)),prev=$('#flow-prev'),next=$('#flow-next'),pos=$('#flow-position');if(pos)pos.textContent=`Step ${index+1} of ${viewSequence.length}`;if(prev)prev.disabled=index===0;if(next){next.disabled=index===viewSequence.length-1;next.textContent=index===viewSequence.length-1?'Complete':'Next →'}}
-function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$$('.view').forEach(v=>v.hidden=v.id!==`${name}-view`);const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
+function showView(name,{instant=false}={}){if(!viewSequence.includes(name))name='dashboard';currentView=name;$$('.workspace-nav [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===name));$('.view').forEach(v=>v.hidden=v.id!==(name==='settings'?'view-settings':`${name}-view`));const meta=pageMeta[name]||['WORKSPACE','Super Pro AI Office Manager'];if($('#page-eyebrow'))$('#page-eyebrow').textContent=meta[0];if($('#page-title'))$('#page-title').textContent=meta[1];updateFlowNav();closeSidebar();if(location.hash!==`#${name}`)history.pushState(null,'',`#${name}`);window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:name,meta}}));if(name==='settings')loadWorkspaceBranding().catch(e=>note(e.message,true));if(name==='governance')loadGovernance().catch(e=>note(e.message,true));if(name==='integrations')loadSelfServiceIntegrations().catch(e=>note(e.message,true));if(name==='finance')loadFinance().catch(e=>note(e.message,true));if(name==='approvals')window.SuperProApprovals?.install?.();requestAnimationFrame(()=>window.scrollTo({top:0,behavior:instant?'auto':'smooth'}))}
 $$('.workspace-nav [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));document.addEventListener('click',e=>{const target=e.target.closest('[data-jump]');if(target){e.preventDefault();showView(target.dataset.jump)}});$$('[data-scroll]').forEach(b=>b.onclick=()=>$(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));$('#flow-prev')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i>0)showView(viewSequence[i-1])});$('#flow-next')?.addEventListener('click',()=>{const i=viewSequence.indexOf(currentView);if(i<viewSequence.length-1)showView(viewSequence[i+1])});
 function setAuthMode(mode,initial=false){const target=mode==='register'?'create-account.html':'sign-in.html';if(!initial&&!location.pathname.endsWith(target)){location.href=target;return;}const isRegister=mode==='register';$('#register-form').hidden=!isRegister;$('#login-form').hidden=isRegister;$('#auth-message').textContent='';const h=$('.auth-heading h2'),sub=$('#auth-subtitle');if(h)h.textContent=isRegister?'Create your secure workspace':'Sign in to your workspace';if(sub)sub.textContent=isRegister?'Choose your plan, create your account and start 14 days free. No card is required in this test build.':'Enter your account details to continue to your secure workspace.';const choice=$('.account-choice');if(choice){const label=choice.querySelector('span'),button=choice.querySelector('button');if(label)label.textContent=isRegister?'Already have an account?':'New to Super Pro AI Office Manager?';if(button){button.dataset.authSwitch=isRegister?'login':'register';button.textContent=isRegister?'Sign in':'Join workspace'}}window.scrollTo({top:0,behavior:'smooth'})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-auth-switch]');if(b)setAuthMode(b.dataset.authSwitch)});setAuthMode(location.pathname.endsWith('create-account.html')?'register':'login',true);
@@ -301,13 +301,22 @@ async function loadOnboarding(){
   await loadRegulatorySources();
 }
 $('#onboarding-form').onsubmit=async e=>{e.preventDefault();const b=obj(e.target);b.services=b.services.split('\n').map(x=>x.trim()).filter(Boolean);b.custom_sections=String(b.custom_sections||'').split('\n').map(x=>x.trim()).filter(Boolean);b.complete=e.target.elements.complete.checked;try{const d=await api('/api/saas/onboarding',{method:'PUT',body:JSON.stringify(b)});note('Workspace settings saved successfully. Industry-specific modules and official-source guidance have been refreshed.');applyIndustryModules(d.industry?.modules||[]);renderRegulatoryProfile({...d.industry,sources:(industryRegistryCache.find(x=>x.code===d.industry?.code)?.sources||[])});}catch(x){note(x.message,true)}};
+let brandingPreviewUrl=null;
 async function loadWorkspaceBranding(){
-  const d=await api('/api/saas/branding'),b=d.branding;
+  const d=await api('/api/saas/branding'),b=d.branding||{};
   const name=$('#branding-display-name'),logo=$('#branding-logo-url'),theme=$('#branding-theme');
-  if(name)name.value=b.display_name||'';
+  if(name)name.value=b.display_name||b.brand_name||'';
   if(logo)logo.value=b.logo_url||'';
-  const preview=$('#branding-logo-preview');if(preview){preview.hidden=!b.logo_url;if(b.logo_url)preview.src=b.logo_url;else preview.removeAttribute('src')};
   if(theme)theme.value=b.theme||'system';
+  if($('#branding-primary-color'))$('#branding-primary-color').value=/^#[0-9a-fA-F]{6}$/.test(b.primary_color||'')?b.primary_color:'#f59e0b';
+  if($('#branding-secondary-color'))$('#branding-secondary-color').value=/^#[0-9a-fA-F]{6}$/.test(b.secondary_color||'')?b.secondary_color:'#1e293b';
+  if($('#branding-voice'))$('#branding-voice').value=b.brand_voice||'';
+  const preview=$('#branding-logo-preview');
+  if(preview){
+    if(brandingPreviewUrl){URL.revokeObjectURL(brandingPreviewUrl);brandingPreviewUrl=null;}
+    preview.hidden=!b.logo_url;
+    if(b.logo_url)preview.src=b.logo_url;else preview.removeAttribute('src');
+  }
   const label=$('#org-name-side'),avatar=$('#org-avatar-side');
   if(label)label.textContent=b.display_name||window.GDS_SESSION?.organisation?.name||'Workspace';
   if(avatar){
@@ -320,42 +329,68 @@ async function loadWorkspaceBranding(){
       avatar.replaceChildren(image);
     }
   }
-  const canEdit=['owner','admin','administrator'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
-  const section=$('#workspace-branding-settings');
-  if(section)section.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
+  const canEdit=['owner','admin','super_admin'].includes(String(window.GDS_SESSION?.user?.role||'').toLowerCase());
+  const form=$('#workspace-branding-form');
+  if(form){
+    form.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!canEdit});
+    form.dataset.editable=String(canEdit);
+  }
   const ownerControls=$('#owner-control-centre');
   if(ownerControls)ownerControls.hidden=!canEdit;
   setTheme(b.theme||'system',{persist:false});
 }
+$('#branding-logo-file')?.addEventListener('change',()=>{
+  const input=$('#branding-logo-file'),file=input?.files?.[0],preview=$('#branding-logo-preview');
+  const feedback=$('#branding-upload-feedback');
+  if(brandingPreviewUrl){URL.revokeObjectURL(brandingPreviewUrl);brandingPreviewUrl=null;}
+  if(!file){if(feedback)feedback.textContent='Choose a logo to preview it before uploading.';return;}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1024*1024||file.size===0){
+    input.value='';if(feedback)feedback.textContent='Choose a PNG, JPEG or WebP image smaller than 1 MB.';return;
+  }
+  brandingPreviewUrl=URL.createObjectURL(file);
+  if(preview){preview.src=brandingPreviewUrl;preview.hidden=false;}
+  if(feedback)feedback.textContent='Preview ready. Select Upload logo to store this image.';
+});
 $('#upload-workspace-logo')?.addEventListener('click',async()=>{
   const input=$('#branding-logo-file'),file=input?.files?.[0],button=$('#upload-workspace-logo'),feedback=$('#branding-upload-feedback');
   if(!file){if(feedback)feedback.textContent='Select a logo image first.';return}
-  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1024*1024){if(feedback)feedback.textContent='Choose a PNG, JPEG or WebP image smaller than 1 MB.';return}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1024*1024||file.size===0){
+    if(feedback)feedback.textContent='Choose a PNG, JPEG or WebP image smaller than 1 MB.';return
+  }
   const body=new FormData();body.append('logo',file);
   button.disabled=true;
   try{
     const response=await fetch('/api/saas/branding/logo',{method:'POST',body,credentials:'same-origin'});
-    const result=await response.json();
+    const result=await response.json().catch(()=>({}));
     if(!response.ok||!result.ok)throw new Error(result.error||'Logo upload failed.');
-    if(feedback)feedback.textContent='Logo uploaded successfully.';
     if($('#branding-logo-url'))$('#branding-logo-url').value=result.logo_url;
-    if(input)input.value='';
+    input.value='';
     await loadWorkspaceBranding();
+    if(feedback)feedback.textContent='Logo uploaded successfully.';
+    note('Workspace logo uploaded successfully.');
   }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
   finally{button.disabled=false}
 });
-$('#save-workspace-branding')?.addEventListener('click',async()=>{
-  const feedback=$('#branding-feedback'),button=$('#save-workspace-branding');
+$('#workspace-branding-form')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const button=$('#save-workspace-branding'),feedback=$('#branding-feedback');
+  if(!button)return;
   button.disabled=true;
+  if(feedback)feedback.textContent='Saving branding…';
   try{
-    const d=await api('/api/saas/branding',{method:'PUT',body:JSON.stringify({
+    const payload={
       display_name:$('#branding-display-name').value.trim(),
       logo_url:$('#branding-logo-url').value.trim(),
-      theme:$('#branding-theme').value
-    })});
-    if(feedback)feedback.textContent='Workspace appearance saved.';
+      theme:$('#branding-theme').value,
+      primary_color:$('#branding-primary-color').value,
+      secondary_color:$('#branding-secondary-color').value,
+      brand_voice:$('#branding-voice').value.trim()
+    };
+    const d=await api('/api/saas/branding',{method:'PUT',body:JSON.stringify(payload)});
     await loadWorkspaceBranding();
-    if(d.branding.theme!=='system')setTheme(d.branding.theme);
+    if(feedback)feedback.textContent='Branding saved successfully.';
+    if(d.branding?.theme)setTheme(d.branding.theme,{persist:false});
+    note('Workspace branding saved successfully.');
   }catch(error){if(feedback)feedback.textContent=error.message;note(error.message,true)}
   finally{button.disabled=false}
 });

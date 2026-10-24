@@ -41,6 +41,9 @@ jobs:
       - name: Branding edit and logo upload runtime permissions
         run: node scripts/branding-update-logo.test.mjs
 
+      - name: Workspace Settings sidebar and branding form contract
+        run: node --test scripts/workspace-branding-ui.test.mjs
+
       - name: Final validation
         run: npm run validate:final
 

@@ -35,6 +35,9 @@ jobs:
       - name: Runtime work order authorisation across seven roles
         run: node scripts/workorder-runtime-auth.test.mjs
 
+      - name: SaaS branding and multi-organisation runtime contract
+        run: node scripts/saas-branding-organisations.test.mjs
+
       - name: Final validation
         run: npm run validate:final
 

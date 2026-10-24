@@ -45,7 +45,9 @@ test('onboarding settings still has a valid Appearance panel linking to new view
   assert.match(html,/data-settings-target="workspace-branding-settings"/);
   assert.match(html,/id="workspace-branding-settings"/);
   assert.match(html,/id="workspace-branding-settings"[\s\S]*?data-jump="settings"/);
-  assert.doesNotMatch(html,/id="workspace-branding-settings"[\s\S]*?id="branding-display-name"[\s\S]*?<\/article>/);
+  const appearanceCard=html.match(/<article[^>]*id="workspace-branding-settings"[^>]*>[\s\S]*?<\/article>/)?.[0]||'';
+  assert.ok(appearanceCard,'Appearance shortcut must exist');
+  assert.doesNotMatch(appearanceCard,/id="branding-display-name"/);
 });
 
 test('role-gated editing and accessible upload/status controls',()=>{

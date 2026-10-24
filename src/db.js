@@ -1029,7 +1029,9 @@ export function createDb(databasePath) {
     ['postcode', `TEXT`],
     ['display_name', `TEXT`],
     ['brand_logo_url', `TEXT`],
-    ['brand_theme', `TEXT NOT NULL DEFAULT 'system'`]
+    ['brand_theme', `TEXT NOT NULL DEFAULT 'system'`],
+    ['brand_primary_color', `TEXT`],
+    ['brand_secondary_color', `TEXT`]
   ]) {
     if (!organisationColumns.has(name)) db.exec(`ALTER TABLE organisations ADD COLUMN ${name} ${definition}`);
   }

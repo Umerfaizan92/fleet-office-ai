@@ -12,7 +12,7 @@ const required=[
   'saas/ai-operations.js','saas/approvals.js','saas/integration-manager.js','saas/platform-notices.js','saas/common.js','saas/install.js','saas/workspace-extras.js','saas/worker-onboarding.html','saas/worker-onboarding.js',
   'saas/brand.css','saas/experience.css','saas/public-sections.css','saas/public-voice-install.css','saas/workspace-theme.css',
   'saas/manual.js','saas/support.js','saas/adaptive.css','saas/governance.css','saas/manifest.webmanifest','saas/sw.js',
-  'saas/superpro-icon-192.png','saas/superpro-icon-512.png','saas/workspace-nav.js','saas/workspace-ui.js','saas/workspace-comms.js','saas/workspace-migration.js','saas/workspace-exports.js','saas/workspace-views.css','saas/workspace-nav.css','saas/workspace-fx.js','src/saas-platform.js','src/diagnostics.js','scripts/verify-all.mjs','scripts/purge-legacy.sh','scripts/purge-legacy.ps1','scripts/legacy-files.txt','scripts/generate-admin-key.mjs','docs/DEPLOY.md','docs/github-ci.yml','.gitattributes',
+  'saas/superpro-icon-192.png','saas/superpro-icon-512.png','saas/workspace-nav.js','saas/workspace-voicebar.js','saas/fonts/manrope-latin-wght-normal.woff2','saas/fonts/bodoni-moda-latin-500-normal.woff2','saas/fonts/bodoni-moda-latin-600-normal.woff2','saas/workspace-ui.js','saas/workspace-comms.js','saas/workspace-migration.js','saas/workspace-exports.js','saas/workspace-views.css','saas/workspace-nav.css','saas/workspace-fx.js','src/saas-platform.js','src/diagnostics.js','scripts/verify-all.mjs','scripts/purge-legacy.sh','scripts/purge-legacy.ps1','scripts/legacy-files.txt','scripts/generate-admin-key.mjs','docs/DEPLOY.md','docs/github-ci.yml','.gitattributes',
   'office/index.html','office/office.js','office/office.css','office/office-extras.js','office/office-records.js','office/office-insights.js',
   'office/office-theme.css','office/office-records.css','office/office-layout.css','office/office-insights.css',
   'scripts/quality-check.mjs','scripts/quality-ratchet.mjs','scripts/check-config.mjs','scripts/smoke-test.mjs','scripts/verify-manifest.mjs'
@@ -73,7 +73,7 @@ for(const token of ["startsWith('/api/')","includes('workspace')","startsWith('/
 for(const token of ['plan: 0.5c-512mb','numInstances: 1','mountPath: /var/data','value: "/var/data/super-pro.sqlite"','value: "/var/data/uploads"'])if(!render.includes(token))failures.push('render.yaml missing production persistence token '+token);
 if(intro.includes('setTimeout(resolve,650)')||!intro.includes('Capture the first word immediately')||!intro.includes('No speech detected. Microphone stopped'))failures.push('intro.js microphone capture/auto-stop protections are incomplete');
 if(!intro.includes('decodeAudioData')||!intro.includes('ensurePlaybackContext'))failures.push('intro.js missing unlocked Web Audio playback path');
-if(!index.includes('intro.js?v=29')||!sw.includes('intro.js?v=29')||!sw.includes('superpro-public-20261025-16'))failures.push('public voice cache version was not bumped');
+if(!index.includes('intro.js?v=29')||!sw.includes('intro.js?v=29')||!sw.includes('superpro-public-20261025-17'))failures.push('public voice cache version was not bumped');
 
 const env=read('.env.example');
 for(const token of ['FREE_AI_MODE=1','GEMINI_API_KEY=','GEMINI_MODEL=gemini-3.5-flash','GEMINI_STT_MODEL=gemini-3.5-transcribe','GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview','SESSION_SECRET='])if(!env.includes(token))failures.push('.env.example missing '+token);

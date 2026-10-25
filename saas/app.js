@@ -65,7 +65,7 @@ function installWorkspaceAddressSearch(){
 function note(v,bad=false){const e=$('#workspace').hidden?$('#auth-message'):$('#notice');if(!e)return;e.textContent=v;e.style.color=bad?'var(--red)':'var(--green)';clearTimeout(noteTimer);if(e.id==='notice'&&v)noteTimer=setTimeout(()=>e.textContent='',6500)}
 function obj(f){return Object.fromEntries(new FormData(f))} function initials(name='User'){return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'U'}
 function setTheme(theme,{persist=true}={}){
-  const resolved=theme==='system'?(window.matchMedia?.('(prefers-color-scheme: light)').matches?'light':'dark'):theme;
+  const resolved=theme==='light'?'light':'dark';/* black and gold is the house look; light stays one click away */
   document.documentElement.dataset.theme=resolved;
   if(persist)localStorage.setItem('foai-theme',theme);
   $$('.theme-icon use').forEach(u=>u.setAttribute('href',resolved==='dark'?'#i-sun':'#i-moon'));
@@ -321,7 +321,7 @@ async function loadWorkspaceBranding(){
   const name=$('#branding-display-name'),logo=$('#branding-logo-url'),theme=$('#branding-theme');
   const primary=$('#branding-primary-color'),secondary=$('#branding-secondary-color');
   const isDefault=!b.primary_color||b.primary_color.toLowerCase()===PLATFORM_DEFAULT_PRIMARY;
-  if(primary){primary.value=isDefault?'#22d3ee':b.primary_color;delete primary.dataset.touched}
+  if(primary){primary.value=isDefault?'#d9ad59':b.primary_color;delete primary.dataset.touched}
   if(secondary){secondary.value=b.secondary_color||'#1e293b';delete secondary.dataset.touched}
   applyBrandColours(b.primary_color);
   if(name)name.value=b.display_name||'';
@@ -902,13 +902,13 @@ async function loadSelfServiceIntegrations(force=false){
     grid.innerHTML=d.integrations.map(x=>{
       const connected=x.status==='connected',prepared=x.status==='setup_ready',ready=Boolean(x.provider_ready);
       const state=connected?'Connected':ready?(prepared?'Ready to authorise':'Provider ready'):'Provider configuration required';
-      const action=connected?'Manage connection':ready?'Connect / Authorise':'Show setup requirements';
-      return `<article class="integration-card self-service" data-provider-card="${esc(x.provider)}"><span class="integration-logo">${esc((x.display_name||x.provider).slice(0,1))}</span><div><b>${esc(x.display_name)}</b><small>${esc((x.capabilities||[]).join(' · '))}</small><div class="integration-note-inline ${ready?'provider-ready':'provider-pending'}">${esc(state)}</div>${x.account_label?`<div class="integration-note-inline">Account: ${esc(x.account_label)}</div>`:''}</div><button type="button" data-connect-provider="${esc(x.provider)}" data-ready="${ready?'1':'0'}" data-status="${esc(x.status||'not_connected')}">${action}</button></article>`;
+      const action=connected?'Manage connection':ready?'Connect / Authorise':'What is needed';
+      return `<article class="integration-card self-service" data-provider-card="${esc(x.provider)}"><span class="integration-logo">${esc((x.display_name||x.provider).slice(0,1))}</span><div><b>${esc(x.display_name)}</b><small>${esc((x.capabilities||[]).join(' · '))}</small><div class="integration-note-inline ${ready?'provider-ready':'provider-pending'}">${esc(state)}</div>${x.account_label?`<div class="integration-note-inline">Account: ${esc(x.account_label)}</div>`:''}${(!ready&&!connected&&(x.missing_setup||[]).length)?`<div class="integration-note-inline provider-pending">Waiting for the administrator to add: ${esc(x.missing_setup.join(', '))}</div>`:''}</div><button type="button" data-connect-provider="${esc(x.provider)}" data-ready="${ready?'1':'0'}" data-status="${esc(x.status||'not_connected')}">${action}</button></article>`;
     }).join('');
     grid.querySelectorAll('[data-connect-provider]').forEach(b=>b.onclick=async()=>{
       const provider=b.dataset.connectProvider,ready=b.dataset.ready==='1',status=b.dataset.status;
       if(status==='connected'){note('This connection is already authorised. Connection management and disconnect controls become available from the provider session record.');return}
-      if(!ready){note(integrationHelp[provider]+' The Super Pro platform administrator must configure the provider app credentials first; no customer password should be entered here.',true);return}
+      if(!ready){const miss=(b.closest('.integration-card')?.querySelector('.provider-pending+.provider-pending')?.textContent||'').replace('Waiting for the administrator to add: ','');note(integrationHelp[provider]+' This connection is not switched on yet. The Super Pro administrator needs to add'+(miss?': '+miss:' the provider credentials')+' in the hosting settings. You never type a social-media password here.',true);return}
       b.disabled=true;
       try{
         const r=await api(`/api/saas/integrations/self-service/${encodeURIComponent(provider)}/authorise`,{method:'POST',body:'{}'});
@@ -965,3 +965,14 @@ async function loadBusinessSwitcher(){
     catch(err){select.value=data.active_organisation_id;select.disabled=false;note(err.message,true)}
   };
 }
+
+/* Result of a provider sign-in: show it, send the person to Connections, then tidy the address bar. */
+(function(){
+  try{
+    const q=new URLSearchParams(location.search),ok=q.get('integration_connected'),err=q.get('integration_error');
+    if(!ok&&!err)return;
+    history.replaceState(null,'',location.pathname+'#marketing/connections');
+    const tell=()=>{if(typeof note==='function')note(ok?`${ok.replace(/_/g,' ')} connected.`:`Connection did not finish: ${err}`,Boolean(err))};
+    setTimeout(()=>{try{showView('integrations')}catch{}tell()},1800);
+  }catch{}
+})();

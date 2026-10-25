@@ -1,4 +1,4 @@
-// Single source of truth for workspace navigation: four domains, each a dropdown
+// Single source of truth for workspace navigation: six groups, each a dropdown
 // menu in the top bar (and in the mobile header).
 // app.js, the page finder and the manual read from this list; nothing else
 // should hard-code view names, labels or role gates.
@@ -7,30 +7,34 @@
   const SENIOR_ROLES=['owner','admin','manager','super_admin','director']; // must match workforceSeniorRoles in src/server.js
   // `path` is the canonical hash route (#domain/section). Old single-word hashes such as #finance still resolve.
   const DOMAINS=[
-    {id:'operations',label:'Operations Control',kicker:'OPERATIONS CONTROL',icon:'i-grid',items:[
-      {view:'dashboard',path:'operations/command',label:'Executive Command',icon:'i-grid'},
-      {view:'assistant',path:'operations/receptionist',label:'AI Receptionist & Operations',icon:'i-spark'},
-      {view:'comms',path:'operations/inbox',label:'Omnichannel Inbox',icon:'i-bell',roles:SENIOR_ROLES},
-      {view:'jobs',path:'operations/dispatch',label:'Work Orders & Dispatch',icon:'i-briefcase',badge:'nav-jobs'}
+    {id:'today',label:'Today',kicker:'TODAY',icon:'i-grid',items:[
+      {view:'dashboard',path:'today/home',alias:['operations/command'],label:'Home & AI Command',icon:'i-grid'},
+      {view:'assistant',path:'today/assistant',alias:['operations/receptionist'],label:'AI Assistant & Receptionist',icon:'i-spark'},
+      {view:'approvals',path:'today/approvals',alias:['governance/approvals'],label:'Approvals',icon:'i-check',badge:'nav-approvals'}
     ]},
-    {id:'workforce',label:'Workforce & Pipeline',kicker:'WORKFORCE & PIPELINE',icon:'i-users',items:[
-      {view:'workforce',path:'workforce/compliance',label:'Workforce & Compliance',icon:'i-users'},
-      {view:'team',path:'workforce/staff',label:'Staff Accounts',icon:'i-users',roles:['owner']},
-      {view:'video',path:'workforce/growth',label:'Growth & Social Studio',icon:'i-video'},
-      {view:'integrations',path:'workforce/connections',label:'Connections',icon:'i-link'}
+    {id:'customers',label:'Customers & Work',kicker:'CUSTOMERS & WORK',icon:'i-bell',items:[
+      {view:'comms',path:'customers/inbox',alias:['operations/inbox'],label:'Inbox (all channels)',icon:'i-bell',roles:SENIOR_ROLES},
+      {view:'jobs',path:'customers/jobs',alias:['operations/dispatch'],label:'Jobs & Dispatch',icon:'i-briefcase',badge:'nav-jobs'}
     ]},
-    {id:'finance',label:'Financial Ledger',kicker:'FINANCIAL LEDGER',icon:'i-briefcase',items:[
-      {view:'finance',path:'finance/ledger',label:'Protected Ledger',icon:'i-shield',roles:FINANCE_ROLES},
-      {view:'billing',path:'finance/billing',label:'Plans & Billing',icon:'i-doc'}
+    {id:'people',label:'People',kicker:'PEOPLE',icon:'i-users',items:[
+      {view:'workforce',path:'people/workers',alias:['workforce/compliance'],label:'Workers & Compliance',icon:'i-users'},
+      {view:'team',path:'people/staff',alias:['workforce/staff'],label:'Staff Accounts',icon:'i-users',roles:['owner']}
     ]},
-    {id:'governance',label:'Governance & Tools',kicker:'GOVERNANCE & TOOLS',icon:'i-shield',items:[
-      {view:'governance',path:'governance/trust',label:'Trust & Governance',icon:'i-shield'},
-      {view:'approvals',path:'governance/approvals',label:'Approvals',icon:'i-check',badge:'nav-approvals'},
-      {view:'migration',path:'governance/migration',label:'Data Migration',icon:'i-arrow',roles:SENIOR_ROLES},
-      {view:'exports',path:'governance/exports',label:'Print & Export Hub',icon:'i-doc',roles:['owner']},
-      {view:'onboarding',path:'governance/settings',label:'Brand Studio & Settings',icon:'i-building'},
-      {view:'support',path:'governance/help',label:'Help & Complaints',icon:'i-bell'},
-      {view:'manual',path:'governance/manual',label:'User Manual',icon:'i-doc'},
+    {id:'marketing',label:'Marketing & Channels',kicker:'MARKETING & CHANNELS',icon:'i-video',items:[
+      {view:'video',path:'marketing/studio',alias:['workforce/growth'],label:'Content Studio',icon:'i-video'},
+      {view:'integrations',path:'marketing/connections',alias:['workforce/connections'],label:'Connections (social, WhatsApp, website)',icon:'i-link'}
+    ]},
+    {id:'money',label:'Money',kicker:'MONEY',icon:'i-briefcase',items:[
+      {view:'finance',path:'money/ledger',alias:['finance/ledger'],label:'Ledger & Job Profit',icon:'i-shield',roles:FINANCE_ROLES},
+      {view:'billing',path:'money/billing',alias:['finance/billing'],label:'Plans & Billing',icon:'i-doc'}
+    ]},
+    {id:'setup',label:'Setup & Trust',kicker:'SETUP & TRUST',icon:'i-shield',items:[
+      {view:'onboarding',path:'setup/settings',alias:['governance/settings'],label:'Brand & Settings',icon:'i-building'},
+      {view:'migration',path:'setup/import',alias:['governance/migration'],label:'Import Your Data',icon:'i-arrow',roles:SENIOR_ROLES},
+      {view:'exports',path:'setup/print',alias:['governance/exports'],label:'Print & Export Hub',icon:'i-doc',roles:['owner']},
+      {view:'governance',path:'setup/trust',alias:['governance/trust'],label:'Trust & Security',icon:'i-shield'},
+      {view:'support',path:'setup/help',alias:['governance/help'],label:'Help & Complaints',icon:'i-bell'},
+      {view:'manual',path:'setup/manual',alias:['governance/manual'],label:'User Manual',icon:'i-doc'},
       {href:'/office/',label:'Previous workspace',icon:'i-arrow'}
     ]}
   ];
@@ -46,7 +50,7 @@
   function resolve(hash,role){
     const h=String(hash||'').replace(/^#/,'').replace(/\/+$/,'').toLowerCase();if(!h)return null;
     const items=visibleItems(role);
-    const hit=items.find(i=>i.path===h||i.view===h)||(DOMAINS.find(d=>d.id===h)&&items.find(i=>DOMAINS.find(d=>d.id===h).items.includes(i)));
+    const hit=items.find(i=>i.path===h||i.view===h||(i.alias||[]).includes(h))||(DOMAINS.find(d=>d.id===h)&&items.find(i=>DOMAINS.find(d=>d.id===h).items.includes(i)));
     return hit?hit.view:null;
   }
   function pageMeta(){

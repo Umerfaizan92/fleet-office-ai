@@ -31,7 +31,7 @@
 .migration-steps{display:grid;gap:18px;max-width:1100px}
 .drop-zone{display:grid;place-items:center;gap:6px;text-align:center;padding:30px 18px;border:2px dashed var(--brand-line);border-radius:16px;background:var(--brand-soft);cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
 .drop-zone svg{width:34px;height:34px;fill:none;stroke:var(--brand);stroke-width:1.6}
-.drop-zone:hover,.drop-zone:focus-visible,.drop-zone.is-over{border-color:var(--brand);background:rgba(34,211,238,.16);transform:translateY(-2px)}
+.drop-zone:hover,.drop-zone:focus-visible,.drop-zone.is-over{border-color:var(--brand);background:rgba(217,173,89,.16);transform:translateY(-2px)}
 .mapping-grid{display:grid;gap:10px}
 .mapping-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,1.4fr) minmax(100px,1fr);gap:10px;align-items:center}
 .mapping-row small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

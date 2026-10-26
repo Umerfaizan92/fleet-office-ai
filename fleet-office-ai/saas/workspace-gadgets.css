@@ -1,0 +1,39 @@
+/* Command Centre live board */
+.gx-board{margin:0 0 22px}
+.gx-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px}
+.gx-head h2{font-size:1.15rem;margin:0}
+.gx-head p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.gx-live{display:inline-flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--green,#2f9e6b);white-space:nowrap}
+.gx-live i{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor;animation:gxPulse 2s infinite}
+@keyframes gxPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%,100%{box-shadow:0 0 0 9px transparent}}
+.gx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;perspective:1100px}
+.gx-tile{--rx:0deg;--ry:0deg;--mx:50%;--my:50%;position:relative;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%;padding:16px 18px 14px;border-radius:18px;
+  border:1px solid var(--line,#242a34);background:radial-gradient(240px 160px at var(--mx) var(--my),rgba(217,173,89,.14),transparent 70%),var(--panel,#fff);color:var(--text);font:inherit;
+  transform:rotateX(var(--rx)) rotateY(var(--ry));transform-style:preserve-3d;transition:transform .18s ease-out,border-color .25s,box-shadow .25s;
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 14px 34px rgba(0,0,0,.28);cursor:pointer;min-height:148px}
+div.gx-tile{cursor:default}
+.gx-tile:hover,.gx-tile:focus-visible{border-color:var(--gold,#d9ad59);box-shadow:0 0 0 1px rgba(243,209,127,.35),0 22px 48px rgba(0,0,0,.4)}
+.gx-tile:focus-visible{outline:2px solid var(--gold,#d9ad59);outline-offset:2px}
+.gx-tile::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;border-radius:18px 18px 0 0;background:var(--gx-accent,var(--gold,#d9ad59));opacity:.9}
+.gx-gold{--gx-accent:var(--gold,#d9ad59)}.gx-good{--gx-accent:#3fbf86}.gx-warn{--gx-accent:#e8a93c}.gx-alert{--gx-accent:#ff6f61}
+.gx-label{font-size:.8rem;font-weight:700;color:var(--muted);transform:translateZ(14px)}
+.gx-main{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1;transform:translateZ(28px)}
+.gx-figure{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;min-width:0}
+.gx-num{font-size:clamp(1.9rem,3.2vw,2.5rem);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
+.gx-alert .gx-num{color:var(--gx-accent)}
+.gx-figure em{font-style:normal;font-size:.82rem;color:var(--muted)}
+.gx-sub{font-size:.8rem;color:var(--muted);line-height:1.4;transform:translateZ(10px)}
+.gx-spark{width:112px;height:36px;flex:none;overflow:visible}
+.gx-spark-line{fill:none;stroke:var(--gx-accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:0;vector-effect:non-scaling-stroke;animation:gxDraw 1.1s ease-out}
+.gx-spark-fill{fill:var(--gx-accent);opacity:.12}
+.gx-spark-dot{fill:var(--gx-accent)}
+@keyframes gxDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.gx-ring{width:60px;height:60px;flex:none}
+.gx-ring-bg{fill:none;stroke:var(--line,#242a34);stroke-width:7}
+.gx-ring-fg{fill:none;stroke:var(--gx-accent);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1s var(--ease-out,ease-out)}
+.operational-strip.gx-replaced{display:none}
+@media (max-width:640px){.gx-grid{grid-template-columns:1fr 1fr;gap:10px}.gx-tile{padding:13px 13px 11px;min-height:132px}.gx-main{flex-direction:column;align-items:flex-start}.gx-spark{width:100%}}
+@media (max-width:640px){.gx-num{font-size:1.7rem}.gx-ring{width:44px;height:44px}.gx-label{font-size:.74rem}.gx-sub{font-size:.74rem}.gx-tile:first-child{grid-column:1/-1}}
+@media (max-width:330px){.gx-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.gx-tile{transition:none;transform:none}.gx-spark-line,.gx-live i{animation:none}}
+html[data-theme="light"] .gx-tile{box-shadow:0 1px 2px rgba(20,24,32,.06),0 10px 26px rgba(20,24,32,.08);background:radial-gradient(240px 160px at var(--mx) var(--my),rgba(217,173,89,.16),transparent 70%),#fff}

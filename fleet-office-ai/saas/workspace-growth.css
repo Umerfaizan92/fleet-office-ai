@@ -1,0 +1,24 @@
+.gr-tabs{margin-top:4px}
+.gr-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.gr-form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.gr-form label{display:grid;gap:5px;font-weight:600}.gr-form label span{font-size:.85rem;color:var(--muted)}
+.gr-form .gr-wide{grid-column:1/-1}.gr-form textarea{min-height:84px;resize:vertical}
+.gr-checks{display:flex;gap:8px 16px;flex-wrap:wrap}.gr-checks label{display:flex;align-items:center;gap:6px;font-weight:600}
+.gr-channels{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.gr-plan h3{margin:0 0 4px}.gr-plan h4{margin:12px 0 4px;font-size:.95rem}
+.gr-plan ul{margin:0;padding-left:18px;display:grid;gap:5px}.gr-plan li{white-space:pre-wrap}
+.gr-plan textarea{width:100%;min-height:70px;margin:8px 0}
+.gr-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.gr-day{margin:18px 0 6px;font-weight:700;color:var(--muted)}
+.gr-item{display:grid;gap:6px}.gr-item header{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.gr-item p{margin:0;white-space:pre-wrap}.gr-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.gr-note{margin:6px 0 14px;color:var(--muted)}
+html[data-theme="light"] .gr-plan{background:#fffdf7}
+@media (max-width:640px){.gr-actions .primary-button,.gr-actions .secondary-button{flex:1 1 140px}}
+.plan-usage{margin:0 0 16px}.plan-use-row{display:grid;gap:5px;margin:10px 0}
+.plan-use-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.plan-use-head b{font-weight:700}
+.plan-use-bar{height:8px;border-radius:99px;background:rgba(128,128,128,.22);overflow:hidden}.plan-use-bar i{display:block;height:100%;border-radius:99px;transition:width .4s ease}
+.plan-use-ok{background:#2f9e68}.plan-use-warn{background:#b8892f}.plan-use-bad{background:#c0504d}
+@media (prefers-reduced-motion:reduce){.plan-use-bar i{transition:none}}
+.gr-table{width:100%;border-collapse:collapse}.gr-table th,.gr-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.gr-table th{color:var(--muted);font-size:.85rem}
+.gr-scroll{overflow-x:auto}

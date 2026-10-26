@@ -1,0 +1,15 @@
+.pad-top-button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px 0 8px;border:0;border-radius:999px;background:linear-gradient(135deg,#f6d98c,#d3a445 60%,#a87a2a);color:#1a1308;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(217,173,89,.32);transition:transform .15s ease,box-shadow .2s ease}
+.pad-top-button span{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#1a1308;color:#f6d98c;font-weight:900}
+.pad-top-button:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(217,173,89,.4)}.pad-top-button:active{transform:translateY(0)}
+.pad-modal{width:min(94vw,520px);max-height:90vh;padding:0;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:22px;background:var(--panel,#0e131b);color:var(--text,#f4f6fa);box-shadow:0 30px 100px rgba(0,0,0,.55)}
+.pad-modal::backdrop{background:rgba(3,6,10,.72);backdrop-filter:blur(3px)}
+.pad-body{display:grid;gap:14px;padding:22px}.pad-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.pad-head h2{margin:0;font-size:1.25rem}.pad-head p{margin:4px 0 0}
+.pad-jobs{display:grid;gap:8px;max-height:56vh;overflow:auto}
+.pad-job{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:14px 16px;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:14px;background:rgba(255,255,255,.03);color:inherit;cursor:pointer;min-height:56px}
+.pad-job small{display:block;color:var(--muted,#9099a8)}.pad-job:hover:not(:disabled){border-color:#d3a445;background:rgba(211,164,69,.08)}.pad-job:disabled{opacity:.5;cursor:not-allowed}
+.pad-saved,.pad-card{display:grid;gap:8px}.pad-card{grid-template-columns:1fr auto;align-items:center;padding:10px 12px;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:12px}.pad-card .pay-badge{margin-top:4px}
+.pad-paid{display:flex;gap:14px;align-items:center}.pad-paid p{margin:4px 0 0}.pad-tick{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#16a34a;color:#fff;font-size:1.5rem;font-weight:900;animation:pad-pop .4s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pad-pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.pad-status{display:grid;gap:10px}
+@media(max-width:700px){.pad-top-button b{display:none}.pad-top-button{padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.pad-tick{animation:none}}

@@ -1,0 +1,159 @@
+
+/* Super Pro AI Office Manager v13 — final UX correction layer */
+:root{--sp13-gold:#e8be69;--sp13-line:rgba(232,190,105,.28)}
+/* Product Guide: keep proof away from composer/send control. */
+.guide-shell .proof-b{top:150px!important;right:-20px!important;bottom:auto!important}
+.guide-actions{flex-wrap:wrap;justify-content:flex-end}.guide-language{max-width:145px;min-height:30px;border:1px solid rgba(232,190,105,.2);border-radius:9px;background:#0d131b;color:#dce3ec;padding:0 7px;font-size:12px}.guide-voice{max-width:120px}
+.voice-status{min-height:26px;padding:5px 18px 13px!important;line-height:1.45;color:#778395!important}
+/* Floating workspace staff chat: proper window controls and full composer. */
+/* Never let the floating chat and AI co-pilot sit on top of each other. */
+.copilot-launch,#gds-copilot{right:18px!important}.gds-live-toasts{pointer-events:none}
+/* Global product trust/footer disclosure on every surface. */
+.sp-global-trust-footer{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1.5fr auto;gap:20px;align-items:center;margin-top:36px;padding:18px clamp(18px,3vw,42px);border-top:1px solid rgba(255,255,255,.08);background:#080c11;color:#7f8a99;font:12px/1.55 Inter,'Segoe UI',Arial,sans-serif}.sp-global-trust-footer b,.sp-global-trust-footer span{display:block}.sp-global-trust-footer b{color:#dce3ed;font-size:12px}.sp-global-trust-footer .sp-aws-status{margin-top:3px;color:#8e9aaa}.sp-global-trust-footer nav{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}.sp-global-trust-footer a{color:#ddb45f;text-decoration:none}.sp-global-trust-footer a:hover{text-decoration:underline}
+/* Keep signed-in top bars and actions fully visible. */
+@media(max-width:1100px){.guide-shell .proof-b{right:0!important;top:148px!important}.sp-global-trust-footer{grid-template-columns:1fr 1fr}.sp-global-trust-footer nav{grid-column:1/-1;justify-content:flex-start}}
+@media(max-width:760px){.guide-actions{max-width:220px}.guide-language{max-width:108px}.sp-global-trust-footer{grid-template-columns:1fr}.sp-global-trust-footer nav{grid-column:auto}}
+@media(max-width:480px){.guide-actions{gap:4px}.guide-language{max-width:102px;font-size:12px}}
+
+
+/* v15.6 floating-chat alignment: one baseline, equal visual height, no covered page copy. */
+:root{--sp-chat-dock-bottom:22px;--sp-chat-launch-height:56px}
+#gds-copilot{bottom:var(--sp-chat-dock-bottom)!important}
+#gds-copilot{right:22px!important;left:auto!important}
+.copilot-launch{padding-top:9px!important;padding-bottom:9px!important}
+.content-wrap{padding-bottom:max(112px,calc(92px + env(safe-area-inset-bottom)))!important}
+@media(max-width:760px){
+  :root{--sp-chat-dock-bottom:max(74px,calc(12px + env(safe-area-inset-bottom)));--sp-chat-launch-height:56px}
+  #gds-copilot{right:10px!important}
+  .copilot-launch,.sc-launch{min-height:56px!important}
+  .content-wrap{padding-bottom:max(170px,calc(150px + env(safe-area-inset-bottom)))!important}
+  .floating-message{bottom:calc(var(--sp-chat-dock-bottom) + 70px)!important}
+}
+@media(max-width:420px){
+  .sc-launch,.copilot-launch{width:calc(50vw - 16px)!important;min-width:0!important;max-width:none!important}
+  .sc-launch b,.copilot-launch b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc-launch small,.copilot-launch i{display:none!important}
+}
+
+
+/* v15.7 professional Australian business setup */
+.industry-browser-shell{display:grid;gap:14px;margin:18px 0 16px;padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(180deg,rgba(16,23,32,.98),rgba(11,17,24,.96))}
+.industry-browser-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}.industry-browser-head h3{margin:4px 0 5px;font-size:20px}.industry-browser-head p{max-width:760px;margin:0;color:#8f99a8;font-size:12px;line-height:1.6}
+.industry-search-label{display:grid;gap:7px}.industry-search-label>span{font-size:12px;font-weight:800;color:#dce3ed}.industry-search-label input{min-height:50px;padding:0 15px;border-radius:13px;border:1px solid rgba(232,190,105,.2);background:#111823;color:#eef2f7;font-size:13px}
+.industry-search-label input:focus{outline:none;border-color:#e8be69;box-shadow:0 0 0 3px rgba(232,190,105,.08)}
+.industry-browser-status{display:flex;justify-content:space-between;gap:12px;color:#788494;font-size:12px}
+.industry-browser-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:510px;overflow:auto;padding-right:4px}
+.industry-browser-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:center;min-height:76px;padding:12px 13px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:#0f151e;color:#eef2f7;text-align:left;cursor:pointer;transition:.18s ease}
+.industry-browser-card:hover,.industry-browser-card.selected{border-color:rgba(232,190,105,.5);background:rgba(232,190,105,.07);transform:translateY(-1px)}.industry-browser-card.selected{box-shadow:inset 0 0 0 1px rgba(232,190,105,.2)}
+.industry-code{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:rgba(232,190,105,.11);color:#e8be69;font-weight:900;font-size:12px}
+.industry-browser-card b,.industry-browser-card small{display:block}.industry-browser-card b{font-size:12px}.industry-browser-card small{margin-top:4px;color:#7e8998;font-size:12px;line-height:1.45}.industry-browser-card i{color:#d8b465;font-size:12px;font-style:normal;font-weight:900;white-space:nowrap}
+.industry-empty{grid-column:1/-1;display:grid;gap:8px;justify-items:start;padding:20px;border:1px dashed rgba(232,190,105,.22);border-radius:14px;color:#8f99a8}.industry-empty b{color:#eef2f7}
+.selected-industry-card{display:grid;gap:12px;padding:16px;border:1px solid rgba(92,203,157,.2);border-radius:15px;background:rgba(92,203,157,.05)}.selected-industry-card h3{margin:4px 0 5px}.selected-industry-card p{margin:0;color:#909baa;font-size:12px;line-height:1.55}
+.selected-industry-meta,.selected-specialties{display:flex;flex-wrap:wrap;gap:6px}.selected-industry-meta span,.selected-specialties span{padding:5px 8px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:#0b1118;color:#9ba6b4;font-size:12px}.selected-specialties span{border-color:rgba(232,190,105,.16);color:#d7bf87}
+.regulatory-disclosure{margin:0 0 16px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:#0c121a;overflow:hidden}.regulatory-disclosure>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 17px;cursor:pointer;list-style:none}.regulatory-disclosure>summary::-webkit-details-marker{display:none}.regulatory-disclosure>summary b,.regulatory-disclosure>summary small{display:block}.regulatory-disclosure>summary b{font-size:12px;color:#e7ebf1}.regulatory-disclosure>summary small{margin-top:3px;color:#778393;font-size:12px}.regulatory-disclosure>summary em{font-style:normal;color:#e8be69;font-size:12px;font-weight:900}
+.regulatory-profile{margin:0!important;border:0!important;border-top:1px solid rgba(255,255,255,.07)!important;border-radius:0!important;background:#0e151e!important}.reg-docs{margin:13px 0}.reg-docs>ul{margin:8px 0 0;padding-left:18px;color:#aeb8c5;font-size:12px;line-height:1.65}
+.reg-sources{display:grid;gap:8px}.reg-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:#0a1017;text-decoration:none!important}.reg-source-row b,.reg-source-row small,.reg-source-row span{display:block}.reg-source-row b{color:#dfe5ed;font-size:12px}.reg-source-row small,.reg-source-row span{margin-top:2px;color:#7e8997;font-size:12px;line-height:1.45}.reg-source-row>a{color:#e8be69;font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap}.reg-check{grid-column:1/-1;font-style:normal;font-size:12px;color:#75cda6}.reg-check.changed{color:#efae72}.regulatory-human-control{margin:13px 0 0;padding:10px;border-radius:10px;background:rgba(232,190,105,.06);color:#a79a7b;font-size:12px;line-height:1.55}
+.finder-status{min-height:18px;margin:7px 0 0;color:#7f8b9a;font-size:12px}.finder-answer-actions{margin-top:10px}.finder-answer.waiting{opacity:.72}
+
+/* Mobile setup should read like a form, not a stack hidden behind fixed controls. */
+@media(max-width:760px){
+  .industry-browser-shell{padding:14px;margin-top:12px}.industry-browser-head{display:grid}.industry-browser-head .secondary-button{justify-self:start}.industry-browser-grid{grid-template-columns:1fr;max-height:560px}.industry-browser-status{display:grid;gap:3px}.industry-browser-card{grid-template-columns:40px minmax(0,1fr) auto}
+  .reg-source-row{grid-template-columns:1fr}.reg-source-row>a{justify-self:start}
+  #onboarding-view .sticky-save{position:static!important;inset:auto!important;margin-top:16px!important;box-shadow:none!important}
+  #onboarding-view .settings-content{padding-bottom:20px!important}
+}
+
+/* v15 cleanup: floating tools must never cover chat composers or page navigation. */
+#gds-staff-chat,#gds-copilot{max-width:calc(100vw - 24px)}
+#gds-staff-chat:has(.sc-panel:not([hidden]))~#gds-copilot,
+#gds-copilot:has(.copilot-panel:not([hidden]))~#gds-staff-chat{pointer-events:none}
+@media(max-width:760px){
+  body{padding-bottom:max(92px,calc(76px + env(safe-area-inset-bottom)))}
+  #gds-copilot{bottom:max(12px,env(safe-area-inset-bottom))!important}
+  .copilot-panel{left:10px!important;right:10px!important;bottom:max(72px,calc(60px + env(safe-area-inset-bottom)))!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - 96px)!important}
+  .copilot-panel form{position:sticky;bottom:0;z-index:4;background:var(--panel,#0e1117)}
+  .copilot-panel textarea{min-width:0}
+  .copilot-send,.copilot-mic{position:relative;z-index:5}
+  .flow-nav{margin-bottom:max(74px,calc(62px + env(safe-area-inset-bottom)))}
+}
+
+/* Accessible workforce status selection */
+.worker-filter-label{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+#worker-status-filter{min-height:40px;min-width:130px;border:1px solid #778397;border-radius:10px;padding:7px 10px;background:var(--panel);color:var(--text);font:inherit}
+#worker-status-filter:focus-visible{outline:3px solid #b78a36;outline-offset:2px}
+html[data-theme='light'] #worker-status-filter{background:#fff;color:#17202c}
+
+/* Tenant branding image is decorative; organisation name remains accessible text. */
+#org-avatar-side{display:grid;place-items:center;overflow:hidden}
+#org-avatar-side img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+#workspace-branding-settings input,#workspace-branding-settings select{min-width:0;max-width:100%}
+#workspace-branding-settings [disabled]{opacity:.6;cursor:not-allowed}
+
+/* Owner administration links reuse existing modules and permissions. */
+.owner-control-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+.owner-control-grid button{min-height:48px;text-align:left;white-space:normal}
+@media(max-width:600px){.owner-control-grid{grid-template-columns:1fr}}
+
+/* Floating assistant windows: viewport-safe, with reachable composers. */
+#gds-copilot .copilot-panel{box-sizing:border-box;max-height:min(680px,calc(100dvh - 110px));overflow:hidden}
+#gds-copilot .copilot-panel[hidden]{display:none!important}
+@media(max-width:760px){
+ #gds-copilot .copilot-panel{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:calc(72px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:calc(100dvh - 100px - env(safe-area-inset-bottom))!important}
+ #gds-copilot .copilot-panel textarea{font-size:16px}
+}
+
+/* Owner branding logo upload and preview */
+.branding-logo-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#branding-logo-preview:not([hidden]){display:block;width:88px;height:88px;object-fit:contain;background:#fff;border:1px solid #788397;border-radius:12px;padding:6px}
+#branding-logo-file{max-width:100%;width:100%}
+
+/* Internal staff availability: responsive, accessible and theme-aware. */
+#gds-staff-chat .staff-directory{border-bottom:1px solid var(--border, #8992a0);padding:10px 14px;max-height:42vh;overflow:auto}
+#gds-staff-chat .staff-directory summary{cursor:pointer;font-weight:650}
+#gds-staff-chat .staff-directory-list{display:grid;gap:8px;margin:10px 0}
+#gds-staff-chat .staff-directory-person{display:flex;align-items:flex-start;gap:9px}
+#gds-staff-chat .staff-directory-person small{display:block;opacity:.85;overflow-wrap:anywhere}
+#gds-staff-chat .staff-status-dot{display:inline-block;flex:0 0 10px;height:10px;margin-top:6px;border-radius:50%;background:#b9bcc3;border:1px solid currentColor}
+#gds-staff-chat .staff-status-dot[data-status="available"],#gds-staff-chat .staff-status-dot[data-status="working_from_home"]{background:#198754}
+#gds-staff-chat .staff-status-dot[data-status="busy"]{background:#d9a20b}
+#gds-staff-chat .staff-status-dot[data-status="unavailable"],#gds-staff-chat .staff-status-dot[data-status="on_leave"],#gds-staff-chat .staff-status-dot[data-status="day_off"]{background:#c0392b}
+#gds-staff-chat .staff-availability-form{display:grid;gap:8px;margin:10px 0}
+#gds-staff-chat .staff-availability-form label{display:grid;gap:3px;font-size:12px}
+#gds-staff-chat .staff-availability-form input,#gds-staff-chat .staff-availability-form select{width:100%;min-width:0;box-sizing:border-box}
+
+/* Keep later visual layers consistent with the selected workspace theme. */
+html[data-theme="light"] :is(.industry-browser-shell,.industry-browser-card,.regulatory-disclosure,.reg-source-row,.guide-language,.sc-launch,.sp-global-trust-footer){background:var(--panel);color:var(--text);border-color:var(--line)}
+html[data-theme="light"] :is(.industry-search-label input,.selected-industry-meta span,.selected-specialties span){background:var(--panel-2);color:var(--text-2);border-color:var(--line)}
+html[data-theme="light"] .regulatory-profile{background:var(--panel-2)!important;border-color:var(--line)!important}
+
+#business-switcher{display:block;max-width:240px;width:100%;margin-top:5px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:inherit}
+
+
+/* v18.1 design corrections */
+/* "Ask anything" proof card no longer floats over the chat messages; it sits below the guide panel. */
+.guide-shell .proof-a{position:static!important;left:auto!important;top:auto!important;display:grid;width:max-content;max-width:100%;margin:14px 0 0}
+@media(max-width:760px){.guide-shell .proof-a{display:none}}
+/* Fixed "Help & complaints" launcher must never hide the last lines of a page. */
+body:not([data-support-placement="nav"]){padding-bottom:96px}
+/* Keep secondary text readable on the dark theme (was #657183 on near-black). */
+.floating-proof small{color:#9aa6b6!important}
+
+/* Product-update dialog (shown once after sign-in): themed to match the workspace instead of the browser default. */
+.release-dialog{width:min(92vw,560px);max-height:86vh;padding:0;border:1px solid rgba(232,190,105,.28);border-radius:18px;background:var(--panel,#0e131b);color:var(--text,#f4f6fa);box-shadow:0 30px 100px rgba(0,0,0,.55)}
+.release-dialog::backdrop{background:rgba(3,6,10,.72);backdrop-filter:blur(3px)}
+.release-card{padding:28px 28px 22px;max-height:86vh;overflow:auto}
+.release-card .kicker{margin:0 0 10px;color:var(--brand-2,#f4d38f);font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+.release-card h2{margin:0 0 8px;font-size:22px;line-height:1.25}
+.release-card>p{margin:0 0 18px;color:var(--muted,#9aa6b6);line-height:1.55}
+.release-changes{display:grid;gap:12px}
+.release-change{display:grid;gap:4px;padding:14px 16px;border:1px solid var(--line,#202836);border-radius:12px;background:rgba(255,255,255,.03)}
+.release-change b{font-size:15px}
+.release-change small{display:block;font-size:13px;line-height:1.5;color:var(--muted,#b3bdcb)}
+.release-change small strong{color:var(--text,#f4f6fa)}
+.release-card .dialog-actions{display:flex;justify-content:flex-end;margin-top:20px}
+.guide-shell .proof-a{justify-self:start}
+/* Decorative rings must not widen the page on phones. */
+.security-visual{overflow:hidden}
+html{overflow-x:clip}
+small{font-size:max(12px,.85em)}
+#mfa-details.signin-card{background:rgba(255,255,255,.03);border-color:var(--line,#202836)}

@@ -1,0 +1,36 @@
+<!doctype html><html lang="en" data-theme="dark"><head><script src="modal-queue.js?v=20261026"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Apply for a job</title>
+<meta name="description" content="Apply for a job. Your details go only to the business that is hiring."><link rel="icon" href="superpro-icon.svg"><link rel="stylesheet" href="apply.css?v=20261027"><script defer src="apply.js?v=20261027"></script><link rel="stylesheet" href="premium-ui.css?v=20261026"/><script defer src="premium-ui.js?v=20261026"></script></head>
+<body><main class="ap-shell">
+<p class="ap-brand">Job application</p>
+<section id="ap-job" aria-live="polite"><h1>Loading…</h1></section>
+<form id="ap-form" hidden novalidate>
+  <h2>Your details</h2>
+  <div class="ap-grid">
+    <label><span>Full name *</span><input name="full_name" autocomplete="name" required maxlength="100"></label>
+    <label><span>Email *</span><input name="email" type="email" autocomplete="email" required maxlength="160"></label>
+    <label><span>Mobile</span><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
+    <label><span>Suburb</span><input name="suburb" autocomplete="address-level2" maxlength="80"></label>
+    <label class="wide"><span>When can you work?</span><input name="availability" maxlength="400" placeholder="e.g. Weekdays from 6am, can start in two weeks"></label>
+    <label class="wide"><span>Tell us about your experience</span><textarea name="message" rows="5" maxlength="3000" placeholder="What similar work have you done? Any licences or tickets?"></textarea></label>
+  </div>
+  <h2>Documents</h2>
+  <p class="ap-hint">Optional. Add your resume, licence or tickets. PDF, Word (.docx), JPG, PNG or WebP. Up to 5 files, 8 MB each. Do not upload anything you are not comfortable sharing with this business.</p>
+  <div id="ap-files"></div><button type="button" id="ap-add" class="ap-ghost">Add a document</button>
+  <input class="ap-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <section class="ap-notice" aria-labelledby="ap-notice-h">
+    <h2 id="ap-notice-h">How your information is used</h2>
+    <ul>
+      <li><b>Who collects it:</b> <span id="ap-biz">the business that is hiring</span>, using the Super Pro AI Office Manager service to receive applications.</li>
+      <li><b>Why:</b> to consider you for this role and to contact you about it.</li>
+      <li><b>Who can see it:</b> only the business owner and its authorised admins. It is kept separate from the business's customer and job records.</li>
+      <li><b>AI:</b> AI may help the business read your application. It does not decide. A person makes every hiring decision.</li>
+      <li><b>How long:</b> kept for up to <span id="ap-months">12</span> months, then deleted automatically. You can ask the business to see, correct or delete it at any time.</li>
+      <li><b>More:</b> <a href="privacy.html" target="_blank" rel="noopener">Privacy Notice</a> and <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> (open in a new tab).</li>
+    </ul>
+    <label class="ap-consent"><input type="checkbox" name="consent" id="ap-consent"> <span>I have read this notice and agree to the business collecting and using my information as described.</span></label>
+  </section>
+  <p id="ap-msg" role="alert" class="ap-msg"></p>
+  <button type="submit" id="ap-send" class="ap-primary">Send my application</button>
+</form>
+<p class="ap-foot">Powered by Super Pro AI Office Manager · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+</main></body></html>

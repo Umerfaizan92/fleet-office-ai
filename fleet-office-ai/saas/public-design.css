@@ -1,0 +1,98 @@
+/* Public design layer: one rhythm for every page before sign-in. Loaded last on public pages. */
+:root{--pd-gutter:clamp(18px,4vw,56px);--pd-max:1200px;--pd-gap:clamp(14px,1.8vw,22px);--pd-bar:64px;--pd-card:linear-gradient(160deg,#171e29,#0e141c);--pd-edge:rgba(232,190,105,.2);--pd-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 18px 34px -18px rgba(0,0,0,.75)}
+
+/* ---- one frame for every tab: same width, same side gutter, same heading rhythm ---- */
+html.has-stage .stage-pane>section:not(.hero){width:100%;max-width:var(--pd-max);margin-inline:auto;padding-inline:var(--pd-gutter)!important;box-sizing:border-box}
+html.has-stage .stage-pane>section:not(.hero):not(.plans-section){padding-block:clamp(20px,4vh,44px)}
+html.has-stage .stage-pane::after{content:"";display:block;height:28px}
+html.has-stage .section-heading,html.has-stage .plans-head,html.has-stage .why-section .section-heading{text-align:left;max-width:none;margin:0 0 clamp(18px,3vh,28px)}
+html.has-stage .plans-head{margin-inline:0}
+html.has-stage .section-heading p,html.has-stage .plans-head p{max-width:62ch}
+html.has-stage .section-heading.split{display:flex;flex-wrap:wrap;gap:12px 40px;align-items:flex-end;justify-content:space-between}
+html.has-stage .section-heading.split>p{flex:1 1 320px;margin:0}
+.section-kicker,.kicker{letter-spacing:.14em}
+
+/* ---- equal gaps, no touching edges: every card grid uses the same gap and radius ---- */
+.why-grid,.feature-grid,.plans-grid,.industry-rail,.trust-grid{gap:var(--pd-gap)!important}
+.why-card,.feature-card,.plan-card,.industry-rail>button,.trust-card,.trust-section{border-radius:var(--pd-r,18px);box-sizing:border-box}
+.why-card,.feature-card,.industry-rail>button,.trust-card{background:var(--pd-card);border:1px solid var(--pd-edge);box-shadow:var(--pd-shadow)}
+.why-card p,.feature-card p{color:#c6cfdb}
+.industry-rail>button{min-height:150px;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;text-align:left;padding:20px}
+.industry-rail>button span{margin-bottom:auto}
+.journey-track{gap:12px}
+html.has-stage .plan-card{padding:22px 24px;gap:10px}
+html.has-stage .plan-card h3{font-size:2.2rem}
+html.has-stage .plan-card ul{gap:7px}html.has-stage .plan-card li{font-size:.9rem}
+
+/* ---- the AI guide: drop the two floating notes that clipped under the bar ---- */
+html.has-stage .floating-proof,html.has-stage .voice-capability{display:none}
+.hero-proof,.trust-strip{gap:10px 16px}
+
+/* ---- 3D: cards lift and tilt toward the pointer (fine pointers only) ---- */
+.pd-tilt{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px))!important;transform-style:preserve-3d;transition:transform .16s ease-out,box-shadow .2s,border-color .2s!important;will-change:transform}
+.pd-tilt:hover{--ty:-5px;border-color:rgba(244,211,143,.55);box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 28px 44px -20px rgba(0,0,0,.85),0 0 0 1px rgba(244,211,143,.18)}
+.feature-card .icon,.why-card h3,.industry-rail>button span{transform:translateZ(22px)}
+@media(hover:none),(prefers-reduced-motion:reduce){.pd-tilt{transform:none!important;transition:none!important}.pd-tilt:hover{--ty:0px}}
+
+/* ---- help button: compact, docked in the bottom bar, never over the content ---- */
+.gds-support-launch{padding:7px 14px!important;right:16px!important;bottom:12px!important;gap:8px!important;box-shadow:0 8px 26px rgba(0,0,0,.45)!important}
+.gds-support-launch small{display:none}
+html.has-stage .join-bar{padding-right:260px}
+@media(max-width:999px),(max-height:619px){
+  html.has-stage .join-bar{padding-right:16px}
+  .gds-support-launch{bottom:calc(78px + env(safe-area-inset-bottom))!important;right:12px!important;width:52px;height:52px;padding:0!important;justify-content:center;border-radius:50%!important}
+  .gds-support-launch div{display:none}
+  .gds-support-launch span{margin:0}
+}
+body:not(.has-stage-body) .legal-shell,body.auth-page .auth-form-side{padding-bottom:90px}
+
+/* ---- carousels (phones and tablets): swipe, arrows and dots ---- */
+.pd-ctrl{display:none}
+@media(max-width:900px){
+  .pd-car{display:flex!important;grid-template-columns:none!important;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px!important;padding:4px 2px 12px;margin-inline:-2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .pd-car::-webkit-scrollbar{display:none}
+  .pd-car>*{flex:0 0 84%;scroll-snap-align:center;min-width:0}
+  .pd-car.journey-track>i{display:none}
+  .pd-car.journey-track>div{flex-basis:62%}
+  .pd-ctrl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:6px}
+  .pd-ctrl button{width:40px;height:40px;border-radius:50%;border:1px solid var(--gold-line,rgba(228,186,104,.4));background:#12171f;color:#f4d38f;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+  .pd-ctrl button:active{transform:translateY(2px);box-shadow:none}
+  .pd-dots{display:flex;gap:7px}.pd-dots i{width:7px;height:7px;border-radius:50%;background:#3a4252;transition:width .2s,background .2s}.pd-dots i.on{width:20px;border-radius:6px;background:#e4ba68}
+}
+
+/* ---- sign-in and registration ---- */
+.security-baseline{display:flex!important;flex-direction:row!important;flex-wrap:wrap;justify-content:center;gap:8px!important;margin:26px 0 0!important;padding:18px 0 0!important;border-top:1px solid rgba(255,255,255,.08)}
+.security-baseline span{display:inline-flex!important;width:auto!important;padding:6px 12px!important;border-radius:999px;font-size:12px!important;letter-spacing:.02em!important;text-transform:none!important;border:1px solid rgba(228,186,104,.28);background:rgba(228,186,104,.06);color:#d9c9a1}
+.auth-switch{margin:22px 0 0!important;text-align:center}
+.form-section-head>div{display:flex;flex-direction:column;gap:4px}
+.form-section-head small{display:block;color:#9fa9b8;font-size:13px;line-height:1.5}
+.form-section-card{border-radius:var(--pd-r,18px)}
+.auth-proof-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px!important}
+.auth-proof-grid>div{padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.03)}
+.auth-proof-grid>div:last-child:nth-child(odd){grid-column:1/-1}
+.auth-proof-grid small{color:#aeb8c6;font-size:13px;line-height:1.5}
+@media(max-width:700px){.auth-proof-grid{grid-template-columns:1fr}}
+
+/* ---- legal and trust pages: comfortable reading ---- */
+.legal-shell{width:min(820px,calc(100% - 2*var(--pd-gutter)))!important;font-size:16.5px;line-height:1.78}
+.legal-shell h1{margin:6px 0 18px;font-size:clamp(2rem,4.4vw,3rem);letter-spacing:-.02em}
+.legal-shell section{padding:26px 0;margin:0;border-top:1px solid rgba(255,255,255,.08)}
+.legal-shell section h2{margin:0 0 12px;font-size:1.3rem;color:#f2dfae;scroll-margin-top:24px}
+.legal-shell section p,.legal-shell section li{color:#cdd5e0;font-size:1rem;line-height:1.78;max-width:68ch}
+.legal-shell section p+p{margin-top:12px}
+.legal-alert{border-radius:14px;padding:14px 18px;margin:16px 0 24px;font-size:.95rem}
+.legal-toc{margin:0 0 24px;padding:16px 20px;border:1px solid var(--pd-edge);border-radius:16px;background:rgba(255,255,255,.025)}
+.legal-toc summary{cursor:pointer;font-weight:700;color:#f2dfae}
+.legal-toc ol{margin:12px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px}
+.legal-toc a{display:block;padding:5px 0;color:#c6cfdb;text-decoration:none;font-size:.93rem}.legal-toc a:hover{color:#f4d38f}
+@media(max-width:640px){.legal-toc ol{grid-template-columns:1fr}}
+.trust-hero{padding:30px 0 12px}
+.trust-grid{margin:22px 0}
+.trust-card{padding:22px}.trust-card p{font-size:14px!important;line-height:1.65!important;color:#bfc8d5!important}
+.trust-section{margin:var(--pd-gap) 0!important;padding:clamp(20px,3vw,30px)!important}
+.trust-section p,.trust-section li{font-size:15px!important;line-height:1.75!important;color:#c6cfdb!important}
+.trust-section .kicker,.trust-section small{letter-spacing:.12em}
+@media(max-width:700px){.trust-grid{grid-template-columns:1fr!important}}
+
+:focus-visible{outline:2px solid #f4d38f;outline-offset:3px;border-radius:6px}
+@media(max-width:999px){.hero-proof,.trust-strip{padding-right:64px}html.has-stage .stage-pane>.hero{padding-bottom:28px}}

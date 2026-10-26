@@ -1,0 +1,95 @@
+/* Premium finish: animated mark, living icons, owner card, one sign-in page, safe room around floating buttons.
+   Motion is gentle and always off when the person asks their device for less motion. */
+
+/* ---------- the mark ---------- */
+.sp-logo-host{position:relative;display:inline-grid!important;place-items:center;flex:0 0 auto;font-size:0!important;background:none!important;color:transparent!important;box-shadow:0 8px 24px rgba(217,173,89,.28)!important;border-radius:14px!important;overflow:visible}
+.sp-logo-host::after,.sp-logo-host::before{display:none!important}
+.sp-logo-host .sp-logo{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.sp-glyph.sp-logo-host,.sp-auth-mark.sp-logo-host,.sp-workspace-mark.sp-logo-host,.sp-monogram.sp-logo-host{width:40px;height:40px;min-width:40px}
+.brand-glyph.small.sp-logo-host{width:30px;height:30px;min-width:30px}
+.login-brand-mark .sp-logo-host{width:44px;height:44px}
+@media(prefers-reduced-motion:no-preference){
+  .sp-logo .sp-orbit{transform-origin:24px 24px;animation:sp-spin 9s linear infinite}
+  .sp-logo .sp-shine{animation:sp-shine 6.5s ease-in-out infinite}
+  .sp-logo-host{animation:sp-glow 4.8s ease-in-out infinite}
+  @keyframes sp-spin{to{transform:rotate(360deg)}}
+  @keyframes sp-shine{0%,62%{transform:translateX(0) skewX(-20deg)}100%{transform:translateX(120px) skewX(-20deg)}}
+  @keyframes sp-glow{0%,100%{box-shadow:0 8px 22px rgba(217,173,89,.22)}50%{box-shadow:0 8px 30px rgba(217,173,89,.46)}}
+}
+
+/* ---------- living icons on the public pages ---------- */
+.feature-card .icon,.install-choice-icon{display:grid;place-items:center;font-size:0!important}
+.ai-ico{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.feature-card .icon .ai-ico{width:34px;height:34px;color:#f4d38f}
+.install-choice-icon .ai-ico{width:26px;height:26px;color:#f4d38f}
+.ai-ico .a,.ai-ico .b,.ai-ico .c{fill:currentColor;fill-opacity:.18}
+.ai-ico .dot{fill:#ef4444;stroke:none}.ai-ico .play{fill:currentColor;stroke:none}
+@media(prefers-reduced-motion:no-preference){
+  .ai-spark .a{animation:ai-twinkle 3.2s ease-in-out infinite;transform-origin:16px 13px}.ai-spark .b{animation:ai-twinkle 3.2s ease-in-out .9s infinite;transform-origin:25px 24px}.ai-spark .c{animation:ai-twinkle 3.2s ease-in-out 1.7s infinite;transform-origin:7px 24px}
+  @keyframes ai-twinkle{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.72) rotate(12deg);opacity:.6}}
+  .ai-inbox .a{animation:ai-flap 3.6s ease-in-out infinite;transform-origin:16px 14px}.ai-inbox .dot{animation:ai-ping 2.4s ease-out infinite;transform-origin:26px 8px}
+  @keyframes ai-flap{0%,70%,100%{transform:scaleY(1)}80%{transform:scaleY(.5)}}@keyframes ai-ping{0%{transform:scale(1);opacity:1}70%,100%{transform:scale(1.8);opacity:.2}}
+  .ai-team .a{animation:ai-bob 3s ease-in-out infinite}.ai-team .b{animation:ai-bob 3s ease-in-out .5s infinite}.ai-team .c{animation:ai-bob 3s ease-in-out 1s infinite}
+  @keyframes ai-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+  .ai-voice .w1{animation:ai-wave 2.2s ease-in-out infinite}.ai-voice .w2{animation:ai-wave 2.2s ease-in-out .35s infinite}
+  @keyframes ai-wave{0%,100%{opacity:.25}50%{opacity:1}}
+  .ai-studio .scan{animation:ai-scan 2.8s ease-in-out infinite}@keyframes ai-scan{0%,100%{transform:translateY(-8px);opacity:.2}50%{transform:translateY(0);opacity:1}}
+  .ai-studio .play{animation:ai-pulse 2.4s ease-in-out infinite;transform-origin:17px 16px}@keyframes ai-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+  .ai-find .lens{animation:ai-look 4s ease-in-out infinite;transform-origin:16px 16px}@keyframes ai-look{0%,100%{transform:translate(0,0)}30%{transform:translate(2.5px,-2px)}65%{transform:translate(-2px,2px)}}
+  .ai-phone .a{animation:ai-wave 2.4s ease-in-out infinite}.ai-desk .a{animation:ai-wave 2.4s ease-in-out .4s infinite}
+  .ai-secure .tick{stroke-dasharray:20;animation:ai-draw 3.4s ease-in-out infinite}@keyframes ai-draw{0%{stroke-dashoffset:20}35%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:20}}
+}
+
+/* ---------- living icons in the workspace ---------- */
+.nav-step svg,.security-ring svg,.section-number svg{transition:transform .25s ease,filter .25s ease}
+.nav-item:hover .nav-step svg,.nav-domain-toggle:hover .nav-step svg{transform:scale(1.14) rotate(-6deg)}
+.nav-item.active .nav-step svg,.nav-domain.has-active>.nav-domain-toggle .nav-step svg{filter:drop-shadow(0 0 5px rgba(217,173,89,.65));color:#f4d38f}
+@media(prefers-reduced-motion:no-preference){
+  .nav-domain>.nav-domain-toggle .nav-step svg{animation:ws-float 4.4s ease-in-out infinite}
+  .nav-domain:nth-child(2) .nav-step svg{animation-delay:.5s}.nav-domain:nth-child(3) .nav-step svg{animation-delay:1s}.nav-domain:nth-child(4) .nav-step svg{animation-delay:1.5s}.nav-domain:nth-child(5) .nav-step svg{animation-delay:2s}.nav-domain:nth-child(6) .nav-step svg{animation-delay:2.5s}
+  .nav-item.active .nav-step svg{animation:ws-glow 2.8s ease-in-out infinite}
+  .security-ring svg{animation:ws-glow 3.2s ease-in-out infinite}
+  .pulse-dot{animation:ws-beat 2.2s ease-in-out infinite}
+  @keyframes ws-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.8px)}}
+  @keyframes ws-glow{0%,100%{filter:drop-shadow(0 0 2px rgba(217,173,89,.3))}50%{filter:drop-shadow(0 0 7px rgba(217,173,89,.8))}}
+  @keyframes ws-beat{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}60%{box-shadow:0 0 0 7px rgba(52,211,153,0)}}
+}
+
+/* ---------- the owner card, top left ---------- */
+#workspace-context.workspace-context{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 14px;padding:12px 16px 12px 12px;border:1px solid rgba(217,173,89,.32);border-radius:20px;background:radial-gradient(120% 140% at 0% 0%,rgba(217,173,89,.16),transparent 55%),linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01));box-shadow:0 14px 36px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+#workspace-context .workspace-avatar{position:relative;width:52px!important;height:52px!important;border-radius:16px!important;border:0!important;display:grid;place-items:center;background:#0b0e14!important;color:#f4d38f;font-weight:800;isolation:isolate}
+#workspace-context .workspace-avatar::before{content:"";position:absolute;inset:-2px;border-radius:18px;background:conic-gradient(from 0deg,#ffe9a8,#d9ad59,#7c5a1e,#ffe9a8);z-index:-2}
+#workspace-context .workspace-avatar::after{content:"";position:absolute;inset:1px;border-radius:15px;background:#0b0e14;z-index:-1}
+#workspace-context .workspace-avatar img{border-radius:14px;padding:5px;object-fit:contain}
+#workspace-context .workspace-context-body{display:grid;gap:3px;min-width:0}
+#workspace-context .workspace-context-body>b{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1.02rem;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+#workspace-context .ctx-sub{display:block;margin:0;color:var(--muted,#9099a8);font-size:.76rem;line-height:1.2}
+#workspace-context .role-badge{display:inline-flex;align-items:center;gap:6px;justify-self:start;margin-top:3px;padding:3px 11px 3px 8px;border-radius:999px;border:1px solid rgba(217,173,89,.45);background:linear-gradient(135deg,rgba(255,233,168,.2),rgba(217,173,89,.1));color:#f4d38f;font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+#workspace-context .role-badge::before{content:"";width:13px;height:13px;background:currentColor;-webkit-mask:var(--role-ico) center/contain no-repeat;mask:var(--role-ico) center/contain no-repeat}
+#workspace-context .role-badge{--role-ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3l8 3v6c0 5-3.4 8.200-8 9-4.600-.8-8-4-8-9V6z' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E")}
+#workspace-context .role-badge[data-role="owner"]{--role-ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 8l4.500 4L12 5l4.500 7L21 8l-2 11H5z' fill='black'/%3E%3C/svg%3E")}
+#workspace-context .role-badge[data-role="manager"],#workspace-context .role-badge[data-role="director"]{--role-ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='8' r='3.500' fill='black'/%3E%3Cpath d='M2.500 20c.5-4 3-6 6.500-6s6 2 6.500 6z' fill='black'/%3E%3Ccircle cx='17.500' cy='9' r='2.500' fill='black'/%3E%3C/svg%3E")}
+#workspace-context .role-badge[data-role="employee"],#workspace-context .role-badge[data-role="contractor"]{--role-ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='black'/%3E%3Cpath d='M4 21c.8-5 4-7 8-7s7.200 2 8 7z' fill='black'/%3E%3C/svg%3E")}
+#workspace-context .pulse-dot{justify-self:end;align-self:start;margin:2px 0 0;width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.5)}
+#workspace-context::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.07) 50%,transparent 60%);transform:translateX(-120%);pointer-events:none}
+@media(prefers-reduced-motion:no-preference){#workspace-context::after{animation:ctx-sheen 7s ease-in-out infinite}#workspace-context .workspace-avatar::before{animation:sp-spin 14s linear infinite}@keyframes ctx-sheen{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}}
+.sidebar-head .brand{display:flex;align-items:center;gap:12px}
+
+/* ---------- one sign-in page for businesses and the platform operator ---------- */
+.signin-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 18px;padding:4px;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:14px;background:rgba(255,255,255,.03)}
+.signin-switch button{min-height:42px;border:0;border-radius:10px;background:transparent;color:var(--muted,#9099a8);font-weight:700;cursor:pointer;transition:background .2s,color .2s}
+.signin-switch button.active{background:linear-gradient(135deg,#f6d98c,#d3a445);color:#1a1308;box-shadow:0 6px 16px rgba(217,173,89,.28)}
+.signin-switch button:not(.active):hover{color:var(--text,#fff);background:rgba(255,255,255,.05)}
+#operator-form[hidden],#login-form[hidden]{display:none!important}
+
+/* ---------- room for the floating help, chat and assistant buttons so nothing is ever stuck behind them ---------- */
+main,.app-main,.content,#main{scroll-padding-bottom:120px}
+.app-footer,.auth-form-card,.trust-main,main{padding-bottom:max(env(safe-area-inset-bottom),0px)}
+.app-footer{margin-bottom:110px}
+.auth-form-card{padding-bottom:110px}
+html.has-stage main{padding-bottom:96px}
+@media(max-width:999px){html.has-stage .site-header{position:sticky;top:0;z-index:60;background:rgba(7,10,15,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}.join-bar{padding-bottom:max(env(safe-area-inset-bottom),8px)}}
+body:not(.has-stage-body) .legal-shell,.legal-shell{padding-bottom:120px}
+/* keep footer links clear of the floating launcher and the join bar */
+body>footer,html.has-stage footer{padding-bottom:120px!important}
+.legal-shell,.trust-main{padding-bottom:140px}

@@ -1,0 +1,98 @@
+/* Views added in Step 5: omnichannel inbox, migration wizard, print and export hub, and the view-swap transition. */
+.view:not([hidden]){animation:view-in .42s var(--ease-out,cubic-bezier(.22,1,.36,1)) both;transform-origin:50% 0}
+@keyframes view-in{from{opacity:0;transform:perspective(1000px) rotateX(3deg) translateY(10px)}to{opacity:1;transform:none}}
+.empty-state{margin:18px;color:var(--muted);text-align:center}
+.status-pill.ok{color:var(--green)}.status-pill.warn{color:var(--amber)}.status-pill.bad{color:var(--red)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--text-2);background:rgba(255,255,255,.04)}
+.chip.ok{color:var(--green);border-color:rgba(16,185,129,.35)}.chip.warn{color:var(--amber);border-color:rgba(245,158,11,.35)}.chip.bad{color:var(--red);border-color:rgba(255,130,122,.35)}.chip.info{color:var(--brand);border-color:var(--brand-line)}
+
+/* inbox */
+.comms-layout{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:18px;align-items:start}
+.comms-thread-list{list-style:none;margin:0;padding:0;max-height:62vh;overflow:auto}
+.comms-thread-list button{width:100%;text-align:left;display:grid;gap:3px;padding:12px 16px;border:0;border-bottom:1px solid var(--line-soft);background:transparent;color:inherit;cursor:pointer}
+.comms-thread-list button:hover,.comms-thread-list button[aria-current="true"]{background:var(--brand-soft)}
+.comms-thread-list .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.comms-thread-list b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comms-thread-list small{color:var(--muted)}
+.comms-messages{display:grid;gap:12px;padding:6px 18px 18px;max-height:56vh;overflow:auto}
+.msg{max-width:min(620px,92%);padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--panel-2);display:grid;gap:8px;overflow-wrap:anywhere}
+.msg.out{justify-self:end;background:var(--brand-soft);border-color:var(--brand-line)}
+.msg .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:.78rem}
+.msg p{margin:0;white-space:pre-wrap}
+.msg .actions{display:flex;gap:8px;flex-wrap:wrap}
+.msg details{font-size:.9rem}.msg details pre{white-space:pre-wrap;margin:8px 0 0;font:inherit;color:var(--text-2)}
+.comms-draft{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;padding:0 18px 18px}
+.comms-draft small{grid-column:1/-1;color:var(--muted)}
+.comms-channels{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;padding:0 18px 18px}
+.comms-channels form{display:grid;gap:8px}
+@media(max-width:860px){.comms-layout{grid-template-columns:1fr}.comms-draft{grid-template-columns:1fr}}
+
+/* migration wizard */
+.migration-steps{display:grid;gap:18px;max-width:1100px}
+.drop-zone{display:grid;place-items:center;gap:6px;text-align:center;padding:30px 18px;border:2px dashed var(--brand-line);border-radius:16px;background:var(--brand-soft);cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
+.drop-zone svg{width:34px;height:34px;fill:none;stroke:var(--brand);stroke-width:1.6}
+.drop-zone:hover,.drop-zone:focus-visible,.drop-zone.is-over{border-color:var(--brand);background:rgba(217,173,89,.16);transform:translateY(-2px)}
+.mapping-grid{display:grid;gap:10px}
+.mapping-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,1.4fr) minmax(100px,1fr);gap:10px;align-items:center}
+.mapping-row small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.migration-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.migration-counts div{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}
+.migration-counts strong{display:block;font-size:1.6rem}
+.migration-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.migration-policy{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:14px 0;display:flex;gap:18px;flex-wrap:wrap}
+.table-scroll{overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:12px}
+.data-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.data-table th,.data-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.data-table thead th{position:sticky;top:0;background:var(--panel-3)}
+
+/* export hub */
+.export-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;max-width:1100px}
+.export-grid .panel{padding:20px;display:grid;gap:10px;align-content:start}
+.export-csv{display:flex;gap:8px;flex-wrap:wrap}
+
+/* print: only the report root is shown */
+#print-root{display:none}
+@media print{
+  body.is-printing-report>*:not(#print-root){display:none!important}
+  body.is-printing-report #print-root{display:block!important;position:static}
+  body.is-printing-report{background:#fff!important;color:#000!important}
+  #print-root{font:11pt/1.4 system-ui,sans-serif;color:#000;background:#fff;padding:0}
+  #print-root h1{font-size:18pt;margin:0 0 4pt}
+  #print-root .print-meta{color:#444;font-size:9pt;margin-bottom:10pt}
+  #print-root .print-warning{border:1px solid #000;padding:4pt 8pt;font-size:9pt;margin-bottom:10pt}
+  #print-root table{width:100%;border-collapse:collapse;font-size:9pt}
+  #print-root th,#print-root td{border:1px solid #999;padding:3pt 5pt;text-align:left;vertical-align:top}
+  #print-root thead{display:table-header-group}#print-root tr{break-inside:avoid}
+  #print-root .print-totals{display:flex;gap:18pt;margin:8pt 0;font-weight:700}
+  @page{margin:14mm}
+}
+@media(prefers-reduced-motion:reduce){.view:not([hidden]){animation:none}.drop-zone{transition:none}}
+.mfa-body{display:grid;gap:10px;max-width:380px}
+.mfa-body input{width:100%;font:inherit;padding:10px;border-radius:8px}
+.mfa-qr{display:grid;place-items:center;background:#fff;border-radius:10px;padding:8px}
+.mfa-body code{word-break:break-all;padding:8px;border-radius:8px;background:rgba(127,127,127,.15)}
+.tap-modal{max-width:420px;width:calc(100vw - 32px)}
+.tap-qr{display:grid;place-items:center;min-height:240px;background:#fff;border-radius:14px;margin:10px 0;color:#333}
+.tap-modal input{width:100%;margin:8px 0;font:inherit}
+
+/* payment connections + usage packs */
+.bill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.bill-card{display:flex;flex-direction:column;gap:10px;padding:18px}
+.bill-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.bill-cert{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.bill-ok{color:#7fd6a3;margin:0;font-size:.92rem}
+.bill-bank{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bill-bank label{display:grid;gap:4px;font-size:.85rem}.bill-bank p,.bill-bank button{grid-column:1/-1}
+.bill-foot{grid-column:1/-1;margin:0}
+.pack-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pack-price s{color:#8b95a5}.pack-price .pack-off{padding:2px 8px;border-radius:999px;background:rgba(127,214,163,.14);color:#7fd6a3;font-size:.8rem;font-weight:700}
+.pack-qty{display:flex;align-items:center;gap:8px}.pack-qty input{width:78px}
+.pack-banner{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(228,186,104,.3);background:rgba(228,186,104,.07)}
+@media(max-width:520px){.bill-bank{grid-template-columns:1fr}}
+.legal-agree{display:flex!important;gap:12px;align-items:flex-start;margin:14px 0;font-weight:600;line-height:1.5;cursor:pointer}
+.legal-agree input[type=checkbox]{width:20px!important;height:20px!important;min-width:20px;margin:2px 0 0!important;flex:none;accent-color:#e4ba68}
+.legal-agree span{flex:1}
+.plan-block{margin:0 0 26px;padding:0 0 22px;border-bottom:1px solid rgba(255,255,255,.08)}.plan-block:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.bill-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:900px){.bill-grid{grid-template-columns:1fr!important}}
+.pack-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px}

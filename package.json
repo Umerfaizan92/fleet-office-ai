@@ -37,7 +37,7 @@
     "verify:manifest": "node scripts/verify-manifest.mjs"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.x"
   },
   "dependencies": {
     "better-sqlite3": "12.4.1",

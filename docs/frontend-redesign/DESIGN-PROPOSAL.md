@@ -1,47 +1,37 @@
 # Shared design proposal
 
-One visual system for the public site, the business workspace, and the operator console. The product already presents itself as a black and champagne-gold office. This proposal tightens that system. It does not introduce a second brand, a component framework, or a new font stack that the pages do not already load.
+One visual system for the public site, the business workspace, and the operator console. The product look is deep navy and charcoal, with a restrained steel accent and a readable light theme. It does not introduce a second brand, a component framework, or a new font stack.
 
-Apply it by editing the existing stylesheets, starting with the shared tokens in `saas/brand.css`, then the portal shells, then each screen in `IMPLEMENTATION-CHECKLIST.md`. Do not restyle by forking a parallel CSS file with a new name. The quality gate rejects obsolete `v11`–`v16` stylesheet names.
+Apply it in the existing stylesheets. `saas/brand.css` holds the tokens. `saas/premium-ui.css` loads last on every HTML page and carries the shared skin, including the operator console. Do not add a parallel CSS file. The quality gate rejects obsolete `v11`–`v16` stylesheet names.
 
 ## Colour
 
-Canonical tokens. Later phases should delete the duplicate `:root` blocks in `saas/app.css` and `office/office-theme.css` only after every screen reads these names.
+`--gold` and `--gold-hi` stay as legacy names. They alias `--brand` and `--brand-2`, so a saved tenant colour still recolours accents. The product default is steel in the dark theme and navy in the light theme. Focus rings use `--sp-focus`, which a tenant colour does not replace.
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--ink` | `#07080b` | `#f4f6f9` | Page background |
-| `--panel` | `#11161e` | `#ffffff` | Cards, dialogs, sidebars |
-| `--panel-2` | `#171d27` | `#f8f9fb` | Nested wells, table stripes |
-| `--line` | `#2a3140` | `#e2e6ec` | Hairline borders, 1px |
-| `--text` | `#f6f3ea` | `#141820` | Body and headings |
-| `--muted` | `#a39e90` | `#5c6573` | Secondary text. Current dark muted `#858f9f` is 6.03:1 and can stay if this warmer muted is checked the same way |
-| `--gold` | `#d9ad59` | `#875f26` | Accents, focus, large labels |
-| `--gold-hi` | `#f3d17f` | `#6f4e18` | Hover and highlights |
-| `--on-gold` | `#07080b` | `#ffffff` | Text on gold fills |
-| `--good` | `#64d7a1` | `#1f7a4d` | Ready, paid, verified |
-| `--wait` | `#f1c16e` | `#8a5a10` | Pending, expiring |
-| `--bad` | `#ff827a` | `#b42318` | Failed, locked, rejected |
-| `--info` | `#9cc4f5` | `#1d4f86` | Links and neutral status |
+| `--bg` / `--ink` | `#0e141c` | `#f4f6f8` | Page background |
+| `--panel` | `#17202b` | `#ffffff` | Cards, dialogs, sidebars |
+| `--panel-2` | `#1c2733` | `#f7f9fb` | Nested wells, table headers |
+| `--line` | `#2c3a4a` | `#d5dee8` | Hairline borders, 1px |
+| `--text` | `#f4f7fb` | `#15202b` | Body and headings |
+| `--muted` | `#b7c2ce` | `#4e6072` | Secondary text |
+| `--brand` | `#9ec0db` | `#1e4f78` | Accent, primary buttons, active navigation |
+| `--on-brand` | `#0e141c` | `#ffffff` | Text on a primary button |
+| `--sp-focus` | `#d5e6f3` | `#1e4f78` | Keyboard focus ring |
+| `--green` | `#8ee0b8` | `#0f6b45` | Ready, paid, verified |
+| `--amber` | `#f0d59a` | `#8a5a10` | Pending, expiring |
+| `--red` | `#ffb4ae` | `#b42318` | Failed, locked, rejected |
+| `--blue` | `#9ec0db` | `#1a4f86` | Links and neutral status |
 
-Measured contrast on the current sheets (WCAG relative luminance):
-
-| Pair | Ratio | Note |
-|---|---|---|
-| `#f6f3ea` on `#07080b` | 18.05:1 | Body text, dark theme, passes |
-| `#d9ad59` on `#07080b` | 9.61:1 | Gold on ink passes, including normal text |
-| `#d9ad59` on `#11151c` | 8.77:1 | Gold on panel passes |
-| `#07080b` on `#d9ad59` | 9.61:1 | Primary button label passes |
-| `#858f9f` on `#090b0f` | 6.03:1 | Current muted passes AA |
-| `#a9782f` on `#f4f6f9` | **3.58:1** | Current light-theme `--brand` fails AA for normal text |
-| `#875f26` on `#f4f6f9` | 5.25:1 | Proposed light gold passes AA |
+Measured contrast for the pairs above is at least 4.5:1 for normal text, including light-theme navy `#1e4f78` on `#f4f6f8` and muted `#4e6072` on white. The previous light gold `#a9782f` on `#f4f6f9` was 3.58:1 and is no longer the accent.
 
 Rules:
 
-- Gold is the accent, not the body colour. In light mode, text that is currently `--brand` / `#a9782f` moves to `#875f26` or to `--text`.
-- Status is an icon or word plus colour. Do not rely on green/amber/red alone.
-- Tenant branding (`branding-primary-color`, `branding-secondary-color`) still overrides the workspace accent after save. The shell chrome (navigation, focus, danger) stays on the product tokens so a tenant colour cannot wipe out focus rings.
-- Operator console uses the same tokens and does not get a second palette. The word “Operator” in the sidebar kicker is what separates it.
+- The accent is for actions, focus, and status, not for large areas of body text.
+- Status is a word plus colour. Do not rely on green, amber, or red alone.
+- Tenant branding (`branding-primary-color`) still overrides `--brand` after a real change. The untouched colour picker is not saved. `--on-brand` is chosen from the relative luminance of that colour so the label stays readable. Focus rings stay on `--sp-focus`.
+- The operator console uses the same tokens. Its sidebar label is what separates it from the business workspace. `PLATFORM_DEFAULT_PRIMARY` stays `#f59e0b` so an untouched workspace is not stored as a custom colour.
 
 ## Typography
 
@@ -116,10 +106,10 @@ Restyle the existing class names. Do not rename them in the first pass (`primary
 
 | Component | Behaviour to keep | Visual rule |
 |---|---|---|
-| Primary button | `type` and submit handlers unchanged | Gold fill, ink label, 40px min height |
+| Primary button | `type` and submit handlers unchanged | `--brand` fill, `--on-brand` label, 40px min height |
 | Secondary button | | Transparent fill, 1px `--line`, text colour |
 | Quiet / text button | Sign out, Lock | No fill until hover |
-| Text field | `name`, `autocomplete`, `required` unchanged | 40px, `--panel-2` fill, `--line` border, gold focus ring |
+| Text field | `name`, `autocomplete`, `required` unchanged | 40px, `--panel-2` fill, `--line` border, `--sp-focus` ring |
 | Select and textarea | | Same as text field |
 | Table | Server-rendered rows stay as they are | Sticky header, row hover using `--panel-2`, numeric columns right-aligned |
 | Dialog | `showModal` / `modal-queue.js` | Existing ids. Cancel on `method="dialog"` forms keeps `formnovalidate` or `type="button"` |
@@ -133,7 +123,7 @@ Marketing-only pieces (hero, plan cards, product-guide card) may keep the larger
 ## Accessibility
 
 - Target WCAG 2.2 AA for colour, focus, and name/role/value.
-- Focus ring: 2px `--gold-hi` offset 2px on every button, link, input, summary, and tab. Replace outline removal that is not paired with a replacement ring.
+- Focus ring: 2px `--sp-focus` offset 2px on every button, link, input, summary, and tab. Replace outline removal that is not paired with a replacement ring.
 - Hit targets stay at least 40×40, including the public mobile menu, icon buttons, and the pay-page actions.
 - Dialogs opened through `modal-queue.js` keep focus trap and restore. New dialogs use `<dialog>` and that queue.
 - Icon-only controls keep an `aria-label` (sidebar close, search, tour, notifications, theme, voice). The public guide’s speaker and clear buttons should gain text labels during the marketing pass. Their ids (`voice-output`, `clear-chat`, `voice-input`) stay.
@@ -158,7 +148,7 @@ Not allowed in the app or office shells:
 - Hover transforms on navigation rows. `workspace-nav.css` already disables those under reduced motion. Make the default hover a background change for everyone.
 - Infinite glow on panels.
 
-Global rule, added once in `brand.css` and not re-implemented per file:
+Global rule, added in `brand.css` and repeated for the operator console in `premium-ui.css`. The same declarations also apply when `html[data-motion="reduce"]` is set:
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -171,7 +161,11 @@ Global rule, added once in `brand.css` and not re-implemented per file:
 }
 ```
 
-The partial reduced-motion blocks in `workspace-nav.css`, `workspace-finance.css`, `workspace-gadgets.css`, and `workspace-growth.css` can remain until this global rule is in place and checked.
+A “Reduce motion” control next to the theme switch stores that choice in `localStorage` key `foai-motion`. Card tilt is off. The logo orbit moves only while speech synthesis is actually speaking (`superpro:speaking`). Listening and speaking styles use the existing `.is-listening`, `.listening`, and `data-state` hooks. They do not pretend a capability exists.
+
+Marketing carousels keep manual previous, next, and dot controls, plus arrow keys. Plan cards are not a carousel, so prices and join actions stay in the page. There is no autoplay.
+
+The partial reduced-motion blocks in `workspace-nav.css`, `workspace-finance.css`, `workspace-gadgets.css`, and `workspace-growth.css` can remain. The global rule covers them.
 
 ## What this proposal does not change
 

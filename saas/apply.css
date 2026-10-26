@@ -1,4 +1,4 @@
-:root{color-scheme:dark;--bg:#080b10;--card:#12171f;--line:rgba(255,255,255,.12);--gold:#e4ba68;--text:#eef1f6;--mut:#a7b1c0}
+:root{color-scheme:dark;--bg:#080b10;--card:#12171f;--line:rgba(255,255,255,.12);--gold:#9ec0db;--text:#eef1f6;--mut:#a7b1c0}
 @media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f6f4ee;--card:#fff;--line:rgba(0,0,0,.14);--text:#171a20;--mut:#566070}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Manrope",system-ui,sans-serif}
 .ap-shell{max-width:720px;margin:0 auto;padding:28px 18px 60px}
@@ -15,10 +15,10 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--gold);outline-of
 .ap-file{display:grid;grid-template-columns:140px 1fr auto;gap:8px;align-items:center;margin:0 0 8px}
 .ap-ghost{padding:10px 14px;border-radius:12px;border:1px dashed var(--gold);background:transparent;color:var(--gold);font:inherit;font-weight:700;cursor:pointer}
 .ap-trap{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.ap-notice{margin-top:24px;padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:rgba(228,186,104,.05)}
+.ap-notice{margin-top:24px;padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:rgba(158,192,219,.05)}
 .ap-notice h2{margin-top:0}.ap-notice ul{margin:0 0 12px;padding-left:18px;color:var(--mut);font-size:.93rem}.ap-notice li{margin:5px 0}.ap-notice b{color:var(--text)}
 .ap-consent{display:flex;gap:10px;align-items:flex-start;font-weight:600}.ap-consent input{width:20px;height:20px;margin-top:3px;flex:none}
-.ap-primary{width:100%;margin-top:14px;padding:15px;border:0;border-radius:14px;background:linear-gradient(180deg,#f4d38f,#d9a84a);color:#1d1406;font:inherit;font-weight:800;cursor:pointer}
+.ap-primary{width:100%;margin-top:14px;padding:15px;border:0;border-radius:14px;background:var(--brand,#1e4f78);color:var(--on-brand,#fff);font:inherit;font-weight:800;cursor:pointer}
 .ap-primary:disabled{opacity:.6;cursor:wait}
 .ap-msg{min-height:1.4em;margin:12px 0 0;font-weight:700}.ap-msg.bad{color:#ff8f8f}.ap-msg.ok{color:#7fd6a3}
 .ap-done{padding:22px;border-radius:16px;background:rgba(127,214,163,.1);border:1px solid rgba(127,214,163,.4)}

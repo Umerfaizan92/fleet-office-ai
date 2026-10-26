@@ -1,4 +1,4 @@
-const CACHE='superpro-public-20261026-20';
+const CACHE='superpro-public-20261026-21';
 const PUBLIC=[
   '/saas/',
   '/saas/index.html',

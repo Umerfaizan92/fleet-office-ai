@@ -21,7 +21,7 @@
       '.approval-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}',
       '.approval-tabs{display:flex;flex-wrap:wrap;gap:7px}.approval-tabs button.active{border-color:var(--brand-line);color:var(--brand-2);background:var(--brand-soft)}',
       '.approval-list{display:grid;gap:10px}.approval-card{padding:15px;border:1px solid var(--line);border-radius:13px;background:var(--panel-2)}',
-      '.approval-card.pending{border-color:rgba(158,192,219,.32)}.approval-card header{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}',
+      '.approval-card.pending{border-color:rgba(228,189,102,.32)}.approval-card header{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}',
       '.approval-card h3{margin:5px 0;font-size:14px}.approval-card p{margin:7px 0;color:var(--text-2);font-size:12px;line-height:1.55}',
       '.approval-meta{display:flex;flex-wrap:wrap;gap:7px;color:var(--muted);font-size:12px}.approval-ref{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--brand-2)}',
       '.approval-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.approval-risk{padding:4px 7px;border:1px solid var(--line);border-radius:999px;font-size:12px;text-transform:uppercase;font-weight:900}',

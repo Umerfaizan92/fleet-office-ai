@@ -1,7 +1,22 @@
 /* Public design layer: 3D tilt, mobile carousels, legal table of contents. Safe to fail: pages work without it. */
 (function(){
   'use strict';
-  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches||localStorage.getItem('foai-motion')==='reduce';
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  // 3D tilt toward the pointer
+  if(fine&&!reduce){
+    const sel='.why-card,.feature-card,.plan-card,.industry-rail>button,.trust-card';
+    document.addEventListener('pointermove',e=>{
+      const c=e.target.closest&&e.target.closest(sel);
+      document.querySelectorAll('.pd-tilt.live').forEach(n=>{if(n!==c){n.classList.remove('live');n.style.removeProperty('--rx');n.style.removeProperty('--ry')}});
+      if(!c)return;
+      c.classList.add('pd-tilt','live');
+      const r=c.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+      c.style.setProperty('--ry',(x*7).toFixed(2)+'deg');c.style.setProperty('--rx',(-y*7).toFixed(2)+'deg');
+    },{passive:true});
+    document.addEventListener('pointerleave',()=>document.querySelectorAll('.pd-tilt.live').forEach(n=>{n.classList.remove('live');n.style.removeProperty('--rx');n.style.removeProperty('--ry')}),true);
+  }
 
   // carousels: layout switches on in CSS at <=900px; controls are always built but hidden on wide screens
   function carousel(track,startOnFeatured){
@@ -11,14 +26,11 @@
     const ctrl=document.createElement('div');ctrl.className='pd-ctrl';
     const prev=document.createElement('button');prev.type='button';prev.setAttribute('aria-label','Previous');prev.textContent='‹';
     const next=document.createElement('button');next.type='button';next.setAttribute('aria-label','Next');next.textContent='›';
-    const dots=document.createElement('div');dots.className='pd-dots';
-    items.forEach((_,n)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Show item '+(n+1)+' of '+items.length);dots.appendChild(b)});
+    const dots=document.createElement('div');dots.className='pd-dots';items.forEach(()=>dots.appendChild(document.createElement('i')));
     ctrl.append(prev,dots,next);track.after(ctrl);
-    track.setAttribute('aria-roledescription','carousel');
     const idx=()=>{let b=0,d=1e9;const mid=track.scrollLeft+track.clientWidth/2;items.forEach((n,i)=>{const dd=Math.abs(n.offsetLeft+n.offsetWidth/2-mid);if(dd<d){d=dd;b=i}});return b};
-    const mark=()=>{const i=idx();[...dots.children].forEach((d,k)=>{const on=k===i;d.classList.toggle('on',on);if(on)d.setAttribute('aria-current','true');else d.removeAttribute('aria-current')})};
+    const mark=()=>{const i=idx();[...dots.children].forEach((d,k)=>d.classList.toggle('on',k===i))};
     const go=i=>{const n=items[Math.max(0,Math.min(items.length-1,i))];track.scrollTo({left:n.offsetLeft-(track.clientWidth-n.offsetWidth)/2,behavior:reduce?'auto':'smooth'})};
-    [...dots.children].forEach((b,n)=>b.addEventListener('click',()=>go(n)));
     prev.onclick=()=>go(idx()-1);next.onclick=()=>go(idx()+1);
     track.addEventListener('scroll',()=>requestAnimationFrame(mark),{passive:true});
     track.tabIndex=0;track.setAttribute('role','region');track.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){go(idx()+1);e.preventDefault()}if(e.key==='ArrowLeft'){go(idx()-1);e.preventDefault()}});
@@ -30,7 +42,7 @@
     carousel(document.querySelector('.feature-grid'));
     carousel(document.querySelector('.industry-rail'));
     carousel(document.querySelector('.journey-track'));
-    /* Plans stay a stacked list on small screens so prices and join actions are not inside a carousel. */
+    carousel(document.querySelector('.plans-grid'),true);
 
     // legal pages: contents list from the section headings
     const shell=document.querySelector('.legal-shell');

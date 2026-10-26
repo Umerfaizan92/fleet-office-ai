@@ -1,0 +1,24 @@
+/* Guided tour: a gold ring around the real control and one calm card. */
+.sp-tour{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
+.sp-tour::before{content:"";position:absolute;inset:0;background:rgba(4,6,10,.62);pointer-events:auto}
+.sp-tour-ring{position:fixed;border-radius:14px;border:2px solid #f4d38f;box-shadow:0 0 0 9999px rgba(4,6,10,.62),0 0 0 6px rgba(244,211,143,.18),0 12px 40px rgba(0,0,0,.5);transition:left .35s ease,top .35s ease,width .35s ease,height .35s ease,opacity .2s;pointer-events:none;z-index:1}
+.sp-tour:not(.centered)::before{background:transparent}
+.sp-tour.centered::before{background:rgba(4,6,10,.72)}
+.sp-tour-card{position:fixed;z-index:2;pointer-events:auto;max-width:calc(100vw - 24px);padding:20px 22px 18px;border-radius:20px;border:1px solid rgba(217,173,89,.45);background:radial-gradient(120% 120% at 0 0,rgba(217,173,89,.16),transparent 55%),#0e1218;color:#f3eee3;box-shadow:0 24px 70px rgba(0,0,0,.6);transition:left .35s ease,top .35s ease}
+.sp-tour-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.sp-tour-count{font-size:.74rem;font-weight:700;color:#d9ad59;letter-spacing:.04em}
+.sp-tour-skip{border:0;background:none;color:#9aa3b2;font:inherit;font-size:.8rem;cursor:pointer;padding:4px 2px}
+.sp-tour-skip:hover{color:#fff}
+.sp-tour-card h2{margin:0 0 6px;font-size:1.22rem;line-height:1.2;color:#fff}
+.sp-tour-card p{margin:0 0 16px;font-size:.93rem;line-height:1.5;color:#c9cfda}
+.sp-tour-dots{display:flex;gap:6px;margin-bottom:16px}
+.sp-tour-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18)}
+.sp-tour-dots i.past{background:rgba(217,173,89,.55)}
+.sp-tour-dots i.on{width:22px;border-radius:5px;background:linear-gradient(90deg,#f6d98c,#d3a445)}
+.sp-tour-actions{display:flex;justify-content:space-between;gap:10px}
+.sp-tour-actions button{min-height:42px;padding:0 18px;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}
+.sp-tour-back{border:1px solid rgba(255,255,255,.2);background:transparent;color:#e8e3d6}
+.sp-tour-back:disabled{opacity:.35;cursor:default}
+.sp-tour-next{flex:1;border:0;background:linear-gradient(135deg,#f6d98c,#d3a445);color:#1a1308;box-shadow:0 8px 20px rgba(217,173,89,.28)}
+.sp-tour button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.sp-tour-ring,.sp-tour-card{transition:none}}

@@ -86,7 +86,7 @@
     setTimeout(checkRegulatorySourcesIfDue,4200);
     setInterval(checkRegulatorySourcesIfDue,60*60*1000);
 
-    let baseline=new Set();async function poll(){try{const d=await api('/api/saas/live-activity');const rows=d.events||[];if(!baseline.size){rows.forEach(x=>baseline.add(x.id));return}for(const e of rows.slice().reverse()){if(!baseline.has(e.id)){baseline.add(e.id);push(`${String(e.event_type||'workspace update').replaceAll('_',' ')} completed.`)}}if(baseline.size>100)baseline=new Set(rows.map(x=>x.id))}catch{}}
+    let baseline=new Set();async function poll(){try{const d=await api('/api/saas/live-activity');const rows=d.events||[];if(!baseline.size){rows.forEach(x=>baseline.add(x.id));return}for(const e of rows.slice().reverse()){if(!baseline.has(e.id)){baseline.add(e.id);{const raw=String(e.event_type||'');if(/regulatory|snapshot|heartbeat|tick|cron|\.checked$/i.test(raw))continue;const words=raw.replace(/[._-]+/g,' ').trim()||'workspace update';push(words.charAt(0).toUpperCase()+words.slice(1)+'.')}}}if(baseline.size>100)baseline=new Set(rows.map(x=>x.id))}catch{}}
     setTimeout(poll,1500);setInterval(poll,7000);
   }
 

@@ -1,6 +1,8 @@
-# Frontend redesign — Phase 1 audit
+# Frontend redesign
 
-This folder is the coverage record for a visual redesign of the existing Super Pro AI Office Manager. Phase 1 inspects the application and writes the plan. It does not change pages, styles, APIs, or data.
+This folder is the coverage record for the visual redesign of the existing Super Pro AI Office Manager. Phase 1 audited the application. Phase 2 applies one navy and charcoal visual system to both portals on this branch. It does not change APIs, permissions, or data.
+
+Nothing here is merged or deployed.
 
 ## Verified base
 

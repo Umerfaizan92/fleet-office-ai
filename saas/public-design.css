@@ -1,5 +1,5 @@
 /* Public design layer: one rhythm for every page before sign-in. Loaded last on public pages. */
-:root{--pd-gutter:clamp(18px,4vw,56px);--pd-max:1200px;--pd-gap:clamp(14px,1.8vw,22px);--pd-bar:64px;--pd-card:linear-gradient(160deg,#171e29,#0e141c);--pd-edge:rgba(232,190,105,.2);--pd-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 18px 34px -18px rgba(0,0,0,.75)}
+:root{--pd-gutter:clamp(18px,4vw,56px);--pd-max:1200px;--pd-gap:clamp(14px,1.8vw,22px);--pd-bar:64px;--pd-card:linear-gradient(160deg,#171e29,#0e141c);--pd-edge:rgba(158,192,219,.2);--pd-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 18px 34px -18px rgba(0,0,0,.75)}
 
 /* ---- one frame for every tab: same width, same side gutter, same heading rhythm ---- */
 html.has-stage .stage-pane>section:not(.hero){width:100%;max-width:var(--pd-max);margin-inline:auto;padding-inline:var(--pd-gutter)!important;box-sizing:border-box}
@@ -55,14 +55,14 @@ body:not(.has-stage-body) .legal-shell,body.auth-page .auth-form-side{padding-bo
   .pd-car.journey-track>i{display:none}
   .pd-car.journey-track>div{flex-basis:62%}
   .pd-ctrl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:6px}
-  .pd-ctrl button{width:40px;height:40px;border-radius:50%;border:1px solid var(--gold-line,rgba(228,186,104,.4));background:#12171f;color:#f4d38f;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+  .pd-ctrl button{width:40px;height:40px;border-radius:50%;border:1px solid var(--gold-line,rgba(158,192,219,.4));background:#12171f;color:#d5e6f3;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.4)}
   .pd-ctrl button:active{transform:translateY(2px);box-shadow:none}
-  .pd-dots{display:flex;gap:7px}.pd-dots i{width:7px;height:7px;border-radius:50%;background:#3a4252;transition:width .2s,background .2s}.pd-dots i.on{width:20px;border-radius:6px;background:#e4ba68}
+  .pd-dots{display:flex;gap:7px}.pd-dots i{width:7px;height:7px;border-radius:50%;background:#3a4252;transition:width .2s,background .2s}.pd-dots i.on{width:20px;border-radius:6px;background:#9ec0db}
 }
 
 /* ---- sign-in and registration ---- */
 .security-baseline{display:flex!important;flex-direction:row!important;flex-wrap:wrap;justify-content:center;gap:8px!important;margin:26px 0 0!important;padding:18px 0 0!important;border-top:1px solid rgba(255,255,255,.08)}
-.security-baseline span{display:inline-flex!important;width:auto!important;padding:6px 12px!important;border-radius:999px;font-size:12px!important;letter-spacing:.02em!important;text-transform:none!important;border:1px solid rgba(228,186,104,.28);background:rgba(228,186,104,.06);color:#d9c9a1}
+.security-baseline span{display:inline-flex!important;width:auto!important;padding:6px 12px!important;border-radius:999px;font-size:12px!important;letter-spacing:.02em!important;text-transform:none!important;border:1px solid rgba(158,192,219,.28);background:rgba(158,192,219,.06);color:#c5d4e4}
 .auth-switch{margin:22px 0 0!important;text-align:center}
 .form-section-head>div{display:flex;flex-direction:column;gap:4px}
 .form-section-head small{display:block;color:#9fa9b8;font-size:13px;line-height:1.5}
@@ -77,14 +77,14 @@ body:not(.has-stage-body) .legal-shell,body.auth-page .auth-form-side{padding-bo
 .legal-shell{width:min(820px,calc(100% - 2*var(--pd-gutter)))!important;font-size:16.5px;line-height:1.78}
 .legal-shell h1{margin:6px 0 18px;font-size:clamp(2rem,4.4vw,3rem);letter-spacing:-.02em}
 .legal-shell section{padding:26px 0;margin:0;border-top:1px solid rgba(255,255,255,.08)}
-.legal-shell section h2{margin:0 0 12px;font-size:1.3rem;color:#f2dfae;scroll-margin-top:24px}
+.legal-shell section h2{margin:0 0 12px;font-size:1.3rem;color:#d5e6f3;scroll-margin-top:24px}
 .legal-shell section p,.legal-shell section li{color:#cdd5e0;font-size:1rem;line-height:1.78;max-width:68ch}
 .legal-shell section p+p{margin-top:12px}
 .legal-alert{border-radius:14px;padding:14px 18px;margin:16px 0 24px;font-size:.95rem}
 .legal-toc{margin:0 0 24px;padding:16px 20px;border:1px solid var(--pd-edge);border-radius:16px;background:rgba(255,255,255,.025)}
-.legal-toc summary{cursor:pointer;font-weight:700;color:#f2dfae}
+.legal-toc summary{cursor:pointer;font-weight:700;color:#d5e6f3}
 .legal-toc ol{margin:12px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px}
-.legal-toc a{display:block;padding:5px 0;color:#c6cfdb;text-decoration:none;font-size:.93rem}.legal-toc a:hover{color:#f4d38f}
+.legal-toc a{display:block;padding:5px 0;color:#c6cfdb;text-decoration:none;font-size:.93rem}.legal-toc a:hover{color:#d5e6f3}
 @media(max-width:640px){.legal-toc ol{grid-template-columns:1fr}}
 .trust-hero{padding:30px 0 12px}
 .trust-grid{margin:22px 0}
@@ -94,5 +94,5 @@ body:not(.has-stage-body) .legal-shell,body.auth-page .auth-form-side{padding-bo
 .trust-section .kicker,.trust-section small{letter-spacing:.12em}
 @media(max-width:700px){.trust-grid{grid-template-columns:1fr!important}}
 
-:focus-visible{outline:2px solid #f4d38f;outline-offset:3px;border-radius:6px}
+:focus-visible{outline:2px solid #d5e6f3;outline-offset:3px;border-radius:6px}
 @media(max-width:999px){.hero-proof,.trust-strip{padding-right:64px}html.has-stage .stage-pane>.hero{padding-bottom:28px}}

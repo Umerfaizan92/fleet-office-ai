@@ -31,7 +31,7 @@
 .migration-steps{display:grid;gap:18px;max-width:1100px}
 .drop-zone{display:grid;place-items:center;gap:6px;text-align:center;padding:30px 18px;border:2px dashed var(--brand-line);border-radius:16px;background:var(--brand-soft);cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
 .drop-zone svg{width:34px;height:34px;fill:none;stroke:var(--brand);stroke-width:1.6}
-.drop-zone:hover,.drop-zone:focus-visible,.drop-zone.is-over{border-color:var(--brand);background:rgba(217,173,89,.16);transform:translateY(-2px)}
+.drop-zone:hover,.drop-zone:focus-visible,.drop-zone.is-over{border-color:var(--brand);background:rgba(158,192,219,.16);transform:translateY(-2px)}
 .mapping-grid{display:grid;gap:10px}
 .mapping-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,1.4fr) minmax(100px,1fr);gap:10px;align-items:center}
 .mapping-row small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -87,10 +87,10 @@
 .pack-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .pack-price s{color:#8b95a5}.pack-price .pack-off{padding:2px 8px;border-radius:999px;background:rgba(127,214,163,.14);color:#7fd6a3;font-size:.8rem;font-weight:700}
 .pack-qty{display:flex;align-items:center;gap:8px}.pack-qty input{width:78px}
-.pack-banner{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(228,186,104,.3);background:rgba(228,186,104,.07)}
+.pack-banner{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(158,192,219,.3);background:rgba(158,192,219,.07)}
 @media(max-width:520px){.bill-bank{grid-template-columns:1fr}}
 .legal-agree{display:flex!important;gap:12px;align-items:flex-start;margin:14px 0;font-weight:600;line-height:1.5;cursor:pointer}
-.legal-agree input[type=checkbox]{width:20px!important;height:20px!important;min-width:20px;margin:2px 0 0!important;flex:none;accent-color:#e4ba68}
+.legal-agree input[type=checkbox]{width:20px!important;height:20px!important;min-width:20px;margin:2px 0 0!important;flex:none;accent-color:#9ec0db}
 .legal-agree span{flex:1}
 .plan-block{margin:0 0 26px;padding:0 0 22px;border-bottom:1px solid rgba(255,255,255,.08)}.plan-block:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
 .bill-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}

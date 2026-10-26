@@ -18,7 +18,7 @@
     '.integration-resource-list{display:grid;gap:6px;max-height:220px;overflow:auto}',
     '.integration-resource-list label{display:flex;gap:9px;align-items:flex-start;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.025)}',
     '.integration-resource-list label>span{display:grid;gap:2px}.integration-resource-list small{color:#8f9bab}',
-    '.integration-requirements-inline{grid-column:1/-1;margin-top:8px;padding:9px 10px;border:1px solid rgba(232,190,105,.25);border-radius:10px;background:rgba(232,190,105,.06);color:#c8b88e;line-height:1.5}',
+    '.integration-requirements-inline{grid-column:1/-1;margin-top:8px;padding:9px 10px;border:1px solid rgba(158,192,219,.25);border-radius:10px;background:rgba(158,192,219,.06);color:#c8b88e;line-height:1.5}',
     '.integration-health-pass{color:#72d39a}.integration-health-fail{color:#ff8f8f}',
     '.integration-manager-status{font-size:12px;line-height:1.5;color:#9aa5b4;overflow-wrap:anywhere}'
   ].join('');

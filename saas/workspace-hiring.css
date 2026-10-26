@@ -1,5 +1,5 @@
 .hire-tabs{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
-.hire-chips{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.hire-chip{padding:8px 14px;border-radius:999px;border:1px solid rgba(228,186,104,.3);background:rgba(228,186,104,.06);font-size:.9rem}
+.hire-chips{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.hire-chip{padding:8px 14px;border-radius:999px;border:1px solid rgba(158,192,219,.3);background:rgba(158,192,219,.06);font-size:.9rem}
 .hire-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 .hire-card{display:flex;flex-direction:column;gap:10px;padding:18px}
 .hire-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -8,13 +8,13 @@
 .hire-form textarea{min-height:90px}
 .hire-ad{padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025);display:grid;gap:8px}
 .hire-ad textarea{width:100%;min-height:120px}
-.hire-sum{white-space:pre-wrap;padding:12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px dashed rgba(228,186,104,.35)}
+.hire-sum{white-space:pre-wrap;padding:12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px dashed rgba(158,192,219,.35)}
 .hire-docs{display:grid;gap:6px;margin:0;padding:0;list-style:none}
 .hire-lock{padding:12px 14px;border-radius:12px;border:1px solid rgba(127,214,163,.35);background:rgba(127,214,163,.07);margin:0 0 16px}
 dialog.hire-dlg{width:min(720px,94vw);max-height:90vh;overflow:auto}
 @media(max-width:640px){.hire-form{grid-template-columns:1fr}}
 .hire-chip{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
-.hire-chip input[type=checkbox]{width:18px!important;height:18px!important;margin:0!important;flex:none;accent-color:#e4ba68}
+.hire-chip input[type=checkbox]{width:18px!important;height:18px!important;margin:0!important;flex:none;accent-color:#9ec0db}
 .legal-modal,dialog.hire-dlg,dialog.sp-dlg{padding:26px 28px;border-radius:20px}
 dialog.hire-dlg h3{margin:18px 0 8px}
 .hire-dlg .dialog-actions,.sp-dlg .dialog-actions,.legal-modal .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}

@@ -27,6 +27,14 @@ services:
       - key: DATABASE_PATH
         value: "/var/data/super-pro.sqlite"
       # Refuse to start on non-durable storage if the disk is missing or unwritable (instead of silently losing customer records).
+      # Permanent storage in your own AWS S3 bucket (database copied every few seconds, uploads every 2 minutes).
+      # Uses BACKUP_S3_BUCKET, or the existing AWS_S3_BUCKET and AWS_REGION below.
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
       - key: REQUIRE_PERSISTENT_DISK
         value: "1"
       - key: UPLOAD_DIR

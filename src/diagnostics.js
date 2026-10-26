@@ -1,6 +1,7 @@
 // Startup sanity checks, non-destructive schema self-healing and the diagnostics report.
 // Nothing here drops, rewrites or deletes data. Everything it changes is additive (new columns, indexes, triggers, tables).
 import fs from 'node:fs';
+import { backupBucket } from './backup-env.js';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -48,13 +49,14 @@ export function prepareStorage({ env = process.env, backendRoot = process.cwd(),
   const requirePersistent = truthy(env.REQUIRE_PERSISTENT_DISK);
   const onRender = truthy(env.RENDER);
 
-  if (onRender && !mounted) warnings.push(`Running on Render but ${persistentRoot} is not mounted. Attach the persistent disk or data will be lost on every deploy.`);
+  const replicated = Boolean(backupBucket(env) || env.BACKUP_FILE_DIR);
+  if (onRender && !mounted && !replicated) warnings.push(`Running on Render but ${persistentRoot} is not mounted. Attach the persistent disk or data will be lost on every deploy.`);
   const dbProbe = probeDirectory(path.dirname(requested.databasePath));
   const uploadProbe = probeDirectory(requested.uploadRoot);
   let databasePath = requested.databasePath, uploadRoot = requested.uploadRoot, fallback = false;
 
   const broken = [!dbProbe.writable && `database folder ${dbProbe.path} (${dbProbe.error})`, !uploadProbe.writable && `upload folder ${uploadProbe.path} (${uploadProbe.error})`].filter(Boolean);
-  if (broken.length || (requirePersistent && onRender && !mounted)) {
+  if (broken.length || (requirePersistent && onRender && !mounted && !replicated)) {
     const reason = broken.length ? `Cannot write to ${broken.join(' and ')}.` : `${persistentRoot} is not mounted.`;
     if (requirePersistent) throw new Error(`${reason} REQUIRE_PERSISTENT_DISK is on, so the server will not start on non-durable storage. Check the Render disk mount and permissions.`);
     const candidates = [path.resolve(backendRoot, 'data'), path.join(os.tmpdir(), 'super-pro-data')];
@@ -65,8 +67,8 @@ export function prepareStorage({ env = process.env, backendRoot = process.cwd(),
     fallback = true;
     warnings.push(`${reason} Falling back to ${usable}. This storage may be erased on restart.`);
   }
-  const persistent = [databasePath, uploadRoot].every((p) => isUnder(p, persistentRoot)) && !fallback;
-  return { databasePath, uploadRoot, requested, persistent, fallback, persistentRoot, mounted, probes: { database: dbProbe, uploads: uploadProbe }, warnings };
+  const persistent = (replicated && !fallback) || ([databasePath, uploadRoot].every((p) => isUnder(p, persistentRoot)) && !fallback);
+  return { databasePath, uploadRoot, requested, persistent, replicated, fallback, persistentRoot, mounted, probes: { database: dbProbe, uploads: uploadProbe }, warnings };
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -148,7 +150,7 @@ export function runDiagnostics({ db, env = process.env, storage, startedAt = Dat
   // Storage
   if (storage) {
     add('storage.writable', storage.fallback ? 'warn' : 'pass', storage.fallback ? 'Using fallback storage because the configured folder is not writable.' : 'Database and upload folders are writable.');
-    add('storage.persistent', storage.persistent ? 'pass' : (production ? 'fail' : 'warn'), storage.persistent ? `Data is stored on the persistent disk (${storage.persistentRoot}).` : `Data is not on ${storage.persistentRoot}. It may be erased on restart.`);
+    add('storage.persistent', storage.persistent ? 'pass' : (production ? 'fail' : 'warn'), storage.persistent ? (storage.replicated ? 'Data is backed up to S3 and restored automatically after a restart.' : `Data is stored on the persistent disk (${storage.persistentRoot}).`) : `Data is not on ${storage.persistentRoot}. It may be erased on restart.`);
     const free = storage.probes?.database?.freeBytes ?? probeDirectory(path.dirname(storage.databasePath)).freeBytes;
     if (free !== null && free !== undefined) add('storage.free_space', free < MIN_FREE_BYTES ? 'warn' : 'pass', `${Math.round(free / 1048576)} MB free.`, { freeBytes: free });
     for (const w of storage.warnings || []) add('storage.warning', 'warn', w);

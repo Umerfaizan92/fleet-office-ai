@@ -11,6 +11,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { createDb, appendAuditLog } from './db.js';
 import { prepareStorage, runStartupDiagnostics, installDiagnosticsRoute } from './diagnostics.js';
+import { startUploadSync } from './s3-files.js';
 import { installPayments } from './payments.js';
 import { installNotifications } from './notifications.js';
 import { createLifecycle } from './lifecycle.js';
@@ -441,6 +442,7 @@ const maxFileMb = Number(env.MAX_FILE_MB || 8);
 const maxFiles = Number(env.MAX_FILES || 10);
 
 fs.mkdirSync(uploadRoot, { recursive: true });
+startUploadSync({ env, uploadRoot });
 
 const allowedOrigins = String(env.ALLOWED_ORIGINS || '')
   .split(',')

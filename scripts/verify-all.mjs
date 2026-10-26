@@ -108,7 +108,7 @@ await stage('syntax', 'Syntax validity across all files', async () => {
   });
   await check('package.json: start/test scripts, Node 22, every referenced script exists', () => {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-    assert.equal(pkg.scripts.start, 'node src/server.js');
+    assert.equal(pkg.scripts.start, 'node scripts/start.mjs');
     assert.equal(pkg.scripts.test, 'node scripts/verify-all.mjs');
     assert.match(pkg.engines.node, /^(\^|~|>=)?22(\.|$)/, 'engines.node must be 22.x');
     const missing = [];

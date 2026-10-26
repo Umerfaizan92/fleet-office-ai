@@ -19,3 +19,5 @@ dist/
 *.sqlite-shm
 *.db-wal
 *.db-shm
+
+bin/

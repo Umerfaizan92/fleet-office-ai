@@ -66,3 +66,20 @@ On every start the server proves the data folder is writable, opens the database
 ## 6. Rollback
 
 Render → Deploys → pick the last good deploy → Rollback. The database is additive-only, so earlier code keeps working against it. To restore data, stop the service and copy the backup file from step 1 over `super-pro.sqlite` (delete any `super-pro.sqlite-wal` and `-shm` files next to it first).
+
+## Permanent storage on AWS S3 (no Render disk needed)
+
+The database and uploaded files are saved to your own S3 bucket, and restored automatically on a fresh start or redeploy.
+
+1. In AWS, create a private S3 bucket (Block all public access ON), for example `superpro-backups-yourname`, in the region you want.
+2. Create an IAM user for the app with this policy only (replace the bucket name), then create an access key for it:
+
+```json
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:ListBucket","s3:GetBucketLocation"],"Resource":"arn:aws:s3:::BUCKET"},{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Resource":"arn:aws:s3:::BUCKET/super-pro/*"}]}
+```
+
+3. In Render, open the service, go to Environment and add `AWS_S3_BUCKET` (or `BACKUP_S3_BUCKET`), `AWS_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+4. Choose Manual Deploy, then Clear build cache & deploy. The log should show Litestream installing and `Data is backed up to S3`.
+5. Test once: sign up a test business, then Manual Deploy again. After the deploy, sign in with the same details. If it works, backups are proven.
+
+The database is copied every 5 seconds, so a crash can lose at most a few seconds of changes. Uploads are copied every 2 minutes. Nothing is ever deleted from the bucket by the app. Turn on bucket versioning for extra safety.

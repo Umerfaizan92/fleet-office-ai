@@ -8,13 +8,18 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { prepareStorage } from '../src/diagnostics.js';
 import { makeClient, restoreUploads } from '../src/s3-files.js';
-import { backupBucket } from '../src/backup-env.js';
+import { backupBucket, applyBackupEnv, awsVariableNames } from '../src/backup-env.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const env = process.env;
 const bucket = backupBucket(env), fileDir = env.BACKUP_FILE_DIR;
-if (bucket) env.BACKUP_S3_BUCKET = bucket; // the server and the upload backup read this name
+const creds = applyBackupEnv(env); // trims stray spaces, finds keys saved under another name, and gives every part the standard names
+if (bucket && (!creds.id || !creds.secret)) {
+  console.error(`[backup] The bucket is set but the AWS ${!creds.id ? 'access key ID' : 'secret access key'} was not found. Variables seen (names only): ${awsVariableNames(env).join(', ') || 'none'}. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or set BACKUP_DISABLED=1 to run without backups.`);
+  process.exit(1);
+}
+if (bucket) console.log(`[backup] Using bucket "${creds.bucket}" in ${creds.region || 'us-east-1'}; keys read from ${creds.id.name} and ${creds.secret.name}.`);
 
 if (!bucket && !fileDir) {
   await import('../src/server.js');
@@ -35,7 +40,7 @@ if (!bucket && !fileDir) {
   fs.writeFileSync(cfg, `dbs:\n  - path: ${JSON.stringify(plan.databasePath)}\n    replicas:\n${replica}`);
   if (bucket) {
     try { await restoreUploads({ client: await makeClient(env), bucket, prefix: env.BACKUP_S3_UPLOADS_PREFIX || 'super-pro/uploads', dir: plan.uploadRoot }); }
-    catch (err) { console.error(`[backup] Could not read uploads from S3: ${err.message}. Check the bucket name, region and keys.`); process.exit(1); }
+    catch (err) { console.error(`[backup] Could not read uploads from S3: ${err.name || 'Error'}: ${err.message}. Check the bucket name, region and keys. The keys need s3:ListBucket on the bucket and s3:GetObject/PutObject on super-pro/*.`); process.exit(1); }
   }
   const r = spawnSync(bin, ['restore', '-config', cfg, '-if-db-not-exists', '-if-replica-exists', plan.databasePath], { stdio: 'inherit' });
   if (r.status !== 0) { console.error('[backup] Could not restore the database from the backup. Not starting, so nothing is overwritten.'); process.exit(r.status || 1); }

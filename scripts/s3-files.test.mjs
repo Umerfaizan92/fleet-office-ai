@@ -54,3 +54,18 @@ test('the existing AWS_S3_BUCKET is used on Render, never on a laptop, and backu
   assert.equal(backupBucket({ AWS_S3_BUCKET: 'b' }), '');
   assert.equal(backupBucket({ AWS_S3_BUCKET: 'b', RENDER: 'true', BACKUP_DISABLED: '1' }), '');
 });
+
+import { backupCredentials, applyBackupEnv } from '../src/backup-env.js';
+test('AWS keys are found under common alternative names and cleaned of stray spaces', () => {
+  const env = { RENDER: 'true', AWS_S3_BUCKET: ' my-bucket\n', AWS_S3_ACCESS_KEY: ' AKIAEXAMPLE ', AWS_S3_SECRET_ACCESS_KEY: '"secretvalue"\n', AWS_REGION: ' ap-southeast-2 ' };
+  const c = applyBackupEnv(env);
+  assert.equal(env.AWS_ACCESS_KEY_ID, 'AKIAEXAMPLE');
+  assert.equal(env.AWS_SECRET_ACCESS_KEY, 'secretvalue');
+  assert.equal(env.AWS_REGION, 'ap-southeast-2');
+  assert.equal(env.BACKUP_S3_BUCKET, 'my-bucket');
+  assert.equal(c.secret.name, 'AWS_S3_SECRET_ACCESS_KEY');
+  const fuzzy = backupCredentials({ MY_AWS_ACCESS_KEY_FOR_S3: 'AKIA1', MY_AWS_S3_SECRET_THING: 'sec' });
+  assert.equal(fuzzy.id.value, 'AKIA1');
+  assert.equal(fuzzy.secret.value, 'sec');
+  assert.equal(backupCredentials({ AWS_KMS_KEY_ID: 'kms' }).id, null, 'a KMS key id is never mistaken for an access key');
+});

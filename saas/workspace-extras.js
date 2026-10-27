@@ -49,9 +49,9 @@
 
   function setupLiveToasts(){
     let stack=$('#gds-live-toasts');if(!stack){stack=document.createElement('div');stack.id='gds-live-toasts';stack.className='gds-live-toasts';document.body.append(stack)}
-    const push=(text,type='success')=>{if(!text)return;const item=document.createElement('div');item.className=`gds-live-toast ${type}`;item.innerHTML=`<span>${type==='error'?'!':'✓'}</span><div><b>${type==='error'?'Action needs attention':'Live update'}</b><small>${esc(text)}</small></div>`;stack.append(item);requestAnimationFrame(()=>item.classList.add('show'));setTimeout(()=>{item.classList.remove('show');setTimeout(()=>item.remove(),300)},5200)};
+    const push=(text,type='success')=>{if(!text||(window.SuperProNotificationSettings?.muted&&type!=='error'))return;if(stack.children.length>=3)stack.firstElementChild.remove();const item=document.createElement('div');item.className=`gds-live-toast ${type}`;item.innerHTML=`<span>${type==='error'?'!':'✓'}</span><div><b>${type==='error'?'Action needs attention':'Live update'}</b><small>${esc(text)}</small></div>`;stack.append(item);requestAnimationFrame(()=>item.classList.add('show'));setTimeout(()=>{item.classList.remove('show');setTimeout(()=>item.remove(),300)},5200)};
     const notice=$('#notice');if(notice){new MutationObserver(()=>{const t=notice.textContent.trim();if(t)push(t,notice.style.color?.includes('red')?'error':'success')}).observe(notice,{childList:true,characterData:true,subtree:true})}
-    const channel=('BroadcastChannel'in window)?new BroadcastChannel('gds-workspace-live'):null;channel?.addEventListener('message',e=>e.data?.message&&push(e.data.message,e.data.type||'success'));
+    let channel=null;const bindChannel=()=>{channel?.close();const org=window.GDS_SESSION?.organisation?.id;if(!org||!('BroadcastChannel' in window))return;channel=new BroadcastChannel('gds-workspace-live:'+org);channel.addEventListener('message',e=>e.data?.message&&push(e.data.message,e.data.type||'success'))};window.addEventListener('superpro:workspace-ready',bindChannel);bindChannel();
     window.GDSLive={push,broadcast:(message,type='success')=>{push(message,type);channel?.postMessage({message,type})}};
     let releaseTries=0;
     async function checkProductRelease(){

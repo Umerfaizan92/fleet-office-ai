@@ -22,6 +22,16 @@
     form.onsubmit=async e=>{e.preventDefault();save.disabled=true;err.textContent='';try{await api(r?`/api/saas/hiring/roles/${r.id}`:'/api/saas/hiring/roles',{method:r?'PUT':'POST',body:JSON.stringify({title:f.title.value,employment_type:f.type.value,location:f.loc.value,pay_text:f.pay.value,description:f.desc.value,requirements:f.req.value})});closeDlg(d);note('Saved.');done()}catch(x){err.textContent=x.message;save.disabled=false}};
   }
 
+  function sendInvitation(ad){
+    const email=el('input',{name:'email',type:'email',placeholder:'Recipient email'}),phone=el('input',{name:'phone',type:'tel',placeholder:'Mobile (optional)',maxlength:'30'}),message=el('textarea',{name:'message',maxlength:'300',placeholder:'Short personal message (optional)'}),follow=el('input',{type:'checkbox',checked:true});
+    const status=el('p',{role:'status','aria-live':'polite'}),send=el('button',{type:'submit',class:'primary-button',text:'Send invitation'}),requestId=crypto.randomUUID();
+    const form=el('form',{class:'hire-form'},el('label',{},'Email',email),el('label',{},'SMS mobile',phone),el('label',{class:'wide'},'Message',message),el('label',{class:'wide'},follow,' Send one email follow-up after 24 hours if there is no reply'),status,el('div',{class:'dialog-actions wide'},send));
+    const d=dialog('Send hiring invitation',form);d.append(btn('Close',()=>closeDlg(d)));
+    form.onsubmit=async event=>{event.preventDefault();if(!email.value.trim()&&!phone.value.trim()){status.textContent='Enter an email or mobile.';return}send.disabled=true;status.textContent='Sending…';
+      try{const r=await api(`/api/saas/hiring/ads/${ad.id}/send`,{method:'POST',body:JSON.stringify({request_id:requestId,email:email.value.trim(),phone:phone.value.trim(),message:message.value.trim(),follow_up:follow.checked})});status.textContent=`Email: ${r.delivery.email.sent?'accepted by provider':r.delivery.email.reason}. SMS: ${r.delivery.sms.sent?'accepted by provider':r.delivery.sms.reason}. ${r.note}`}catch(e){status.textContent=e.message;send.disabled=false}
+    };
+  }
+
   async function adsDialog(r){
     const body=el('div',{class:'hire-grid'});const d=dialog(`Advertise: ${r.title}`,
       el('p',{class:'muted',text:'Pick where to advertise. AI writes a draft for each place. Read, edit and approve each one. Approved adverts get a share button that opens the platform with your text ready. Each place has its own tracked apply link, so you can see which one works.'}),body);
@@ -35,7 +45,7 @@
         const row=el('div',{class:'hire-ad'},el('div',{class:'hire-row'},el('b',{text:ad.label}),el('span',{class:'status-pill '+(ad.status==='draft'?'warn':'ok'),text:ad.status==='draft'?'Draft':ad.status==='approved'?'Approved':'Shared'})),ta,
           el('div',{class:'hire-actions'},btn('Save edits',async()=>{try{await api(`/api/saas/hiring/ads/${ad.id}`,{method:'PUT',body:JSON.stringify({headline:ad.headline,body:ta.value})});note('Saved.');list()}catch(e){note(e.message,true)}}),
             ad.status==='draft'?btn('Approve',async()=>{try{await api(`/api/saas/hiring/ads/${ad.id}/approve`,{method:'POST',body:'{}'});list()}catch(e){note(e.message,true)}},'primary-button compact'):null,
-            btn('Copy text',()=>copy(ta.value)),
+            btn('Copy text',()=>copy(ta.value)),ad.status!=='draft'?btn('Send email / SMS invitation',()=>sendInvitation(ad),'primary-button compact'):null,
             ad.share_url?btn(`Open ${ad.label.split(' ')[0]}`,()=>{window.open(ad.share_url,'_blank','noopener')}):null,
             ad.status==='approved'?btn('Mark as posted',async()=>{try{await api(`/api/saas/hiring/ads/${ad.id}/shared`,{method:'POST',body:'{}'});list()}catch(e){note(e.message,true)}}):null));
         if(ad.status==='draft')row.append(el('p',{class:'muted',text:'Approve this advert to unlock sharing.'}));

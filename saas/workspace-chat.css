@@ -57,3 +57,17 @@ html[data-theme="light"] .sc-shell{--sc-ink:#fff;--sc-panel:#fff;--sc-card:#eef1
   .sc-compose textarea{font-size:16px}.sc-msg{max-width:92%}
 }
 @media(prefers-reduced-motion:reduce){.sc-panel,.sc-msg,.sc-badge,.sc-ticks.read,.sc-send.sent,.sc-launch.has-unread .sc-launch-icon,.sc-shell[data-state="max"]::before{animation:none}.sc-launch,.sc-panel,.sc-actions button,.sc-send{transition:none}.sc-log{scroll-behavior:auto}}
+
+/* Compact team roster and an intentionally separate status editor. */
+.sc-team{max-height:45%;padding:8px 12px;background:linear-gradient(110deg,color-mix(in srgb,var(--sc-gold) 7%,transparent),transparent)}
+.sc-team .staff-directory-list{max-height:118px;overflow:auto;display:grid;gap:4px;margin:8px 0}
+.sc-team .staff-directory-person{padding:6px 8px;border:1px solid var(--sc-line);border-radius:9px;display:flex;gap:8px;align-items:center;background:var(--sc-card)}
+.sc-team .staff-directory-person b{font-size:12px}.sc-team .staff-directory-person small{font-size:11px;line-height:1.4;display:block;color:var(--sc-muted)}
+.sc-team .staff-status-editor{border-top:1px solid var(--sc-line);padding-top:7px}.staff-status-editor>summary{color:var(--sc-gold);font-size:12px}
+.sc-team .staff-availability-form{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;padding:0}
+.sc-team .staff-availability-form label{font-size:11px;display:grid;gap:4px;min-width:0}
+.sc-team .staff-availability-form label:nth-child(2){grid-column:1/-1;grid-row:2}
+.sc-team .staff-availability-form :is(input,select){width:100%;min-width:0;min-height:36px;padding:7px 8px;background:var(--sc-ink);color:var(--sc-text);border:1px solid var(--sc-line);border-radius:8px}
+.sc-team .staff-availability-form button{align-self:end;padding:8px;font-size:12px;border-radius:8px;min-height:36px}
+.sc-who b{font-size:12px}.sc-ticks{white-space:nowrap;font-size:10px}
+.sc-bubble{transition:border-color .2s,background .2s}.sc-bubble:hover{border-color:var(--sc-gold-line)}

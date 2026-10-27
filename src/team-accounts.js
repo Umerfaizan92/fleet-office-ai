@@ -1,8 +1,9 @@
+import {deliverInvitation} from './invitation-delivery.js';
 import crypto from 'node:crypto';
 import {z} from 'zod';
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b));
-export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification}){
+export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification,env={}}){
  db.exec(`CREATE TABLE IF NOT EXISTS team_account_invites (
  id TEXT PRIMARY KEY,organisation_id TEXT NOT NULL REFERENCES organisations(id),worker_id TEXT NOT NULL REFERENCES workers(id),
  invited_email TEXT NOT NULL,role TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,created_by TEXT NOT NULL,
@@ -17,8 +18,8 @@ export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,auth
   const invitations=db.prepare(`SELECT id,worker_id,invited_email,role,status,expires_at,created_at FROM team_account_invites WHERE organisation_id=? ORDER BY created_at DESC LIMIT 100`).all(req.saas.organisation_id);
   res.json({ok:true,members,invitations});
  });
- app.post('/api/saas/team-accounts/invitations',...owner,(req,res)=>{
-  const parsed=z.object({worker_id:z.string().uuid(),email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),role:z.enum(['admin','manager','employee','contractor'])}).safeParse(req.body);
+ app.post('/api/saas/team-accounts/invitations',...owner,async(req,res)=>{
+  const parsed=z.object({worker_id:z.string().uuid(),email:z.string().trim().email().max(254).transform(x=>x.toLowerCase()),role:z.enum(['admin','manager','employee','contractor']),send:z.boolean().default(false),phone:z.string().trim().max(30).optional(),message:z.string().trim().max(300).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose a worker, valid email and staff role.'});
   const input=parsed.data,org=req.saas.organisation_id,worker=db.prepare('SELECT * FROM workers WHERE id=? AND organisation_id=?').get(input.worker_id,org);
   if(!worker)return res.status(404).json({ok:false,error:'Worker not found.'});
@@ -29,7 +30,9 @@ export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,auth
    db.prepare('INSERT INTO team_account_invites (id,organisation_id,worker_id,invited_email,role,token_hash,created_by,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(id,org,worker.id,input.email,input.role,hash(token),req.saas.user_id,expires,now);
    saasAudit(req,'team.invitation_created','worker',worker.id,{invite_id:id,role:input.role});
   })();
-  res.status(201).json({ok:true,id,expires_at:expires,invite_path:'/saas/join-team.html#'+token,delivery:{sent:false},note:'Share this private, single-use link with the named invitee. No email has been sent.'});
+  const invitePath='/saas/join-team.html#'+token;
+  const delivery=input.send?await deliverInvitation(env,{organisationId:org,userId:req.saas.user_id,email:input.email,phone:input.phone,businessName:req.saas.organisation_name,heading:'Join your business team',url:String(env.PUBLIC_BASE_URL||'').replace(/\/$/,'')+invitePath,message:input.message,category:'team_invitation'}):{sent:false};
+  res.status(201).json({ok:true,id,expires_at:expires,invite_path:invitePath,delivery,note:input.send?`Invitation created. Email: ${delivery.email.sent?'accepted by provider':delivery.email.reason}. SMS: ${delivery.sms.sent?'accepted by provider':delivery.sms.reason}. Check Notifications for delivery confirmation.`:'Share this private, single-use link with the named invitee. No email has been sent.'});
  });
  app.delete('/api/saas/team-accounts/invitations/:id',...owner,(req,res)=>{
   db.transaction(()=>{

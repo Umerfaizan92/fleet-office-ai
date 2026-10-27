@@ -1,3 +1,6 @@
+import {installCommunicationTracking,trackCommunication} from './message-delivery.js';
+import {renderEmail,platformBrand} from './email-templates.js';
+import {normalizeRecoveryCode,verifyRecoveryChallenge} from './recovery-verification.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,8 +19,8 @@ import { installPayments } from './payments.js';
 import { installNotifications } from './notifications.js';
 import { createLifecycle } from './lifecycle.js';
 import { installSubscribers } from './subscribers.js';
-import { installSaasPlatform, responseEnvelope, recordTelnyxComms, applyApprovalToComms } from './saas-platform.js';
-import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail } from './mailer.js';
+import { installSaasPlatform, responseEnvelope, recordInbound, recordTelnyxComms, applyApprovalToComms } from './saas-platform.js';
+import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail, sendBrandedEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
 import { installGrowth } from './growth.js';
@@ -2438,6 +2441,7 @@ async function deliverRecoveryCode({id,user,recoveryType,channel,code}){
   if(channel==='email')delivery=await sendSaasVerificationEmail(env,{to:user.email,code,businessName:'Account recovery'}).catch(err=>({sent:false,reason:err.message}));
   else delivery=await sendSmsVerification(user.phone,code,'Account recovery').catch(err=>({sent:false,reason:err.message}));
   logVerificationDelivery({purpose:`account_recovery_${recoveryType}`,subjectId:id,userId:user.id,channel,destination:channel==='email'?user.email:user.phone,provider:channel==='email'?'resend':'telnyx',messageId:delivery.email_id||delivery.message_id,status:delivery.sent?'sent':'failed',reason:delivery.reason});
+  if(delivery.sent){const provider=delivery.provider==='telnyx_verify'?'telnyx_verify':'local';db.prepare('UPDATE account_recovery_challenges SET verification_provider=?,expires_at=? WHERE id=?').run(provider,new Date(Date.now()+(provider==='telnyx_verify'?(delivery.timeout_seconds||300):600)*1000).toISOString(),id)}
   return delivery;
 }
 app.post('/api/saas/recovery/start',authLimiter,async(req,res)=>{
@@ -2453,15 +2457,17 @@ app.post('/api/saas/recovery/start',authLimiter,async(req,res)=>{
   db.prepare(`INSERT INTO account_recovery_challenges (id,user_id,recovery_type,channel,destination,business_identifier_type,business_identifier,code_hash,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(id,user.id,recoveryType,channel,destination,parsed.data.business_identifier_type||null,parsed.data.business_identifier||null,otpHash(id,code),expires.toISOString(),now.toISOString(),now.toISOString());
   const delivery=await deliverRecoveryCode({id,user,recoveryType,channel,code});
   if(!delivery.sent)return res.status(503).json({ok:false,error:`${channel==='email'?'Email':'SMS'} recovery delivery is not configured or was rejected by the provider. Your recovery request was saved; retry after the provider configuration is corrected.`,challenge_id:id});
-  res.status(202).json({ok:true,challenge_id:id,channel,destination:channel==='email'?maskEmail(user.email):maskPhone(user.phone),expires_at:expires.toISOString(),message:'Security code sent. Enter the six-digit code to continue.'});
+  res.status(202).json({ok:true,challenge_id:id,channel,destination:channel==='email'?maskEmail(user.email):maskPhone(user.phone),expires_at:db.prepare('SELECT expires_at FROM account_recovery_challenges WHERE id=?').get(id).expires_at,message:'Security code sent. Enter the code exactly as received to continue.'});
 });
-app.post('/api/saas/recovery/verify',authLimiter,(req,res)=>{
-  const parsed=z.object({challenge_id:z.string().uuid(),code:z.string().regex(/^\d{6}$/)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter the six-digit recovery code.'});
+app.post('/api/saas/recovery/verify',authLimiter,async(req,res)=>{
+  const parsed=z.object({challenge_id:z.string().uuid(),code:z.preprocess(normalizeRecoveryCode,z.string().regex(/^\d{4,8}$/))}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter the recovery code exactly as received (4–8 digits).'});
   const row=db.prepare(`SELECT r.*,u.email,u.phone FROM account_recovery_challenges r JOIN users u ON u.id=r.user_id WHERE r.id=?`).get(parsed.data.challenge_id);
   if(!row||row.expires_at<=new Date().toISOString())return res.status(410).json({ok:false,error:'This recovery code has expired. Start again.'});if(row.attempts>=8)return res.status(429).json({ok:false,error:'Too many incorrect recovery attempts. Start again.'});
-  const expected=otpHash(row.id,parsed.data.code),ok=expected.length===row.code_hash.length&&crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(row.code_hash));if(!ok){db.prepare(`UPDATE account_recovery_challenges SET attempts=attempts+1,updated_at=? WHERE id=?`).run(new Date().toISOString(),row.id);return res.status(401).json({ok:false,error:'The recovery code is incorrect.'});}
+  if(row.verified_at)return res.status(409).json({ok:false,error:'This code was already used. Continue with your password reset or start again.'});
+  let ok;try{ok=await verifyRecoveryChallenge(row,parsed.data.code,{verifySms:verifySmsVerificationCode,hash:otpHash})}catch{return res.status(503).json({ok:false,error:'SMS verification is temporarily unavailable. Try again or use email recovery.'})}
+  if(!ok){db.prepare(`UPDATE account_recovery_challenges SET attempts=attempts+1,updated_at=? WHERE id=?`).run(new Date().toISOString(),row.id);return res.status(401).json({ok:false,error:'The recovery code is incorrect.'});}
   const token=crypto.randomBytes(32).toString('base64url'),now=new Date(),tokenExpiry=new Date(now.getTime()+15*60*1000);
-  db.prepare(`UPDATE account_recovery_challenges SET verified_at=?,reset_token_hash=?,reset_token_expires_at=?,updated_at=? WHERE id=?`).run(now.toISOString(),sha256(token),tokenExpiry.toISOString(),now.toISOString(),row.id);
+  const consumed=db.prepare(`UPDATE account_recovery_challenges SET verified_at=?,reset_token_hash=?,reset_token_expires_at=?,updated_at=? WHERE id=? AND verified_at IS NULL`).run(now.toISOString(),sha256(token),tokenExpiry.toISOString(),now.toISOString(),row.id).changes;if(!consumed)return res.status(409).json({ok:false,error:'This recovery code was already used.'});
   if(row.recovery_type==='email')return res.json({ok:true,recovery_type:'email',email:row.email,message:'Identity verified. Your sign-in email is shown below.'});
   res.json({ok:true,recovery_type:'password',reset_token:token,expires_at:tokenExpiry.toISOString(),message:'Identity verified. Choose a new password.'});
 });
@@ -2606,14 +2612,14 @@ app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{
   const recipients=Number(db.prepare(`SELECT COUNT(*) c FROM memberships WHERE organisation_id=? AND status='active' AND user_id<>?`).get(org,me).c);
   const mineIds=rows.filter(m=>m.sender_user_id===me).map(m=>m.id);
   const rec=mineIds.length?db.prepare(`SELECT r.message_id,r.read_at,u.full_name FROM staff_chat_receipts r JOIN users u ON u.id=r.user_id WHERE r.organisation_id=? AND r.message_id IN (${mineIds.map(()=>'?').join(',')})`).all(org,...mineIds):[];
-  const unread=Number(db.prepare(`SELECT COUNT(*) c FROM staff_chat_receipts WHERE organisation_id=? AND user_id=? AND read_at IS NULL`).get(org,me).c);
+  const unread=Number(db.prepare(`SELECT COUNT(*) c FROM staff_chat_messages m LEFT JOIN staff_chat_receipts r ON r.message_id=m.id AND r.user_id=? AND r.organisation_id=m.organisation_id WHERE m.organisation_id=? AND m.sender_user_id<>? AND r.read_at IS NULL`).get(me,org,me).c);
   res.json({ok:true,unread,messages:rows.map(m=>{
     const mine=m.sender_user_id===me,r=rec.filter(x=>x.message_id===m.id);
     return {id:m.id,sender_name:m.sender_name,sender_role:m.sender_role,message:m.message,created_at:m.created_at,mine,
       ...(mine?{recipients,delivered_count:r.length,read_by:r.filter(x=>x.read_at).map(x=>x.full_name)}:{})};
   })});
 });
-app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name,sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:{id:row.id,sender_name:row.sender_name,sender_role:row.sender_role,message:row.message,created_at:row.created_at,mine:true}})});
+app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name||db.prepare('SELECT full_name FROM users WHERE id=?').get(req.saas.user_id)?.full_name||'Team member',sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:{id:row.id,sender_name:row.sender_name,sender_role:row.sender_role,message:row.message,created_at:row.created_at,mine:true}})});
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,action event_type,entity_type,created_at FROM audit_logs WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
 
 app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
@@ -2850,8 +2856,8 @@ const staffAvailabilitySchema=z.object({
 app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
   const manager=seniorRole(req.saas.role);
   const includeInactive=manager&&req.query.include_inactive==='1';
-  const rows=db.prepare(`SELECT u.id,u.full_name,u.status account_status,m.role,COALESCE(a.status,'unavailable') availability,COALESCE(a.reason,'') reason,a.returns_at FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id WHERE m.organisation_id=? ${includeInactive?'':"AND u.status='active'"} ORDER BY u.full_name COLLATE NOCASE LIMIT 500`).all(req.saas.organisation_id);
-  res.json({ok:true,can_view_inactive:manager,staff:rows.map(r=>({id:r.id,full_name:r.full_name,designation:String(r.role||'').replaceAll('_',' '),account_status:r.account_status,availability:r.availability,reason:r.reason,returns_at:r.returns_at||null}))});
+  const rows=db.prepare(`SELECT u.id,u.full_name,CASE WHEN m.status='active' THEN u.status ELSE 'inactive' END account_status,m.role,COALESCE(a.status,'unavailable') availability,COALESCE(a.reason,'') reason,a.returns_at FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id WHERE m.organisation_id=? ${includeInactive?'':"AND u.status='active' AND m.status='active'"} ORDER BY u.full_name COLLATE NOCASE LIMIT 500`).all(req.saas.organisation_id);
+  res.json({ok:true,me:req.saas.user_id,can_view_inactive:manager,staff:rows.map(r=>({id:r.id,full_name:r.full_name,designation:String(r.role||'').replaceAll('_',' '),account_status:r.account_status,availability:r.availability,reason:r.reason,returns_at:r.returns_at||null}))});
 });
 app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
   const parsed=staffAvailabilitySchema.safeParse(req.body||{});
@@ -3269,7 +3275,7 @@ async function processPlatformAnnouncementEmails(){
   for(const row of rows){
     try{
       db.prepare(`UPDATE platform_announcement_deliveries SET attempts=attempts+1,status='sending',updated_at=? WHERE id=?`).run(now,row.id);
-      const account=db.prepare(`SELECT COALESCE(o.display_name,o.name) business,p.name plan FROM memberships m JOIN organisations o ON o.id=m.organisation_id JOIN organisation_subscriptions s ON s.organisation_id=o.id JOIN subscription_plans p ON p.id=s.plan_id WHERE m.user_id=? ORDER BY m.rowid LIMIT 1`).get(row.user_id);
+      const account=db.prepare(`SELECT o.id organisation_id,COALESCE(o.display_name,o.name) business,p.name plan FROM memberships m JOIN organisations o ON o.id=m.organisation_id JOIN organisation_subscriptions s ON s.organisation_id=o.id JOIN subscription_plans p ON p.id=s.plan_id WHERE m.user_id=? ORDER BY m.rowid LIMIT 1`).get(row.user_id);
       const result=await sendPlatformAnnouncementEmail(env,{to:row.email,announcement:row,account});
       const sentAt=new Date().toISOString();
       db.prepare(`UPDATE platform_announcement_deliveries SET status=?,sent_at=?,last_error=NULL,updated_at=? WHERE id=?`).run(result.sent?'sent':'retry',result.sent?sentAt:null,sentAt,row.id);
@@ -3352,6 +3358,7 @@ function appendGovernanceLedger(organisationId,eventType,entityType=null,entityI
 function saasAudit(req,eventType,entityType=null,entityId=null,detail={}){
   const result=appendAuditLog(db,{organisation_id:req.saas.organisation_id,user_id:req.saas.user_id,user_name:req.saas.full_name,user_role:req.saas.role,action:eventType,module:String(eventType).split('.')[0]||'workspace',entity_type:entityType,entity_id:entityId,ip_address:req.ip,user_agent:req.get?.('user-agent'),metadata:detail??{}});
   appendGovernanceLedger(req.saas.organisation_id,eventType,entityType,entityId,req.saas.user_id,detail);
+  notifications.auditEvent(req,eventType,entityId,result.id);
   return {id:result.id,eventHash:result.eventHash};
 }
 function requireSaasRole(...roles){
@@ -3770,6 +3777,7 @@ app.post('/api/saas/workers/:id/invite',requireSaasUser,requireSaasRole(...workf
   const inviteUrl=`${base}/saas/worker-onboarding.html?token=${encodeURIComponent(raw)}`;
   const emailResult=email?await sendWorkerOnboardingInviteEmail(env,{to:email,workerName:worker.full_name,businessName:req.saas.organisation_name,inviteUrl,expiresAt:expires.toISOString()}).catch(e=>({sent:false,reason:e.message})):{sent:false,reason:'no_email'};
   const smsResult=phone?await sendWorkerInviteSms(phone,{workerName:worker.full_name,businessName:req.saas.organisation_name,inviteUrl}).catch(e=>({sent:false,reason:e.message})):{sent:false,reason:'no_phone'};
+  for(const [channel,recipient,result] of [['email',email,emailResult],['sms',phone,smsResult]])if(recipient)trackCommunication({organisationId:req.saas.organisation_id,userId:req.saas.user_id,channel,recipient,category:'workforce_invitation',subject:'Secure workforce onboarding'},result);
   saasAudit(req,'worker.onboarding_invited','worker',worker.id,{email_sent:Boolean(emailResult.sent),sms_sent:Boolean(smsResult.sent),expires_at:expires.toISOString()});
   res.status(201).json({ok:true,invite_url:inviteUrl,expires_at:expires.toISOString(),delivery:{email:emailResult,sms:smsResult}});
 });
@@ -3871,6 +3879,7 @@ function requireWorkerInvite(req,res,next){
   if(!invite)return res.status(401).json({ok:false,error:'This onboarding link is invalid, expired or no longer active.'});
   req.workerInvite=invite;
   if(!invite.opened_at){
+    notifications.notifyUser(invite.organisation_id,invite.created_by_user_id,{kind:'invite_opened',title:'Worker opened their onboarding link',body:'Onboarding has started.',link:'#workforce',dedupe:`invite-open:${invite.id}`}).catch(()=>{});
     const now=new Date().toISOString();
     db.prepare(`UPDATE worker_onboarding_invites SET opened_at=?,updated_at=? WHERE id=?`).run(now,now,invite.id);
     addWorkerOnboardingEvent(invite,'invite_opened',{});
@@ -3926,6 +3935,7 @@ app.post('/api/workforce/onboarding/:token/documents/:documentId',workforceOnboa
   db.prepare(`UPDATE worker_documents SET document_name=?,stored_path=?,mime_type=?,size_bytes=?,verification_status='review_required',updated_at=? WHERE id=?`)
     .run(String(req.file.originalname||'evidence').slice(0,250),relative,req.file.mimetype,req.file.size,now,doc.id);
   addWorkerOnboardingEvent(req.workerInvite,'document_uploaded',{document_id:doc.id,document_type:doc.document_type});
+  notifications.notifyRoles(req.workerInvite.organisation_id,['owner','admin'],{kind:'document_uploaded',title:'Worker document uploaded',body:'New onboarding evidence is ready for review.',link:'#workforce',dedupe:`document:${doc.id}:${now}`}).catch(()=>{});
   res.status(201).json({ok:true,status:'review_required'});
 });
 
@@ -4928,6 +4938,8 @@ app.post('/api/webhooks/telnyx', (req, res) => {
     }
 
     const event = req.body?.data;
+    if(event?.event_type==='message.sent'){communicationTracking.receipt('telnyx',event.id,event.payload?.id,'sent');return res.json({ok:true})}
+    if(event?.event_type==='message.finalized'){const payload=event.payload;communicationTracking.receipt('telnyx',event.id,payload?.id,payload?.to?.some(t=>t.status==='delivered')?'delivered':'failed');return res.json({ok:true})}
 
     const eventId =
       String(
@@ -5592,8 +5604,10 @@ app.get('/api/saas/referrals',requireSaasUser,requireSaasRole('owner','admin','s
 
 
 installDiagnosticsRoute(app,{db,env,storage:storagePlan,requireAdmin,startedAt:startedAtMs});
-const saasPlatform=installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles});
 const notifications=installNotifications(app,{db,env,requireSaasUser});
+const communicationTracking=installCommunicationTracking(app,{db,env,requireSaasUser,requireSaasRole,notify:notifications,verifyTelnyx:verifyTelnyxWebhook,receiveEmail:data=>recordInbound(db,data),timers:process.env.NODE_ENV!=='test',sendFollowUp:(row,payload)=>sendBrandedEmail(env,{to:row.recipient,subject:payload.subject,rendered:renderEmail(payload.brand||platformBrand(env),payload.frame),replyTo:payload.replyTo,delivery:{organisationId:row.organisation_id,userId:row.user_id,category:'follow_up',subject:payload.subject}})});
+const saasPlatform=installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles,uploadRoot});
+
 const lifecycle=createLifecycle({db,env,notify:notifications});
 installSubscribers(app,{db,requireAdmin,lifecycle});
 const visibility=installVisibility(app,{db,env,requireAdmin,siteRoot,generateAiText});
@@ -5618,7 +5632,7 @@ const billingSetup=createBillingSetup({db});billingSetup.install(app,{requireSaa
 installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised});
 
 // Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
-installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,sendVerification:payload=>sendSaasVerificationEmail(env,payload)});
+installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,env,sendVerification:payload=>sendSaasVerificationEmail(env,payload)});
 
 /*
 |--------------------------------------------------------------------------

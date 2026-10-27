@@ -1,7 +1,7 @@
 // Office staff chat: bubbles, delivered and read receipts, unread badge, minimise / maximise / close.
 (()=>{
   const {el,api}=window.SuperProUI;
-  const live=(m,k)=>window.GDSLive?.push?.(m,k);
+  const live=(m,k)=>{if(!window.SuperProNotificationSettings?.muted||k==='error')window.GDSLive?.push?.(m,k)};
   const initials=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   const timeOf=iso=>new Date(iso).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
   const dayOf=iso=>{const d=new Date(iso),t=new Date(),y=new Date(Date.now()-864e5);return d.toDateString()===t.toDateString()?'Today':d.toDateString()===y.toDateString()?'Yesterday':d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})};
@@ -18,7 +18,8 @@
     const inactiveBox=el('input',{type:'checkbox'}),inactiveToggle=el('label',{class:'staff-inactive-toggle',hidden:true},inactiveBox,' Show inactive accounts (managers only)');
     const statusSel=el('select',{name:'status'},...Object.entries(STATUS_LABEL).map(([v,t])=>el('option',{value:v,text:t})));
     const avail=el('form',{class:'staff-availability-form'},el('label',{},'Status ',statusSel),el('label',{},'Short reason (optional) ',el('input',{name:'reason',maxlength:'120',placeholder:'e.g. On a customer call'})),el('label',{},'Return time (optional) ',el('input',{name:'returns_at',type:'datetime-local'})),el('button',{type:'submit',text:'Update my status'}));
-    const team=el('details',{class:'staff-directory sc-team'},el('summary',{text:'Team availability'}),inactiveToggle,dir,avail);
+    const availabilityEditor=el('details',{class:'staff-status-editor'},el('summary',{text:'Update my availability'}),avail);
+    const team=el('details',{class:'staff-directory sc-team'},el('summary',{text:'Team availability'}),inactiveToggle,dir,availabilityEditor);
     const ta=el('textarea',{rows:'1',maxlength:'4000',placeholder:'Message your team…',required:true,'aria-label':'Message your team'});
     const send=el('button',{class:'sc-send',type:'submit','aria-label':'Send message'},el('span',{text:'Send'}));
     const form=el('form',{class:'sc-compose'},ta,send);
@@ -47,14 +48,14 @@
       if(!m.mine)return null;
       const read=(m.read_by||[]).length,delivered=m.delivered_count>0;
       const cls=read?'read':delivered?'delivered':'sent',text=read?'✓✓':delivered?'✓✓':'✓';
-      const label=read?`Read by ${m.read_by.join(', ')}`:delivered?'Delivered':'Sent';
-      return el('span',{class:`sc-ticks ${cls}`,title:label,'aria-label':label,text});
+      const label=read?`Seen by ${m.read_by.join(', ')}`:delivered?'Delivered':'Sent';
+      return el('span',{class:`sc-ticks ${cls}`,title:label,'aria-label':label,text:text+' '+(read?'Seen':delivered?'Delivered':'Sent')});
     }
     function bubble(m){
       const mine=m.mine;
       return el('article',{class:`sc-msg ${mine?'mine':'theirs'}`,'data-id':m.id},
         mine?null:el('span',{class:'sc-avatar','aria-hidden':'true',text:initials(m.sender_name)}),
-        el('div',{class:'sc-bubble'},mine?null:el('div',{class:'sc-who'},el('b',{text:m.sender_name}),el('span',{text:m.sender_role})),el('p',{text:m.message}),el('div',{class:'sc-meta'},el('time',{datetime:m.created_at,text:timeOf(m.created_at)}),ticks(m))),
+        el('div',{class:'sc-bubble'},el('div',{class:'sc-who'},el('b',{text:m.sender_name}),el('span',{text:m.sender_role})),el('p',{text:m.message}),el('div',{class:'sc-meta'},el('time',{datetime:m.created_at,text:timeOf(m.created_at)}),ticks(m))),
         mine&&(m.read_by||[]).length?el('small',{class:'sc-seen',text:`Seen by ${m.read_by.length>2?m.read_by.slice(0,2).join(', ')+' +'+(m.read_by.length-2):m.read_by.join(', ')}`}):null);
     }
     function render(rows){
@@ -66,19 +67,19 @@
     }
     async function load(visible){
       try{
-        const d=await api('/api/saas/staff-chat'+(visible&&state==='normal'||visible&&state==='max'?'?read=1':'')),rows=d.messages||[];
+        const d=await api('/api/saas/staff-chat'+(!document.hidden&&visible&&(state==='normal'||state==='max')?'?read=1':'')),rows=d.messages||[];
         unread=d.unread||0;badge.hidden=!unread||state!=='closed';badge.textContent=unread>9?'9+':String(unread);launch.classList.toggle('has-unread',!!unread&&state==='closed');
-        const key=rows.map(m=>m.id+':'+(m.delivered_count||0)+':'+((m.read_by||[]).length)).join('|');
+        const key=rows.map(m=>m.id+':'+m.sender_name+':'+(m.delivered_count||0)+':'+((m.read_by||[]).length)).join('|');
         // receipts: tell the sender when a message was delivered and when it was read
         for(const m of rows){if(!m.mine||!watching.has(m.id))continue;const w=watching.get(m.id);
-          if((m.read_by||[]).length>w.read){live(`${m.read_by.at(-1)} read your message.`);w.read=m.read_by.length;w.delivered=true}
-          else if(m.delivered_count>0&&!w.delivered){live('Your message was delivered.');w.delivered=true}}
+          if((m.read_by||[]).length>w.read){if(state==='closed')live(`${m.read_by.at(-1)} read your message.`);w.read=m.read_by.length;w.delivered=true}
+          else if(m.delivered_count>0&&!w.delivered){if(state==='closed')live('Your message was delivered.');w.delivered=true}}
         if(key!==lastKey){const newest=rows.at(-1);if(lastKey&&newest&&!newest.mine&&state==='closed')live(`New message from ${newest.sender_name}.`);lastKey=key;if(state!=='closed'||!log.children.length||log.querySelector('.sc-empty'))render(rows)}
       }catch(e){if(state!=='closed')log.replaceChildren(el('p',{class:'sc-empty',text:e.message}))}
     }
     form.onsubmit=async e=>{
       e.preventDefault();const message=ta.value.trim();if(!message)return;send.disabled=true;
-      try{const r=await api('/api/saas/staff-chat',{method:'POST',body:JSON.stringify({message})});ta.value='';ta.style.height='';watching.set(r.message.id,{delivered:false,read:0});lastKey='';await load(true);log.scrollTop=log.scrollHeight;send.classList.add('sent');setTimeout(()=>send.classList.remove('sent'),600)}
+      try{const r=await api('/api/saas/staff-chat',{method:'POST',body:JSON.stringify({message})});ta.value='';ta.style.height='';const optimistic={...r.message,delivered_count:0,read_by:[]};log.querySelector('.sc-empty')?.remove();log.append(bubble(optimistic));log.scrollTop=log.scrollHeight;watching.set(r.message.id,{delivered:false,read:0});lastKey='';await load(true);log.scrollTop=log.scrollHeight;send.classList.add('sent');setTimeout(()=>send.classList.remove('sent'),600)}
       catch(err){live(err.message,'error')}finally{send.disabled=false}
     };
     ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit()}});
@@ -87,6 +88,7 @@
     async function loadTeam(){
       try{
         const r=await api('/api/saas/staff-availability'+(inactiveBox.checked?'?include_inactive=1':''));
+        const me=r.staff?.find(p=>p.id===r.me);if(me&&!avail.contains(document.activeElement)){statusSel.value=me.availability;avail.elements.reason.value=me.reason||'';if(me.returns_at){const d=new Date(me.returns_at);avail.elements.returns_at.value=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}else avail.elements.returns_at.value=''}
         inactiveToggle.hidden=!r.can_view_inactive;if(!r.can_view_inactive)inactiveBox.checked=false;
         dir.replaceChildren(...((r.staff||[]).map(p=>{const status=p.availability||'unavailable',label=(p.account_status==='active'?status:'inactive').replaceAll('_',' ');
           return el('div',{class:'staff-directory-person'},el('span',{class:'staff-status-dot','data-status':status,'aria-hidden':'true'}),el('span',{},el('b',{text:p.full_name}),' ',el('small',{text:`${p.designation} · ${label}${p.reason?' · '+p.reason:''}${p.returns_at?' · Returns '+new Date(p.returns_at).toLocaleString():''}`})))}))||[]);
@@ -99,8 +101,9 @@
       try{await api('/api/saas/staff-availability/me',{method:'PUT',body:JSON.stringify({status:f.get('status'),reason:f.get('reason'),returns_at:raw?new Date(raw).toISOString():null})});await loadTeam()}catch(err){live(err.message,'error')}finally{b.disabled=false}});
 
     apply();load(false);
-    setInterval(()=>{if(document.hidden)return;if(state==='closed')load(false);else if(state!=='min')load(true)},6500);
-    setInterval(()=>{if(!document.hidden&&state==='closed')load(false)},25000);
+    setInterval(()=>{if(document.hidden)return;load(state==='normal'||state==='max')},3000);
+    window.addEventListener('focus',()=>{load(state==='normal'||state==='max');if(team.open)loadTeam()});
+    window.SuperProStaffChat={open,close};
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
 })();

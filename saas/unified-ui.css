@@ -110,3 +110,41 @@ body.sp-operator{--bg:var(--sp-canvas);--panel:var(--sp-surface);--panel2:var(--
   .sp-operator .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* Flowstate-inspired depth and motion, rendered with the existing palette.
+   No WebGL, video, fonts, animation libraries or remote assets are added. */
+.sp-motion-toggle{flex:none;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:600 11px/1.2 var(--font-ui);white-space:nowrap;cursor:pointer}
+.sp-motion-toggle:hover{color:var(--text);border-color:var(--brand-line)}
+.sp-motion-target{transform-origin:center;transform-box:fill-box}
+.sp-motion-enabled .sp-motion-visible:is(.sp-logo,.ai-ico){animation:sp-live-icon 6s ease-in-out infinite}
+.sp-motion-enabled .sp-motion-visible:is(.sp-nav-icon,.nav-step svg){animation:sp-icon-breathe 5s ease-in-out infinite}
+.sp-motion-enabled .sp-motion-visible.integration-logo{animation:sp-icon-breathe 6s ease-in-out infinite}
+.sp-page-hidden *,.sp-page-hidden *::before,.sp-page-hidden *::after{animation-play-state:paused!important}
+html:not(.sp-motion-enabled) :is(.sv-icon svg,.gx-live i,.sc-launch-icon),html:not(.sp-motion-enabled) .pulse-dot::after{animation:none!important}
+.sp-motion-enabled.sp-view-arriving .view:not([hidden])>.page-heading{animation:sp-view-enter 280ms var(--sp-ease) both}
+.auth-page .auth-story,.hero{isolation:isolate}
+.hero{position:relative}
+.hero::before{content:"";position:absolute;inset:2% 5%;z-index:-1;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse at 70% 35%,var(--brand-soft),transparent 65%);opacity:.7}
+.auth-page .auth-story::after{content:"";position:absolute;inset:8% -10%;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 30% 35%,var(--brand-soft),transparent 65%);opacity:.75;transform:rotate(-8deg)}
+.sp-motion-enabled .auth-story.sp-motion-visible::after,.sp-motion-enabled .hero.sp-motion-visible::before{animation:sp-fluid-drift 16s ease-in-out infinite alternate}
+.sp-page-hidden .auth-story::after,.sp-page-hidden .hero::before{animation-play-state:paused!important}
+:is(.feature-card,.metric-card,.integration-card,.office-premium-cards article){position:relative}
+@media(hover:hover) and (pointer:fine){
+  :is(.feature-card,.metric-card,.integration-card,.office-premium-cards article):hover{translate:0 -2px}
+  :is(.primary-button,.secondary-button,.nav-item,.nav):active{scale:.985}
+}
+:is(.feature-card,.metric-card,.integration-card,.office-premium-cards article){transition:translate 180ms var(--sp-ease),border-color 180ms var(--sp-ease)}
+.integration-card.self-service .integration-manager-actions{gap:10px}
+#self-service-integration-grid .integration-card.self-service{grid-template-areas:none;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:start;align-items:start}
+#self-service-integration-grid .integration-card.self-service>.integration-logo{grid-area:auto;grid-column:1;grid-row:1}
+#self-service-integration-grid .integration-card.self-service>div:not(.integration-manager):not(.integration-requirements-inline){grid-area:auto;grid-column:2;grid-row:1;min-width:0}
+#self-service-integration-grid .integration-card.self-service>[data-connect-provider]{grid-area:auto;grid-column:1/-1;grid-row:2;justify-self:start;margin-top:2px}
+#self-service-integration-grid .integration-card.self-service>.integration-requirements-inline{grid-area:auto;grid-column:1/-1;grid-row:3;width:100%;min-width:0;overflow-wrap:anywhere}
+#self-service-integration-grid .integration-card.self-service.has-integration-manager>.integration-manager{grid-area:auto;grid-column:1/-1;grid-row:2}
+#self-service-integration-grid+.focus-pagination{position:relative;z-index:1;min-height:56px}
+.sp-operator #app>main>.view{scroll-margin-top:110px}
+@keyframes sp-live-icon{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-2px) rotate(3deg)}}
+@keyframes sp-icon-breathe{0%,100%{opacity:1}50%{opacity:.65}}
+@keyframes sp-fluid-drift{from{transform:translate3d(-2%,-1%,0) rotate(-8deg)}to{transform:translate3d(3%,3%,0) rotate(7deg)}}
+@keyframes sp-view-enter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){.sp-motion-toggle{font-size:10px;min-height:34px}.auth-page .auth-form-top .sp-motion-toggle{margin-left:auto}}
+@media(prefers-reduced-motion:reduce){.sp-motion-target,.auth-story::after,.view>.page-heading{animation:none!important}.feature-card:hover,.metric-card:hover,.integration-card:hover{translate:none}}

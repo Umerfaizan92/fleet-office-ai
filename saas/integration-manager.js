@@ -44,7 +44,13 @@
     return '<div class="integration-manager" data-im-manager="'+esc(x.provider)+'"><div class="integration-manager-status">'+health+(x.last_tested_at?' · '+esc(new Date(x.last_tested_at).toLocaleString()):'')+'</div><div class="integration-manager-actions"><button type="button" class="secondary-button compact" data-im-test="'+esc(x.provider)+'">Test connection</button><button type="button" class="secondary-button compact" data-im-disconnect="'+esc(x.provider)+'">Disconnect</button></div>'+picker+'</div>';
   }
 
-  async function enhance(){
+  let enhancing=null;
+  function enhance(){
+    if(enhancing)return enhancing;
+    enhancing=enhanceCards().finally(()=>{enhancing=null});
+    return enhancing;
+  }
+  async function enhanceCards(){
     const grid=document.querySelector('#self-service-integration-grid');
     if(!grid)return;
     let d;
@@ -127,12 +133,13 @@
     }
   },true);
 
+  // Watch the renderer replacing cards, not this enhancer's own descendants.
+  // Subtree observation here used to trigger a request/mutation loop and reset page two.
   const observer=new MutationObserver(()=>{clearTimeout(observer._t);observer._t=setTimeout(enhance,120)});
   const start=()=>{
     const grid=document.querySelector('#self-service-integration-grid');
-    if(grid){observer.observe(grid,{childList:true,subtree:true});enhance()}
+    if(grid){observer.observe(grid,{childList:true});if(grid.querySelector('[data-provider-card]'))enhance()}
   };
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start):start();
-  window.addEventListener('hashchange',()=>setTimeout(enhance,200));
   window.SuperProIntegrationManager={enhance};
 })();

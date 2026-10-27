@@ -10,6 +10,8 @@
 .nav-domain-toggle>svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s ease}
 .nav-domain[data-open="true"] .nav-domain-toggle>svg{transform:rotate(90deg)}
 .nav-domain-items{position:absolute;z-index:60;top:calc(100% + 6px);left:0;display:flex;flex-direction:column;gap:2px;min-width:min(290px,86vw);padding:6px;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:14px;background:var(--panel,#fff);box-shadow:0 22px 56px rgba(0,0,0,.28);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px) scale(.98);transform-origin:top left;transition:opacity .16s,transform .16s,visibility 0s linear .16s}
+.nav-domain-items{max-width:calc(100vw - 24px);max-height:min(65dvh,440px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding:8px}
+#sidebar .workspace-nav .nav-domain-items .nav-item{white-space:normal;flex-shrink:0}
 .nav-domain[data-open="true"] .nav-domain-items{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
 #sidebar .workspace-nav .nav-item{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted,#aab3c2);font:inherit;font-size:13px;font-weight:650;text-align:left;text-decoration:none;white-space:nowrap;cursor:pointer;transition:transform .16s,background .16s,border-color .16s,color .16s}
 #sidebar .workspace-nav .nav-item:hover{transform:translateX(2px);background:var(--panel-2,rgba(255,255,255,.06));color:var(--text,inherit)}

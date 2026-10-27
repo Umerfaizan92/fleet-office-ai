@@ -44,6 +44,52 @@
     aside.addEventListener('keydown',e=>{if(e.key!=='Tab'||!media.matches||menu.getAttribute('aria-expanded')!=='true')return;const items=[...aside.querySelectorAll('a[href],button,input')].filter(n=>!n.disabled&&n.getClientRects().length&&!n.hidden),first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}});
     setOpen(false);
   }
-  function init(){installSkip();installOffice();for(const d of document.querySelectorAll('dialog')){if(!d.getAttribute('aria-label')&&!d.getAttribute('aria-labelledby')){const title=d.querySelector('h1,h2,h3');if(title){if(!title.id)title.id='sp-dialog-title-'+d.id;d.setAttribute('aria-labelledby',title.id)}}}}
+  // Edge scrolling runs only while a mouse is near the edge of an overflowing menu.
+  const scrollingMenus=new WeakSet();
+  function installMenuScroll(){
+    document.querySelectorAll('.nav-domain-items,.sp-operator #app>aside nav').forEach(menu=>{
+      if(scrollingMenus.has(menu))return;scrollingMenus.add(menu);
+      let frame=0,speed=0,last=0;
+      const stop=()=>{cancelAnimationFrame(frame);frame=0;speed=0;last=0};
+      const tick=time=>{frame=0;if(!menu.isConnected||document.hidden||!speed)return stop();
+        const before=menu.scrollTop,delta=speed*Math.min(2,(time-(last||time-16.7))/16.7);last=time;menu.scrollTop+=delta;
+        if(Math.abs(menu.scrollTop-before)<.5)return stop();frame=requestAnimationFrame(tick);
+      };
+      menu.addEventListener('pointermove',e=>{
+        if(e.pointerType!=='mouse'||menu.scrollHeight<=menu.clientHeight)return stop();
+        const r=menu.getBoundingClientRect(),edge=30,y=e.clientY-r.top;
+        speed=y<edge?-6*(1-y/edge):y>r.height-edge?6*(1-(r.height-y)/edge):0;
+        if(!speed)stop();else if(!frame)frame=requestAnimationFrame(tick);
+      },{passive:true});
+      menu.addEventListener('pointerleave',stop,{passive:true});menu.addEventListener('pointerdown',stop,{passive:true});
+      menu.addEventListener('wheel',stop,{passive:true});
+    });
+  }
+  function installMotion(){
+    const html=document.documentElement,reduced=matchMedia('(prefers-reduced-motion:reduce)'),connection=navigator.connection;
+    let paused=false;try{paused=localStorage.getItem('superpro-motion')==='paused'}catch{}
+    const button=document.createElement('button');button.type='button';button.className='sp-motion-toggle';
+    const host=document.querySelector('.topbar-actions,.header-actions,.auth-form-top,.site-header');
+    if(host)host.append(button);
+    const sync=()=>{
+      const enabled=!paused&&!reduced.matches&&!connection?.saveData;
+      html.classList.toggle('sp-motion-enabled',enabled);html.classList.toggle('sp-page-hidden',document.hidden);
+      button.textContent=enabled?'◌ Motion on':'◌ Motion off';button.setAttribute('aria-pressed',String(enabled));
+      button.setAttribute('aria-label',enabled?'Pause decorative animations':'Enable decorative animations');
+      button.title=reduced.matches?'Reduced motion is enabled on your device':connection?.saveData?'Animation paused while Data Saver is on':'';
+    };
+    button.addEventListener('click',()=>{paused=!paused;try{localStorage.setItem('superpro-motion',paused?'paused':'on')}catch{}sync()});
+    reduced.addEventListener('change',sync);connection?.addEventListener?.('change',sync);document.addEventListener('visibilitychange',sync);sync();
+    // Observe additions once, then animate only a small budget of on-screen icons.
+    const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.hero,.auth-story';
+    const refresh=()=>{let count=0;for(const node of visible){if(!node.isConnected){visible.delete(node);continue}node.classList.toggle('sp-motion-visible',count++<12)}};
+    const observer=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting)visible.add(e.target);else{visible.delete(e.target);e.target.classList.remove('sp-motion-visible')}}refresh()},{threshold:.1});
+    const register=root=>{if(!(root instanceof Element))return;const nodes=[...(root.matches(selector)?[root]:[]),...root.querySelectorAll(selector)];for(const node of nodes){if(observed.has(node))continue;observed.add(node);node.classList.add('sp-motion-target');observer.observe(node)}};
+    register(document.body);
+    new MutationObserver(records=>{for(const record of records){for(const node of record.removedNodes){if(!(node instanceof Element))continue;for(const target of [node,...node.querySelectorAll('.sp-motion-target')]){observer.unobserve(target);observed.delete(target);visible.delete(target)}}for(const node of record.addedNodes)register(node)}refresh()}).observe(document.body,{childList:true,subtree:true});
+    window.addEventListener('gds:viewchange',()=>{html.classList.remove('sp-view-arriving');requestAnimationFrame(()=>html.classList.add('sp-view-arriving'))});
+  }
+  function init(){installSkip();installOffice();installMenuScroll();installMotion();for(const d of document.querySelectorAll('dialog')){if(!d.getAttribute('aria-label')&&!d.getAttribute('aria-labelledby')){const title=d.querySelector('h1,h2,h3');if(title){if(!title.id)title.id='sp-dialog-title-'+d.id;d.setAttribute('aria-labelledby',title.id)}}}}
+  window.addEventListener('superpro:nav-ready',installMenuScroll);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

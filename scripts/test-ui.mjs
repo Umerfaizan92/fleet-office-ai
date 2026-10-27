@@ -24,6 +24,9 @@ try{
   let ready=false;for(let i=0;i<100&&!ready;i++){if(child.exitCode!==null)throw Error(serverLog.slice(-2000));try{ready=(await fetch(base+'/healthz')).ok}catch{}if(!ready)await new Promise(r=>setTimeout(r,100))}assert.ok(ready,'local server starts');
   browser=await chromium.launch({headless:true,...(process.env.UI_CHROMIUM_PATH?{executablePath:process.env.UI_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']}:{} )});
   const context=await browser.newContext();const page=await context.newPage();page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
+  await check('public landing keeps its palette, motion control and responsive layout',async()=>{
+    for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.goto(base+'/saas/');await page.locator('.sp-motion-toggle').waitFor({state:'visible'});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'landing-'+width);}
+  });
   for(const width of [390,768,1440]){
     await page.setViewportSize({width,height:900});await page.goto(base+'/saas/sign-in.html');
     await check(`sign-in at ${width}px: no horizontal overflow; shared font and tabs`,async()=>{
@@ -57,6 +60,66 @@ try{
     const hashes=views.length?views.map(v=>v.path):['today/home','today/approvals','customers/list','customers/stock','customers/inbox','customers/jobs','people/workers','people/staff','people/hiring','marketing/studio','marketing/growth','marketing/search','marketing/connections','money/ledger','money/billing','setup/settings','setup/import','setup/print','setup/trust','setup/help','setup/manual'];
     for(const hash of hashes){await page.evaluate(h=>{location.hash=h},hash);await page.waitForTimeout(80);assert.equal(await page.locator('#workspace .view:visible').count(),1,hash);const expected=views.find(v=>v.path===hash)?.view;if(expected)assert.ok(await page.locator('#'+expected+'-view').isVisible(),hash)}
     console.log('Business routes checked:',hashes.length);
+  });
+  await check('desktop menus open on hover, close on leave and support keyboard',async()=>{
+    for(const domain of ['today','customers','people','marketing','money','setup']){
+      const group=page.locator('.nav-domain[data-domain="'+domain+'"]');
+      await group.locator('.nav-domain-toggle').hover();
+      assert.equal(await group.getAttribute('data-open'),'true');
+      const bounds=await group.locator('.nav-domain-items').boundingBox();
+      assert.ok(bounds.x>=0&&bounds.x+bounds.width<=1441&&bounds.y+bounds.height<=901,domain);
+      await page.mouse.move(1400,700);await page.waitForTimeout(240);
+      assert.equal(await group.getAttribute('data-open'),'false');
+    }
+    const setup=page.locator('.nav-domain[data-domain="setup"]');
+    await setup.locator('.nav-domain-toggle').focus();await page.keyboard.press('ArrowDown');
+    assert.ok(await setup.locator('.nav-item').first().evaluate(e=>e===document.activeElement));
+    await page.keyboard.press('End');assert.ok(await setup.locator('.nav-item').last().evaluate(e=>e===document.activeElement));
+    await page.keyboard.press('Escape');assert.equal(await setup.getAttribute('data-open'),'false');
+  });
+  await check('overflowing menus scroll at the edge and stop on pointer leave',async()=>{
+    const group=page.locator('.nav-domain[data-domain="setup"]');await group.locator('.nav-domain-toggle').hover();
+    const menu=group.locator('.nav-domain-items');await menu.evaluate(e=>{e.style.maxHeight='150px';e.scrollTop=0});
+    const r=await menu.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height-5);await page.waitForTimeout(200);
+    assert.ok(await menu.evaluate(e=>e.scrollTop)>0,'edge hover scrolls');
+    await page.mouse.move(1400,700);const stopped=await menu.evaluate(e=>e.scrollTop);await page.waitForTimeout(100);assert.equal(await menu.evaluate(e=>e.scrollTop),stopped);
+  });
+  await check('touch menus open on tap and keep their options inside the viewport',async()=>{
+    const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});
+    try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});
+      const toggle=p.locator('.nav-domain[data-domain="setup"] .nav-domain-toggle');await toggle.tap();
+      const menu=p.locator('.nav-domain[data-domain="setup"] .nav-domain-items');await menu.waitFor({state:'visible'});const b=await menu.boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y+b.height<=845,JSON.stringify(b));
+      await menu.locator('[data-view="manual"]').tap();assert.ok(await p.locator('#manual-view').isVisible());
+    }finally{await touch.close()}
+  });
+  await check('live motion is bounded, uses existing colours and can be paused',async()=>{
+    assert.equal(await page.locator('html').evaluate(e=>getComputedStyle(e).getPropertyValue('--sp-accent').trim()),'#e2bd72');
+    assert.ok(await page.locator('.sp-motion-visible').count()<=12);
+    const toggle=page.locator('.sp-motion-toggle');await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await page.locator('html').evaluate(e=>e.classList.contains('sp-motion-enabled')),false);
+    await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+  });
+  let integrationReads=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/saas/integrations/self-service')integrationReads++});
+  await page.evaluate(()=>location.hash='marketing/connections');
+  await check('connectors page two stays selected while readiness details update',async()=>{
+    const grid=page.locator('#self-service-integration-grid');
+    await grid.locator('[data-provider-card]').first().waitFor();
+    const pager=page.locator('#self-service-integration-grid + .focus-pagination');
+    assert.ok(await grid.locator('[data-provider-card="snapchat"]').isVisible(),'Snapchat appears at the end of page one');
+    await pager.getByRole('button',{name:'Next →',exact:true}).click();
+    await page.waitForTimeout(800);
+    assert.match(await pager.innerText(),/Page 2 of/);
+    assert.ok(await grid.locator('[data-provider-card="x"]').isVisible(),'First connector after Snapchat remains reachable');
+    const later=grid.locator('[data-provider-card="x"]');
+    await later.locator('[data-connect-provider]').click();
+    await page.waitForTimeout(400);
+    assert.match(await pager.innerText(),/Page 2 of/);
+    assert.ok(await later.locator('[data-im-requirements]').isVisible());
+    assert.ok(await grid.locator('[data-provider-card="website"]').isVisible(),'Website after Snapchat is reachable');
+    assert.ok(await grid.locator('[data-provider-card="email_sms"]').isVisible(),'Email/SMS after Snapchat is reachable');
+    await screenshot(page,'connectors-second-page');
+    const before=integrationReads;await page.waitForTimeout(700);assert.equal(integrationReads,before,'an idle connector list must not refetch itself');
+    await pager.getByRole('button',{name:'← Previous',exact:true}).click();
+    assert.match(await pager.innerText(),/Page 1 of/);
   });
   await page.evaluate(()=>location.hash='customers/list');await page.waitForTimeout(100);
   await check('customer dialog fits mobile and Cancel works with required fields empty',async()=>{

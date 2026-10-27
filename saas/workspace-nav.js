@@ -85,10 +85,35 @@
     }).join('');
     nav.querySelectorAll('.nav-domain-toggle').forEach(btn=>btn.addEventListener('click',event=>{
       event.stopPropagation();
-      const section=btn.closest('.nav-domain'),open=section.dataset.open!=='true';
+      const section=btn.closest('.nav-domain');
+      const mouseHover=event.detail>0&&matchMedia('(hover:hover) and (pointer:fine)').matches&&section.matches(':hover');
+      const open=mouseHover||section.dataset.open!=='true';
       closeAll(nav);
-      if(open){section.dataset.open='true';btn.setAttribute('aria-expanded','true')}
+      if(open){section.dataset.open='true';btn.setAttribute('aria-expanded','true');
+        const menu=section.querySelector('.nav-domain-items'),bounds=btn.getBoundingClientRect();
+        menu.style.maxHeight=Math.max(120,innerHeight-bounds.bottom-24)+'px';
+        menu.style.left='';menu.style.right='';
+        if(bounds.left+Math.min(310,innerWidth-24)>innerWidth-12){menu.style.left='auto';menu.style.right='0'}
+      }
     }));
+    // Hover is a desktop convenience; touch and keyboard retain explicit controls.
+    nav.querySelectorAll('.nav-domain').forEach(section=>{
+      const toggle=section.querySelector('.nav-domain-toggle'),menu=section.querySelector('.nav-domain-items');
+      let closeTimer;
+      const open=()=>{clearTimeout(closeTimer);closeAll(nav);section.dataset.open='true';toggle.setAttribute('aria-expanded','true');
+        const bounds=toggle.getBoundingClientRect();menu.style.maxHeight=Math.max(120,innerHeight-bounds.bottom-24)+'px';
+        menu.style.left='';menu.style.right='';
+        if(bounds.left+Math.min(310,innerWidth-24)>innerWidth-12){menu.style.left='auto';menu.style.right='0'}
+      };
+      section.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'&&matchMedia('(hover:hover) and (pointer:fine)').matches)open()});
+      section.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')closeTimer=setTimeout(()=>{if(!menu.contains(document.activeElement)){section.dataset.open='false';toggle.setAttribute('aria-expanded','false')}},180)});
+      toggle.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();open();menu.querySelector('.nav-item')?.focus()}});
+      menu.addEventListener('keydown',e=>{const items=[...menu.querySelectorAll('.nav-item')],at=items.indexOf(document.activeElement);let next;
+        if(e.key==='ArrowDown')next=(at+1)%items.length;else if(e.key==='ArrowUp')next=(at-1+items.length)%items.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=items.length-1;
+        if(next!==undefined){e.preventDefault();items[next]?.focus()}
+      });
+      section.addEventListener('focusout',()=>setTimeout(()=>{if(!section.contains(document.activeElement)&&!section.matches(':hover')){section.dataset.open='false';toggle.setAttribute('aria-expanded','false')}},0));
+    });
     // Selecting an item, clicking elsewhere or pressing Escape closes the menu.
     nav.addEventListener('click',event=>{if(event.target.closest('.nav-item'))closeAll(nav)});
     if(!nav.dataset.navBound){
@@ -96,6 +121,7 @@
       document.addEventListener('click',event=>{if(!nav.contains(event.target))closeAll(nav)});
       document.addEventListener('keydown',event=>{if(event.key==='Escape'){const open=nav.querySelector('.nav-domain[data-open="true"] .nav-domain-toggle');closeAll(nav);open?.focus()}});
     }
+    window.dispatchEvent(new Event('superpro:nav-ready'));
   }
   // Mark the domain that holds the active view so the user never loses their place.
   function reveal(view){

@@ -299,6 +299,11 @@ await stage('live', 'RBAC matrix and the end-to-end pipeline on a real server', 
       assert.ok(verify.status < 300, verify.text);
       const login = await call('POST', '/api/saas/login', { body: { email: 'verify.owner@example.com', password } });
       assert.equal(login.status, 200, login.text);
+      for (const [label, pw] of [['trailing space', password + ' '], ['capitalised first letter', password[0].toUpperCase() + password.slice(1)]]) {
+        const v = await call('POST', '/api/saas/login', { body: { email: ' Verify.Owner@Example.com ', password: pw } });
+        assert.equal(v.status, 200, 'mobile keyboard variant rejected: ' + label);
+      }
+      assert.equal((await call('POST', '/api/saas/login', { body: { email: 'verify.owner@example.com', password: 'wrong-' + password } })).status, 401, 'wrong password must still fail');
       const set = login.headers.getSetCookie?.() || [login.headers.get('set-cookie')];
       ownerCookie = set.filter(Boolean).map((c) => c.split(';')[0]).join('; ');
       assert.ok(/fp_session=/.test(ownerCookie), 'no session cookie issued');

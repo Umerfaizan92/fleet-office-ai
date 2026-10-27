@@ -98,3 +98,9 @@ body>footer,html.has-stage footer{padding-bottom:120px!important}
   .site-header nav.open{display:flex}
   .site-header .mobile-nav{display:block}
 }
+
+.pw-wrap{position:relative;display:block}
+.pw-wrap>input{width:100%;padding-right:46px!important}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:grid;place-items:center;background:transparent;border:0;border-radius:8px;color:#c9a24a;cursor:pointer;padding:0;min-height:0}
+.pw-eye:hover{color:#e6c46a;background:rgba(201,162,74,.12)}
+.pw-eye:focus-visible{outline:2px solid #c9a24a;outline-offset:1px}

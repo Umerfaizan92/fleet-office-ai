@@ -2028,6 +2028,10 @@ const voiceReplyLimiter=rateLimit({windowMs:60*1000,limit:24,standardHeaders:tru
 const sessionCookieName='fp_session';
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const passwordHash=(password,salt)=>crypto.scryptSync(password,salt,64,{N:16384,r:8,p:1}).toString('hex');
+// Mobile keyboards often add a trailing space, capitalise the first letter or compose accents differently.
+// Try the exact password first, then a few safe variants of what was typed, so correct passwords are never rejected.
+function passwordCandidates(raw){const out=[raw],add=v=>{if(v&&!out.includes(v))out.push(v)};const t=raw.trim();add(t);add(raw.normalize('NFC'));add(t.normalize('NFC'));add(t.normalize('NFKC'));if(t.length){const f=t[0],sw=f===f.toLowerCase()?f.toUpperCase():f.toLowerCase();add(sw+t.slice(1));add((sw+t.slice(1)).normalize('NFC'))}return out.slice(0,7)}
+function passwordMatches(password,user){const stored=Buffer.from(String(user.password_hash||''));let ok=false;for(const c of passwordCandidates(String(password))){const h=Buffer.from(passwordHash(c,user.password_salt));if(h.length===stored.length&&crypto.timingSafeEqual(h,stored))ok=true}return ok}
 const verificationTestMode=env.NODE_ENV!=='production'&&String(env.SAAS_VERIFICATION_TEST_MODE||'')==='1';
 function cookieValue(req,name){const row=String(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(`${name}=`));return row?decodeURIComponent(row.slice(name.length+1)):''}
 const SESSION_TTL_DAYS=Math.min(365,Math.max(1,Number(env.SESSION_TTL_DAYS||7)));
@@ -2473,7 +2477,7 @@ app.post('/api/saas/login',authLimiter,(req,res)=>{
   const parsed=z.object({email:z.string().trim().email(),password:z.string().min(1).max(200),mfa_code:z.string().regex(/^\d{6}$/).optional()}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Invalid sign-in details.'});
   const user=db.prepare(`SELECT * FROM users WHERE email=? AND status='active'`).get(parsed.data.email.toLowerCase());if(!user)return res.status(401).json({ok:false,error:'Invalid sign-in details.'});
   const now=new Date();if(user.locked_until&&new Date(user.locked_until)>now)return res.status(423).json({ok:false,error:'This account is temporarily locked after repeated failed sign-in attempts. Try again later.'});
-  const supplied=passwordHash(parsed.data.password,user.password_salt),stored=user.password_hash,passwordOk=supplied.length===stored.length&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(stored));
+  const passwordOk=passwordMatches(parsed.data.password,user);
   if(!passwordOk){const nextFailures=Number(user.failed_login_attempts||0)+1,lockedUntil=nextFailures>=5?new Date(now.getTime()+15*60*1000).toISOString():null;db.prepare(`UPDATE users SET failed_login_attempts=?,locked_until=?,updated_at=? WHERE id=?`).run(nextFailures,lockedUntil,now.toISOString(),user.id);return res.status(401).json({ok:false,error:'Invalid sign-in details.'});}
   // Email verification is always required. Mobile verification is required for any business owner and for any account with a mobile number on record.
   // Invited staff (no mobile, not an owner) are verified through the owner's invitation plus a code sent to their mailbox.

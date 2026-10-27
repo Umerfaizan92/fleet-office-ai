@@ -62,7 +62,7 @@ export async function syncUploads({ client, bucket, prefix, dir, seen, log = con
     let sig; try { sig = signature(f.full); } catch { continue; }
     if (seen.get(key) === sig) continue;
     try {
-      await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fs.readFileSync(f.full), ServerSideEncryption: 'AES256' }));
+      await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fs.readFileSync(f.full) }));
       seen.set(key, sig); uploaded += 1;
     } catch (err) { failed += 1; log(`[backup] could not upload ${f.rel}: ${err.message}`); }
   }

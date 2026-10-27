@@ -21,7 +21,7 @@
     document.title=document.title.replaceAll('Super Pro AI Office Manager','Super Pro AI Office Manager');
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
     for(const n of nodes){if(!n.parentElement||['SCRIPT','STYLE','CODE','TEXTAREA','INPUT'].includes(n.parentElement.tagName))continue;let t=n.nodeValue;if(!t)continue;t=t.replaceAll('Super Pro AI Office Manager','Super Pro AI Office Manager').replaceAll('GDS Office Co-pilot','Super Pro Office Co-pilot').replaceAll('GDS workspace','Super Pro workspace');n.nodeValue=t}
-    $$('.fp-monogram,.brand-monogram').forEach(x=>{x.textContent='SP';x.classList.add('sp-monogram')});
+    $$('.fp-monogram,.brand-monogram').forEach(x=>{if(!x.querySelector('.sp-logo'))x.textContent='SP';x.classList.add('sp-monogram')});
   }
 
   async function loadConversations(){

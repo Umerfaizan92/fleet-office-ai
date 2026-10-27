@@ -3,7 +3,7 @@
 
   const localeMap={en:'en-AU',ur:'ur-PK',hi:'hi-IN',pa:'pa-IN',ar:'ar-SA',zh:'zh-CN',ja:'ja-JP',ko:'ko-KR',bn:'bn-BD',ta:'ta-IN',es:'es-ES',fr:'fr-FR'};
   const speechSupported='speechSynthesis'in window&&'SpeechSynthesisUtterance'in window;
-  let playbackContext=null,speechRun=0,streamController=null,streamSources=[],fallbackAudio=null,fallbackUrl='',activeCapture=null;
+  let playbackContext=null,speechRun=0,streamController=null,streamSources=[],fallbackAudio=null,fallbackUrl='',activeCapture=null,captureRun=0;
   const playbackWaiters=new Set();
 
   const detectLanguage=text=>window.GDSProductGuide?.detectLanguage?.(text)||'en';
@@ -151,7 +151,8 @@
 
   function isListening(){return Boolean(activeCapture?.recorder&&activeCapture.recorder.state==='recording')}
 
-  function stopListening(){
+  function stopListening(cancel=false){
+    if(cancel){captureRun++;if(activeCapture){activeCapture.cancelled=true;activeCapture.controller?.abort()}}
     if(activeCapture?.recorder?.state==='recording'){
       activeCapture.manualStop=true;
       try{activeCapture.recorder.stop()}catch{}
@@ -162,13 +163,14 @@
 
   async function listen({language='auto',onStatus,onListening}={}){
     if(isListening()){stopListening();return {text:'',stopped:true}}
-    stopSpeech();
+    stopSpeech();const run=++captureRun;
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw new Error('Microphone recording is not supported in this browser.');
 
     const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    if(run!==captureRun){stream.getTracks().forEach(t=>t.stop());return {text:'',cancelled:true}}
     const preferred=['audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
     const recorder=new MediaRecorder(stream,preferred?{mimeType:preferred}:undefined),chunks=[];
-    const state={recorder,stream,manualStop:false};activeCapture=state;
+    const state={recorder,stream,manualStop:false,controller:new AbortController()};activeCapture=state;
 
     return await new Promise((resolve,reject)=>{
       let audioContext=null,sourceNode=null,analyser=null,monitorTimer=null,noSpeechTimer=null,hardStopTimer=null;
@@ -212,13 +214,15 @@
 
       recorder.onstop=async()=>{
         const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});cleanup();
+        if(state.cancelled||run!==captureRun)return resolve({text:'',cancelled:true});
         if(blob.size<700){onStatus?.('No speech detected. Microphone stopped.','ready');return resolve({text:'',noSpeech:true})}
         onStatus?.('Understanding what you said…','transcribing');
         try{
           const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',language);
-          const response=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',body:fd});
+          const response=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',signal:state.controller.signal,body:fd});
           const d=await response.json().catch(()=>({}));
           if(!response.ok)throw new Error(d.error||'Voice transcription failed.');
+          if(state.cancelled||run!==captureRun)return resolve({text:'',cancelled:true});
           const text=String(d.text||'').trim();
           if(!text){onStatus?.('No speech was understood. Please try again.','ready');return resolve({text:'',noSpeech:true})}
           const result={...d,text,language:d.language||detectLanguage(text)};
@@ -230,5 +234,6 @@
     });
   }
 
+  window.addEventListener('pagehide',()=>{stopSpeech();stopListening(true)});
   window.SuperProAIClient={version:'2026-09-19.1',detectLanguage,locale,cleanSpeech,speak,stopSpeech,listen,stopListening,isListening,ensurePlaybackContext};
 })();

@@ -38,6 +38,18 @@ export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,auth
    saasAudit(req,'team.invitation_revoked','team_invite',req.params.id);res.json({ok:true});
   })();
  });
+ app.patch('/api/saas/team-accounts/members/:id/role',...owner,(req,res)=>{
+  const parsed=z.object({role:z.enum(['admin','manager','employee','contractor'])}).strict().safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Choose a valid staff role.'});
+  const org=req.saas.organisation_id,member=db.prepare('SELECT role FROM memberships WHERE organisation_id=? AND user_id=?').get(org,req.params.id);
+  if(!member)return res.status(404).json({ok:false,error:'Member not found.'});
+  if(member.role==='owner')return res.status(409).json({ok:false,error:'Owner authority cannot be changed here.'});
+  db.transaction(()=>{
+   db.prepare('UPDATE memberships SET role=? WHERE organisation_id=? AND user_id=?').run(parsed.data.role,org,req.params.id);
+   saasAudit(req,'team.role_authorised','user',req.params.id,{previous_role:member.role,role:parsed.data.role});
+  })();
+  res.json({ok:true,role:parsed.data.role,note:'Role authorised. Permissions apply to the next request; refresh the employee workspace to update its navigation.'});
+ });
  app.delete('/api/saas/team-accounts/members/:id',...owner,(req,res)=>{
   const org=req.saas.organisation_id,member=db.prepare('SELECT role FROM memberships WHERE organisation_id=? AND user_id=?').get(org,req.params.id);
   if(!member)return res.status(404).json({ok:false,error:'Member not found.'});

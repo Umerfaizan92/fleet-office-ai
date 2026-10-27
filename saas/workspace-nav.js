@@ -20,7 +20,7 @@
     ]},
     {id:'people',label:'People',kicker:'PEOPLE',icon:'i-users',items:[
       {view:'workforce',path:'people/workers',alias:['workforce/compliance'],label:'Workers & Compliance',icon:'i-users'},
-      {view:'team',path:'people/staff',alias:['workforce/staff'],label:'Staff Accounts',icon:'i-users',roles:['owner']},
+      {view:'team',path:'people/staff',alias:['workforce/staff'],label:'Staff Accounts & Roles',icon:'i-users',roles:['owner']},
       {view:'hiring',path:'people/hiring',alias:['hiring'],label:'Hiring (owner & admin only)',icon:'i-briefcase',roles:['owner','admin']}
     ]},
     {id:'marketing',label:'Marketing & Channels',kicker:'MARKETING & CHANNELS',icon:'i-video',items:[

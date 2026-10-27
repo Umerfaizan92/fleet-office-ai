@@ -4,8 +4,8 @@
  const status=message=>{$('#team-status').textContent=message};
  async function refresh(){
   try{const data=await request('');
-   $('#team-members').innerHTML=data.members.map(m=>`<article class="panel"><strong>${esc(m.full_name)}</strong><p>${esc(m.email)} · ${esc(m.role)}${m.role_title?' · '+esc(m.role_title):''}</p>${m.role!=='owner'?`<button type="button" data-team-revoke="members/${esc(m.id)}">Revoke business access</button>`:''}</article>`).join('')||'<p>No members found.</p>';
-   $('#team-invitations').innerHTML=data.invitations.map(i=>{const state=i.status==='pending'&&Date.parse(i.expires_at)<Date.now()?'expired':i.status;return `<article class="panel"><strong>${esc(i.invited_email)}</strong><p>${esc(i.role)} · ${esc(state)} · Expires ${esc(new Date(i.expires_at).toLocaleString())}</p>${state==='pending'?`<button type="button" data-team-revoke="invitations/${esc(i.id)}">Revoke invitation</button>`:''}</article>`}).join('')||'<p>No invitations yet.</p>';
+   $('#team-members').innerHTML=data.members.map(m=>`<article class="panel"><strong>${esc(m.full_name)}</strong><p>${esc(m.email)} · ${esc(m.role)}${m.role_title?' · '+esc(m.role_title):''}</p>${m.role!=='owner'?`<form data-team-role="${esc(m.id)}"><label>Authorised role<select name="role">${['admin','manager','employee','contractor'].map(role=>`<option value="${role}" ${role===m.role?'selected':''}>${role[0].toUpperCase()+role.slice(1)}</option>`).join('')}</select></label><button class="primary-button compact" type="submit">Save role</button></form><button class="secondary-button" type="button" data-team-revoke="members/${esc(m.id)}">Revoke business access</button>`:''}</article>`).join('')||'<p>No members found.</p>';
+   $('#team-invitations').innerHTML=data.invitations.map(i=>{const state=i.status==='pending'&&Date.parse(i.expires_at)<Date.now()?'expired':i.status;return `<article class="panel"><strong>${esc(i.invited_email)}</strong><p>${esc(i.role)} · ${esc(state)} · Expires ${esc(new Date(i.expires_at).toLocaleString())}</p>${state==='pending'?`<button class="secondary-button" type="button" data-team-revoke="invitations/${esc(i.id)}">Revoke invitation</button>`:''}</article>`}).join('')||'<p>No invitations yet.</p>';
   }catch(error){status(error.message)}
  }
  $('#team-open-invite')?.addEventListener('click',async()=>{
@@ -22,6 +22,11 @@
   try{const data=await request('/invitations','POST',Object.fromEntries(new FormData(event.target)));result.textContent=data.note;
    const link=document.createElement('input');link.readOnly=true;link.value=new URL(data.invite_path,location.href).href;link.setAttribute('aria-label','Private invitation link');result.append(link);await refresh();
   }catch(error){result.textContent=error.message}finally{button.disabled=false}
+ });
+ $('#team-view')?.addEventListener('submit',async event=>{
+  const form=event.target.closest('[data-team-role]');if(!form)return;event.preventDefault();
+  const button=form.querySelector('button');button.disabled=true;
+  try{const data=await request('/members/'+encodeURIComponent(form.dataset.teamRole)+'/role','PATCH',{role:form.elements.role.value});status(data.note);await refresh()}catch(error){status(error.message)}finally{button.disabled=false}
  });
  $('#team-view')?.addEventListener('click',async event=>{
   const button=event.target.closest('[data-team-revoke]');if(!button)return;

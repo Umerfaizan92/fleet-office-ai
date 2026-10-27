@@ -152,17 +152,12 @@ export async function sendSaasVerificationEmail(env, { to, code, businessName })
   const payload = {
     to: [to],
     subject: 'Super Pro AI Office Manager security verification code',
-    text: [
-      'SUPER PRO AI OFFICE MANAGER — SECURITY VERIFICATION',
-      '',
-      `Business: ${businessName}`,
-      `Verification code: ${code}`,
-      '',
-      'This code expires in 10 minutes.',
-      'Do not share this code with anyone.',
-      '',
-      'If you did not start this registration, you can ignore this email.'
-    ].join('\n')
+    ...renderEmail(platformBrand(env),{
+      heading:'Verify your email',
+      paragraphs:[`Confirm your identity to continue with ${businessName}.`],
+      facts:[['Verification code',code],['Expires','10 minutes']],
+      notes:['Do not share this code. If you did not request it, ignore this email.']
+    })
   };
 
   let lastError = null;
@@ -191,23 +186,15 @@ export async function sendWorkerOnboardingInviteEmail(env,{to,workerName,busines
   const {data,error}=await resend.emails.send({
     from,to:[to],
     subject:`${businessName} — secure workforce onboarding`,
-    text:[
-      'SUPER PRO AI OFFICE MANAGER — SECURE WORKFORCE ONBOARDING',
-      '',
-      `Business: ${businessName}`,
-      `Worker: ${workerName}`,
-      '',
-      'Use the secure link below to complete only your workforce onboarding information, upload requested evidence and accept the applicable declarations/policies.',
-      '',
-      inviteUrl,
-      '',
-      `Link expires: ${expiresAt}`,
-      '',
-      'This link does not provide access to the business workspace.',
-      'Do not forward this link to another person.',
-      '',
-      'Final work-right, licence, skill and compliance approval remains subject to authorised review and any required official verification.'
-    ].join('\n')
+    ...renderEmail(platformBrand(env),{
+      heading:'Complete your workforce onboarding',
+      paragraphs:[`Hello ${workerName}, ${businessName} has invited you to complete your workforce profile.`,
+        '1. Open your private link. 2. Complete your details and requested evidence. 3. Review and accept the applicable declarations and policies.'],
+      facts:[['Business',businessName],['Worker',workerName],['Link expires',expiresAt]],
+      button:{label:'Start secure onboarding',url:inviteUrl},
+      notes:['This link does not provide business workspace access. Do not forward it.',
+        'Work rights, licences, skills and compliance still require authorised review and any required official verification.']
+    })
   });
   if(error)throw new Error(`Worker onboarding email failed: ${error.message||JSON.stringify(error)}`);
   return {sent:true,email_id:data?.id||null};
@@ -221,7 +208,7 @@ export async function sendSupportEscalationEmail(env, { to, supportCase }) {
     from,
     to: [to],
     subject: `[${supportCase.reference_code}] ${String(supportCase.severity).toUpperCase()} support escalation — ${supportCase.subject}`,
-    text: [
+    ...renderEmail(platformBrand(env),{heading:'Support escalation',paragraphs:([
       'SUPER PRO AI OFFICE MANAGER — SUPPORT / GOVERNANCE ESCALATION',
       '',
       `Reference: ${supportCase.reference_code}`,
@@ -241,7 +228,7 @@ export async function sendSupportEscalationEmail(env, { to, supportCase }) {
       `Automated triage: ${supportCase.triage_summary || '-'}`,
       '',
       'This alert is for an authorised human to review. Automated triage must not be treated as a final legal, employment, privacy, safety or complaint outcome.'
-    ].join('\n')
+    ].join('\n')).split('\n\n')})
   });
   if (error) throw new Error(`Support escalation email failed: ${error.message || JSON.stringify(error)}`);
   return { sent: true, email_id: data?.id || null };
@@ -258,7 +245,7 @@ export async function sendVoiceEnquiryNotification(env, { to, enquiry }) {
     from,
     to: [target],
     subject: `[AI Receptionist] ${enquiry.urgent ? 'URGENT · ' : ''}${subjectName} · Fleet Parlour enquiry`,
-    text: [
+    ...renderEmail(platformBrand(env),{heading:'New receptionist enquiry',paragraphs:([
       'FLEET PARLOUR — AI RECEPTIONIST BUSINESS ENQUIRY',
       '',
       `Enquiry ID: ${enquiry.id}`,
@@ -277,7 +264,7 @@ export async function sendVoiceEnquiryNotification(env, { to, enquiry }) {
       '',
       'Service mode: Fleet Parlour currently provides mobile/on-site service only. No customer drop-off workshop is offered.',
       'This notification was generated only after the enquiry record was saved by the AI receptionist tool.'
-    ].join('\n')
+    ].join('\n')).split('\n\n')})
   });
   if (error) throw new Error(`Voice enquiry email failed: ${error.message || JSON.stringify(error)}`);
   return { sent: true, email_id: data?.id || null };

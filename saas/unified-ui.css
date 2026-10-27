@@ -148,3 +148,23 @@ html:not(.sp-motion-enabled) :is(.sv-icon svg,.gx-live i,.sc-launch-icon),html:n
 @keyframes sp-view-enter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.sp-motion-toggle{font-size:10px;min-height:34px}.auth-page .auth-form-top .sp-motion-toggle{margin-left:auto}}
 @media(prefers-reduced-motion:reduce){.sp-motion-target,.auth-story::after,.view>.page-heading{animation:none!important}.feature-card:hover,.metric-card:hover,.integration-card:hover{translate:none}}
+
+/* Shared semantic surfaces keep chat, invitation and operator controls legible in either mode. */
+:is(.copilot-panel,.office-copilot section,.gds-support-panel,.team-join,.onboard-head,.onboard-shell .card){background:var(--sp-surface);color:var(--sp-text);border-color:var(--sp-border)}
+:is(.copilot-panel,.office-copilot section,.spai-v16,.gds-support-panel,.team-join,.onboard-shell) :is(input:not([type=checkbox]),textarea,select){background:var(--sp-canvas);color:var(--sp-text);border-color:var(--sp-border)}
+:is(.copilot-panel,.office-copilot section,.spai-v16,.gds-support-panel) :is(header,.copilot-message.ai,.office-copilot-log article,.spai-bubble){background:var(--sp-elevated);color:var(--sp-text);border-color:var(--sp-border)}
+:is(.copilot-panel,.office-copilot section,.spai-v16,.gds-support-panel) :is(button:not([type=submit]),small,.copilot-suggestions button){color:var(--sp-text)}
+:is(.copilot-panel,.office-copilot section,.spai-v16,.gds-support-panel) button:not([type=submit]){background:var(--sp-elevated);border-color:var(--sp-border)}
+html[data-theme="light"] :is(.page-heading,.panel,.metric-card,.onboard-shell) :is(h1,h2,h3,h4,label){color:var(--sp-text)}
+html[data-theme="light"] :is(.icon-button,.context-ai-help,.text-button,.secondary-button,.office-context-help){color:var(--sp-text);background:var(--sp-elevated);border-color:var(--sp-border)}
+html[data-theme="light"] :is(.copilot-launch,.office-copilot-launch,.gds-support-launch){background:var(--sp-surface);color:var(--sp-text);border-color:var(--sp-border)}
+html[data-theme="light"] :is(.spai-memory-bar,.spai-status,.spai-task-label,.onboard-shell .muted,.onboard-head p){color:var(--sp-muted);background:var(--sp-surface)}
+html[data-theme="light"] .onboard-shell :is(.item,.notice){background:var(--sp-elevated);color:var(--sp-text);border-color:var(--sp-border)}
+
+html[data-theme="light"] #org-role-side{color:var(--sp-accent);border-color:var(--sp-border)}
+@media(max-width:480px){
+ .copilot-panel>header{flex-wrap:wrap;gap:12px}
+ .copilot-panel>header>div:first-child{min-width:0;flex:1 1 100%}
+ .copilot-panel>header>div:last-child{width:100%;justify-content:flex-end;flex-wrap:wrap}
+ .copilot-panel>header select{min-width:92px;min-height:40px}
+}

@@ -27,6 +27,10 @@ jobs:
       # scripts/verify-all.mjs: syntax, migrations, storage fallback, permission matrix, end-to-end pipeline, contract tests, final validation, quality gate
       - name: Verify everything
         run: npm test
+      - name: Install browser for interface regression tests
+        run: npx playwright install --with-deps chromium
+      - name: Test responsive interface and portal navigation
+        run: npm run test:ui
       - name: Integration runtime tests
         run: npm run integration:test
       - name: Runtime smoke test

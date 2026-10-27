@@ -35,7 +35,8 @@
     "generate:operator-mfa": "node scripts/generate-operator-mfa.mjs",
     "manifest:update": "node scripts/update-manifest.mjs",
     "verify:manifest": "node scripts/verify-manifest.mjs",
-    "postinstall": "node scripts/install-litestream.mjs"
+    "postinstall": "node scripts/install-litestream.mjs",
+    "test:ui": "node scripts/test-ui.mjs"
   },
   "engines": {
     "node": "22.x"
@@ -56,5 +57,8 @@
   },
   "overrides": {
     "qs": "^6.15.4"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

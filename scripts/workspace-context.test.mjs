@@ -57,13 +57,17 @@ test('focused sections preserve forms, expose invalid fields and respect hidden 
  first.hidden=true;observers[0].callback();assert.equal(select.options[0].disabled,true);assert.equal(second.classList.contains('focus-inactive'),false);
 });
 
-test('record pagination resets when results change and does not remove records',()=>{
+test('record pagination preserves its page for nested controls and resets for replaced results',()=>{
  const source=readFileSync(new URL('../saas/focused-workspace.js',import.meta.url),'utf8');let observer;
  function element(){const classes=new Set();return {children:[],hidden:false,handlers:{},classList:{toggle:(k,v)=>v?classes.add(k):classes.delete(k),contains:k=>classes.has(k)},contains(item){return item===this||this.children.includes(item)},append(...items){this.children.push(...items)},setAttribute(){},addEventListener(k,fn){this.handlers[k]=fn}}}
  const list=element();list.children=Array.from({length:12},element);let nav;list.after=item=>nav=item;
  const context={document:{createElement:element},MutationObserver:class{constructor(callback){observer=callback}observe(){}}};
  vm.runInNewContext(source.slice(source.indexOf('  function paginate('),source.indexOf('  function install(){')),context);context.paginate(list,5);
  assert.equal(list.children.filter(r=>!r.classList.contains('focus-page-hidden')).length,5);nav.children[2].handlers.click();assert.equal(list.children[5].classList.contains('focus-page-hidden'),false);assert.equal(list.children.length,12);
+ const requirements={parentElement:list.children[5]};observer([{type:'attributes',attributeName:'hidden',target:requirements}]);
+ observer([{type:'childList',target:list.children[5]}]);
+ assert.equal(list.children[5].classList.contains('focus-page-hidden'),false,'enhancing a card must keep page two');
+ assert.equal(list.children[0].classList.contains('focus-page-hidden'),true);
  list.handlers.invalid({target:list.children[11]});assert.equal(list.children[11].classList.contains('focus-page-hidden'),false);
- list.children=[element(),element()];observer([{type:'childList'}]);assert.equal(nav.hidden,true);assert.equal(list.children[0].classList.contains('focus-page-hidden'),false);
+ list.children=[element(),element()];observer([{type:'childList',target:list}]);assert.equal(nav.hidden,true);assert.equal(list.children[0].classList.contains('focus-page-hidden'),false);
 });

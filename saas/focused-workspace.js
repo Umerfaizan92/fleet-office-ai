@@ -56,7 +56,13 @@
     previous.addEventListener('click',()=>{page=Math.max(0,page-1);render()});next.addEventListener('click',()=>{page++;render()});
     const reveal=target=>{const rows=Array.from(list.children).filter(row=>!row.hidden);const index=rows.findIndex(row=>row.contains(target));if(index>=0){page=Math.floor(index/size);render()}};
     list.addEventListener('invalid',event=>reveal(event.target),true);list.addEventListener('superpro:reveal-section',event=>reveal(event.target));
-    new MutationObserver(records=>{if(records.some(record=>record.type==='childList'||record.attributeName==='hidden')){page=0;render()}}).observe(list,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});render();
+    // A resource picker or requirements box changing inside a card is not a new list.
+    // Only replacing the actual rows resets pagination; row visibility changes just clamp it.
+    new MutationObserver(records=>{
+      const replaced=records.some(record=>record.type==='childList'&&record.target===list);
+      const visibility=records.some(record=>record.type==='attributes'&&record.target.parentElement===list);
+      if(replaced||visibility){if(replaced)page=0;render()}
+    }).observe(list,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});render();
   }
   function install(){
     for(const [id,config] of Object.entries(configurations)){const view=document.getElementById(id+'-view');if(view){if(id==='assistant'&&!document.getElementById('spai-v16'))window.addEventListener('superpro:ai-operations-ready',()=>installSections(view,config),{once:true});else installSections(view,config)}}

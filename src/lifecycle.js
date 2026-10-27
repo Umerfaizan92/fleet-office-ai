@@ -36,7 +36,7 @@ export function createLifecycle({ db, env, notify }) {
       id = prior.id; // an earlier attempt did not go out (for example email was not set up yet), so try again
     }
     const first = String(o.full_name || '').split(/\s+/)[0] || 'there', c = compose({ o, row, first });
-    const r = await sendBrandedEmail(env, { to: o.email, subject: c.subject, rendered: renderEmail(platformBrand(env), c.frame), kind: 'platform', fromName: `${PLATFORM_NAME}` });
+    const r = await sendBrandedEmail(env, { to: o.email, delivery:{organisationId:org,userId:o.id,category:kind,subject:c.subject}, subject: c.subject, rendered: renderEmail(platformBrand(env), c.frame), kind: 'platform', fromName: `${PLATFORM_NAME}` });
     db.prepare(`UPDATE lifecycle_emails SET status=?,detail=? WHERE id=?`).run(r.sent ? 'sent' : /not_configured/.test(r.reason || '') ? 'not_configured' : 'failed', r.sent ? null : r.reason, id);
     return r;
   }

@@ -1,3 +1,4 @@
+import {trackCommunication} from './message-delivery.js';
 import fs from 'fs/promises';
 import { Resend } from 'resend';
 import { renderEmail, platformBrand } from './email-templates.js';
@@ -282,22 +283,23 @@ export async function sendPlatformAnnouncementEmail(env, { to, announcement, acc
     button: { label: 'Open your workspace', url: `${base}/saas/sign-in.html` },
     notes: [`Our current terms and privacy notice apply to this change: ${base}/saas/terms.html and ${base}/saas/privacy.html`, 'You can read every notice again from the bell inside the app.']
   });
-  const result = await sendBrandedEmail(env, { to, subject: `[${announcement.reference_code}] ${announcement.title}`, rendered, kind: 'platform', fromName: 'Super Pro AI Office Manager Updates' });
+  const result = await sendBrandedEmail(env, { to,delivery:account?.organisation_id?{organisationId:account.organisation_id,category:'platform_announcement',subject:announcement.title}:null, subject: `[${announcement.reference_code}] ${announcement.title}`, rendered, kind: 'platform', fromName: 'Super Pro AI Office Manager Updates' });
   if (!result.sent) throw new Error(`Platform notice email failed: ${result.reason}`);
   return result;
 }
 
 // Sends one branded email (see email-templates.js). `kind` picks the sender: platform emails use the platform sender, emails
 // sent for a business use that business's display name on the shared sender address. Never throws; reports why it did not send.
-export async function sendBrandedEmail(env, { to, subject, rendered, kind = 'platform', fromName = 'Super Pro AI Office Manager', replyTo = null, attachments = [] }) {
-  if (!usableEnvValue(env.RESEND_API_KEY)) return { sent: false, reason: 'email_not_configured' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to || ''))) return { sent: false, reason: 'no_valid_email_address' };
+export async function sendBrandedEmail(env, { to, subject, rendered, kind = 'platform', fromName = 'Super Pro AI Office Manager', replyTo = null, attachments = [], delivery = null }) {
+  const finish=result=>{trackCommunication(delivery?{...delivery,channel:'email',recipient:to}:null,result);return result};
+  if (!usableEnvValue(env.RESEND_API_KEY)) return finish({ sent: false, reason: 'email_not_configured' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to || ''))) return finish({ sent: false, reason: 'no_valid_email_address' });
   const from = kind === 'platform'
     ? normaliseSender(env.PLATFORM_NOTICE_FROM, fromName) || normaliseSender(env.NOTIFY_FROM, fromName) || normaliseSender(env.SAAS_VERIFY_FROM, fromName)
     : normaliseSender(env.NOTIFY_FROM, fromName) || normaliseSender(env.SAAS_VERIFY_FROM, fromName);
-  if (!from) return { sent: false, reason: 'sender_not_configured' };
+  if (!from) return finish({ sent: false, reason: 'sender_not_configured' });
   try {
     const { data, error } = await new Resend(env.RESEND_API_KEY).emails.send({ from, to: [to], subject: String(subject).slice(0, 200), text: rendered.text, html: rendered.html, ...(attachments.length ? { attachments } : {}), ...(replyTo ? { reply_to: replyTo } : {}) });
-    return error ? { sent: false, reason: String(error.message || 'provider_error').slice(0, 200) } : { sent: true, email_id: data?.id || null };
-  } catch (err) { return { sent: false, reason: String(err.message || err).slice(0, 200) }; }
+    return finish(error ? { sent: false, reason: String(error.message || 'provider_error').slice(0, 200) } : { sent: true, email_id: data?.id || null });
+  } catch (err) { return finish({ sent: false, reason: String(err.message || err).slice(0, 200) }); }
 }

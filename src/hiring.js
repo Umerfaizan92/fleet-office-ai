@@ -1,3 +1,5 @@
+import {communicationInbound} from './message-delivery.js';
+import {deliverInvitation} from './invitation-delivery.js';
 // Hiring: advertise roles on every channel, collect applications and documents, keep it ALL apart from the rest of the
 // workspace. Separate tables, a separate file folder, owner/admin access only, nothing joined to customers, jobs, workers,
 // search, exports or AI context. AI only drafts (ads, a neutral summary); a person approves and a person decides.
@@ -67,6 +69,7 @@ export function installHiring(app, { db, env = {}, uploadRoot, requireSaasUser, 
       FOREIGN KEY(applicant_id) REFERENCES hiring_applicants(id) ON DELETE CASCADE);
     CREATE INDEX IF NOT EXISTS idx_hiring_docs ON hiring_documents(applicant_id);`);
 
+  db.exec("CREATE TABLE IF NOT EXISTS hiring_invitation_sends(id TEXT NOT NULL,organisation_id TEXT NOT NULL,body_hash TEXT NOT NULL,result_json TEXT,PRIMARY KEY(organisation_id,id))");
   const guard = [requireSaasUser, requireSaasRole(...OWNERS)];
   const org = (req) => req.saas.organisation_id;
   const base = () => String(env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
@@ -180,6 +183,22 @@ export function installHiring(app, { db, env = {}, uploadRoot, requireSaasUser, 
     res.json({ ok: true, ad: adView(adOf(org(req), a.id), role) });
   });
 
+  app.post('/api/saas/hiring/ads/:id/send',...guard,async(req,res)=>{
+    const o=org(req),ad=adOf(o,req.params.id);if(!ad)return res.status(404).json({ok:false,error:'Advert not found.'});
+    if(ad.status==='draft')return res.status(409).json({ok:false,error:'Approve the advert before sending invitations.'});
+    const role=roleOf(o,ad.role_id);if(!role||role.status!=='open')return res.status(409).json({ok:false,error:'This hiring role is closed.'});
+    const p=z.object({request_id:z.string().uuid(),email:z.string().trim().email().optional().or(z.literal('')),phone:z.string().trim().max(30).optional(),message:z.string().trim().max(300).default(''),follow_up:z.boolean().default(true)}).refine(v=>v.email||v.phone).safeParse(req.body);
+    if(!p.success)return res.status(400).json({ok:false,error:'Enter a recipient email or mobile and a short message of up to 300 characters.'});
+    const input=p.data,hash=crypto.createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    const prior=db.prepare('SELECT * FROM hiring_invitation_sends WHERE organisation_id=? AND id=?').get(o,input.request_id);
+    if(prior){if(prior.body_hash!==hash||!prior.result_json)return res.status(409).json({ok:false,error:'This send request is already processing or its details changed.'});return res.json(JSON.parse(prior.result_json))}
+    db.prepare('INSERT INTO hiring_invitation_sends(id,organisation_id,body_hash) VALUES (?,?,?)').run(input.request_id,o,hash);
+    const delivery=await deliverInvitation(env,{organisationId:o,userId:req.saas.user_id,email:input.email,phone:input.phone,businessName:req.saas.organisation_name||'Your business',heading:`Invitation to apply: ${role.title}`,url:applyLink(role,'email'),message:input.message,followUp:input.follow_up,category:'hiring_invitation'});
+    const result={ok:true,delivery,note:'Provider acceptance is not delivery confirmation. Open Notifications → Delivery activity for updates.'};
+    db.prepare('UPDATE hiring_invitation_sends SET result_json=? WHERE organisation_id=? AND id=?').run(JSON.stringify(result),o,input.request_id);
+    hlog(req,'invitation_sent','hiring_ad',ad.id,{email:delivery.email.sent,sms:delivery.sms.sent});res.json(result);
+  });
+
   /* ------------------------------ owner/admin: applicants ------------------------------ */
   const appView = (r, docs) => ({ id: r.id, role_id: r.role_id, role_title: r.role_title, full_name: r.full_name, email: r.email, phone: r.phone, suburb: r.suburb, availability: r.availability, message: r.message, source: r.source,
     status: r.status, notes: r.notes || '', ai_summary: r.ai_summary || '', ai_summary_at: r.ai_summary_at, consent_at: r.consent_at, retention_until: r.retention_until, created_at: r.created_at, documents: docs });
@@ -274,6 +293,7 @@ export function installHiring(app, { db, env = {}, uploadRoot, requireSaasUser, 
         db.prepare(`INSERT INTO hiring_documents (id,organisation_id,applicant_id,kind,original_name,stored_path,mime,size_bytes,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(docId, o, id, c.kind, clip(c.f.originalname.replace(/[\r\n"\\/]/g, '_'), 120), file, c.t.mime, c.f.size, now);
       }
     } catch (e) { try { fs.rmSync(dir, { recursive: true, force: true }); db.prepare(`DELETE FROM hiring_applicants WHERE id=?`).run(id); } catch { /* best effort */ } return res.status(500).json({ ok: false, error: 'We could not save your application. Please try again.' }); }
+    communicationInbound({organisation_id:o,channel:'email',contact_address:p.data.email,contact_name:p.data.full_name,id,audience:'hiring'});
     appendAuditLog(db, { organisation_id: o, action: 'hiring.application_received', module: 'hiring', entity_type: 'hiring_applicant', entity_id: id, metadata: { source: src, files: checked.length } });
     notify?.notifyRoles?.(o, OWNERS, { kind: 'hiring', title: 'New job application', body: `A new application arrived for ${r.title}.`, link: '#hiring', dedupe: `hiring:${id}` })?.catch?.(() => {});
     res.status(201).json({ ok: true, message: 'Thank you. Your application was sent. If it suits, the business will contact you.' });

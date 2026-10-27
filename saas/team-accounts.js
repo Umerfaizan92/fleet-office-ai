@@ -19,7 +19,7 @@
  $('#team-close-invite')?.addEventListener('click',()=>$('#team-invite-dialog').close());
  $('#team-invite-form')?.addEventListener('submit',async event=>{
   event.preventDefault();const button=event.target.querySelector('[type=submit]');button.disabled=true;const result=$('#team-invite-result');result.textContent='Creating invitation…';
-  try{const data=await request('/invitations','POST',Object.fromEntries(new FormData(event.target)));result.textContent=data.note;
+  try{const data=await request('/invitations','POST',{...Object.fromEntries(new FormData(event.target)),send:event.target.elements.send.checked});result.textContent=data.note;
    const link=document.createElement('input');link.readOnly=true;link.value=new URL(data.invite_path,location.href).href;link.setAttribute('aria-label','Private invitation link');result.append(link);await refresh();
   }catch(error){result.textContent=error.message}finally{button.disabled=false}
  });

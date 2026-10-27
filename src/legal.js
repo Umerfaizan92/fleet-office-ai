@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import { z } from 'zod';
 
-export const LEGAL_VERSION = 'terms-2026-10-26';
+export const LEGAL_VERSION = 'terms-2026-10-28';
 export const DOCS = [
   { id: 'terms', title: 'Terms of Service', url: '/saas/terms.html' },
   { id: 'privacy', title: 'Privacy Notice', url: '/saas/privacy.html' }

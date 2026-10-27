@@ -1,3 +1,5 @@
+import {renderEmail,tenantBrandFor} from './email-templates.js';
+import {communicationInbound,trackCommunication} from './message-delivery.js';
 // Step 4 platform layer: unified response envelope, data portability, statutory erasure,
 // VEVO result records, tenant-scoped omnichannel inbox, AI drafting and the approvals gate.
 // Registered once from server.js via installSaasPlatform(app, deps).
@@ -96,6 +98,7 @@ export function recordInbound(db, { organisation_id, channel, contact_address, c
     const id = crypto.randomUUID();
     db.prepare(`INSERT INTO comms_messages (id,organisation_id,thread_id,direction,kind,body,summary,provider,external_message_id,duration_seconds,status,occurred_at,created_at) VALUES (?,?,?,'inbound',?,?,?,?,?,?,'received',?,?)`)
       .run(id, organisation_id, thread.id, kind, String(body).slice(0, 20000), summary ? String(summary).slice(0, 4000) : null, provider, external_message_id, duration_seconds, occurred_at || now, now);
+    communicationInbound({organisation_id,channel,contact_address,contact_name,id});
     return { id, thread_id: thread.id, duplicate: false };
   })();
 }
@@ -126,7 +129,7 @@ export function recordTelnyxComms(db, eventType, payload) {
 
 // ---------------------------------------------------------------------------------------------
 export function installSaasPlatform(app, deps) {
-  const { db, env, requireSaasUser, requireSaasRole, requireAdmin, saasAudit, createWorkspaceApproval, generateAiText, aiProviderStatus, recomputeWorkerEligibility, createWorkerWithCompliance, workforceSeniorRoles, financeRoles } = deps;
+  const { db, env, requireSaasUser, requireSaasRole, requireAdmin, saasAudit, createWorkspaceApproval, generateAiText, aiProviderStatus, recomputeWorkerEligibility, createWorkerWithCompliance, workforceSeniorRoles, financeRoles, uploadRoot } = deps;
   const ok = (res, data = {}, status = 200) => res.status(status).json({ ok: true, ...data });
   const fail = (res, status, error) => res.status(status).json({ ok: false, error });
   const exportLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, keyGenerator: (req) => `export:${req.saas?.user_id || 'anon'}`, standardHeaders: true, legacyHeaders: false, message: { ok: false, error: 'Export limit reached. Try again later.' } });
@@ -917,8 +920,13 @@ export function installSaasPlatform(app, deps) {
     try {
       externalId = await dispatch(msg);
     } catch (error) {
+      if(['email','sms'].includes(msg.channel))trackCommunication({organisationId:org,userId:req.saas.user_id,channel:msg.channel,recipient:msg.contact_address,category:'customer_reply',subject:msg.subject||'Customer message'},{sent:false,reason:error.code==='NOT_CONFIGURED'?'provider_not_configured':'provider_rejected'});
       db.prepare(`UPDATE comms_messages SET status='approved' WHERE id=? AND organisation_id=?`).run(msg.id, org);
       return fail(res, error.code === 'NOT_CONFIGURED' ? 409 : 502, error.code === 'NOT_CONFIGURED' ? error.message : 'The provider rejected the message. It stays approved so you can retry.');
+    }
+    if(['email','sms'].includes(msg.channel)){
+      const brand=tenantBrandFor(db,uploadRoot,org),replyTo=db.prepare("SELECT address FROM comms_channels WHERE organisation_id=? AND channel='email' AND status='active' LIMIT 1").get(org)?.address;
+      trackCommunication({organisationId:org,userId:req.saas.user_id,channel:msg.channel,recipient:msg.contact_address,category:'customer_reply',subject:msg.subject||'Customer message',followUp:msg.channel==='email'?{subject:msg.subject?`Following up: ${msg.subject}`:`Following up from ${brand.name}`,brand:{name:brand.name,color:brand.color,footer:brand.footer,links:brand.links,logoSrc:''},replyTo,frame:{heading:'A quick follow-up',paragraphs:[`${brand.name} is following up on our message from yesterday. Please reply if you need help or would like to continue.`]}}:null},{sent:true,...(msg.channel==='email'?{email_id:externalId}:{message_id:externalId})});
     }
     db.transaction(() => {
       db.prepare(`UPDATE comms_messages SET status='sent',external_message_id=COALESCE(?,external_message_id) WHERE id=? AND organisation_id=?`).run(externalId, msg.id, org);
@@ -947,7 +955,9 @@ export function installSaasPlatform(app, deps) {
     }
     if (msg.channel === 'email') {
       if (!set(env.RESEND_API_KEY) || !set(env.SAAS_VERIFY_FROM)) throw notConfigured('Email');
-      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.SAAS_VERIFY_FROM, to: [msg.contact_address], subject: msg.subject ? `Re: ${msg.subject}` : 'Reply from us', text: msg.body }) });
+      const brand=tenantBrandFor(db,uploadRoot,msg.organisation_id),rendered=renderEmail(brand,{heading:msg.subject||'Message from '+brand.name,paragraphs:[msg.body]});
+      const replyTo=db.prepare("SELECT address FROM comms_channels WHERE organisation_id=? AND channel='email' AND status='active' LIMIT 1").get(msg.organisation_id)?.address;
+      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.SAAS_VERIFY_FROM, to: [msg.contact_address], subject: msg.subject ? `Re: ${msg.subject}` : 'Reply from us', text: rendered.text,html:rendered.html,...(replyTo?{reply_to:replyTo}:{}) }) });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error('email failed');
       return data?.id || null;

@@ -36,7 +36,7 @@
   const dialog=document.createElement('dialog');
   dialog.id='superpro-platform-notices';
   dialog.className='platform-notice-dialog';
-  dialog.innerHTML='<div class="platform-notice-card"><header><div><span class="panel-kicker">NOTIFICATIONS</span><h2>Alerts & updates</h2><p>Jobs offered to you, onboarding, payments, plan reminders and product updates appear here.</p></div><button class="secondary-button compact" type="button" data-notice-close>Close</button></header><div class="platform-notice-list" data-platform-notice-list><p class="muted">Loading notices…</p></div></div>';
+  dialog.innerHTML='<div class="platform-notice-card"><header><div><span class="panel-kicker">NOTIFICATIONS</span><h2>Alerts & updates</h2><p>Jobs offered to you, onboarding, payments, plan reminders and product updates appear here.</p></div><button class="secondary-button compact" type="button" data-notice-close>Close</button></header><form class="notification-preferences"><label><input type="checkbox" name="muted"> Mute alerts</label><label><input type="checkbox" name="sound"> Sound</label><label><input type="checkbox" name="sms" checked> Urgent SMS alerts</label><button type="button" data-enable-browser>Enable browser notifications</button><button type="submit">Save preferences</button><span data-preferences-status role="status"></span></form><nav class="notification-tabs"><button type="button" data-alert-tab>Alerts</button><button type="button" data-delivery-tab hidden>Delivery activity</button></nav><div class="delivery-activity" hidden></div><div class="platform-notice-list" data-platform-notice-list><p class="muted">Loading notices…</p></div></div>';
   document.body.append(dialog);
   dialog.querySelector('[data-notice-close]').onclick=()=>dialog.close();
 
@@ -48,8 +48,21 @@
     return Number.isNaN(d.getTime())?String(value):d.toLocaleString();
   };
 
-  let alerts=[],alertUnread=0;
-  const alertHtml=()=>alerts.length?'<h3>For you</h3>'+alerts.map(a=>'<article class="platform-notice-item '+(a.read_at?'read':'unread')+'"><div class="platform-notice-meta"><span>'+esc(String(a.kind).replaceAll('_',' '))+'</span><span>'+esc(fmt(a.created_at))+'</span></div><h3>'+esc(a.title)+'</h3>'+(a.body?'<p>'+esc(a.body)+'</p>':'')+'</article>').join('')+'<h3>Platform updates</h3>':'';
+  let alerts=[],alertUnread=0,bootstrapped=false,announcementRows=[],announcementAt=0;
+  const prefs={muted:false,sound:false,browser:false,sms:true};window.SuperProNotificationSettings=prefs;
+  const preferenceForm=dialog.querySelector('.notification-preferences'),preferenceStatus=dialog.querySelector('[data-preferences-status]');
+  function syncPreferences(){for(const key of ['muted','sound','sms'])preferenceForm.elements[key].checked=prefs[key];preferenceForm.querySelector('[data-enable-browser]').textContent=prefs.browser?'Disable browser notifications':'Enable browser notifications'}
+  async function savePreferences(){const d=await api('/api/saas/notification-preferences',{method:'PUT',body:JSON.stringify(prefs)});Object.assign(prefs,d.preferences);syncPreferences()}
+  preferenceForm.onsubmit=async e=>{e.preventDefault();for(const key of ['muted','sound','sms'])prefs[key]=preferenceForm.elements[key].checked;try{await savePreferences();preferenceStatus.textContent='Preferences saved.'}catch(e){preferenceStatus.textContent=e.message}};
+  preferenceForm.querySelector('[data-enable-browser]').onclick=async()=>{if(!('Notification' in window)){preferenceStatus.textContent='Browser notifications are unavailable on this device.';return}try{prefs.browser=prefs.browser?false:(await Notification.requestPermission())==='granted';await savePreferences();preferenceStatus.textContent=prefs.browser?'Browser notifications enabled while the app is open.':'Browser notifications are off.'}catch(e){preferenceStatus.textContent=e.message}};
+  function notifyFresh(alert){if(prefs.muted||(alert.kind==='staff_chat_message'&&document.querySelector('#gds-staff-chat')?.dataset.state==='normal'))return;window.GDSLive?.push?.(alert.title,'success');if(prefs.browser&&window.Notification?.permission==='granted'&&document.hidden)new Notification('Super Pro AI Office Manager',{body:alert.title,tag:alert.id});if(prefs.sound){try{const C=window.AudioContext||window.webkitAudioContext,c=new C(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);g.gain.value=.025;o.frequency.value=660;o.start();o.stop(c.currentTime+.12);o.onended=()=>c.close()}catch{}}}
+  const deliveryBox=dialog.querySelector('.delivery-activity');let deliveryActive=false;
+  async function loadDelivery(){try{const d=await api('/api/saas/message-delivery');deliveryBox.innerHTML='<h3>Delivery & follow-ups</h3><p>Accepted means the provider queued it. Delivery and email-open signals require signed provider webhooks. Email opens can be blocked; SMS read status is unavailable.</p>'+(!d.receipt_configuration?.email?'<p>Email receipt webhook needs configuration. Accepted emails remain pending until provider evidence arrives.</p>':'')+(window.GDS_SESSION?.user?.role==='owner'?'<label><input type="checkbox" data-followups '+(d.follow_ups?'checked':'')+'> Automatic 24-hour follow-ups for eligible invitations and approved customer emails</label>':'')+(d.deliveries.length?d.deliveries.map(x=>'<article class="platform-notice-item"><b>'+esc(x.subject)+'</b><p>'+esc(x.channel.toUpperCase()+' · '+x.recipient)+'</p><span class="status-pill">'+esc(x.status==='opened'?'Opened (tracking signal)':x.status)+'</span><small>'+esc(fmt(x.created_at))+(x.replied_at?' · Reply received '+esc(fmt(x.replied_at)):'')+'</small>'+(x.follow_up_state?'<small>Follow-up: '+esc(x.follow_up_state.replaceAll('_',' '))+'</small>':'')+(x.detail?'<small>'+esc(x.detail)+'</small>':'')+'</article>').join(''):'<p>No outbound deliveries recorded yet.</p>');deliveryBox.querySelector('[data-followups]')?.addEventListener('change',async e=>{try{await api('/api/saas/message-delivery/settings',{method:'PUT',body:JSON.stringify({follow_ups:e.target.checked})})}catch(err){e.target.checked=!e.target.checked;preferenceStatus.textContent=err.message}})}catch(e){deliveryBox.textContent=e.message}}
+  dialog.querySelector('[data-alert-tab]').onclick=()=>{deliveryActive=false;deliveryBox.hidden=true;list.hidden=false};
+  dialog.querySelector('[data-delivery-tab]').onclick=()=>{deliveryActive=true;list.hidden=true;deliveryBox.hidden=false;loadDelivery()};
+  list.addEventListener('click',e=>{const b=e.target.closest('[data-alert-open]');if(!b)return;const a=alerts.find(x=>x.id===b.dataset.alertOpen);if(!a)return;if(a.link==='#staff-chat')window.SuperProStaffChat?.open();else if(a.link==='#delivery'){deliveryActive=true;list.hidden=true;deliveryBox.hidden=false;loadDelivery();return}else if(a.link?.startsWith('#'))location.hash=a.link;dialog.close()});
+
+  const alertHtml=()=>alerts.length?'<h3>For you</h3>'+alerts.map(a=>'<article class="platform-notice-item '+(a.read_at?'read':'unread')+'"><div class="platform-notice-meta"><span>'+esc(String(a.kind).replaceAll('_',' '))+'</span><span>'+esc(fmt(a.created_at))+'</span></div><h3>'+esc(a.title)+'</h3>'+(a.link?'<button type="button" class="secondary-button compact" data-alert-open="'+esc(a.id)+'">Open</button>':'')+(a.body?'<p>'+esc(a.body)+'</p>':'')+'</article>').join('')+'<h3>Platform updates</h3>':'';
   function render(rows){
     const unread=rows.filter(x=>!x.read).length+alertUnread;
     bell.dataset.unreadCount=String(unread);
@@ -77,7 +90,7 @@
     list.querySelectorAll('[data-platform-read]').forEach(btn=>btn.onclick=async()=>{
       try{
         await api('/api/saas/announcements/'+encodeURIComponent(btn.dataset.platformRead)+'/read',{method:'POST',body:'{}'});
-        await load(false);
+        announcementAt=0;await load(false);
       }catch(err){window.GDSLive?.push?.(err.message,'error')}
     });
   }
@@ -85,15 +98,16 @@
   async function load(showToast=true){
     try{
       const prev=Number(bell.dataset.unreadCount||0);
-      const d=await api('/api/saas/announcements');
-      const rows=d.announcements||[];
+      if(Date.now()-announcementAt>60000){const d=await api('/api/saas/announcements');announcementRows=d.announcements||[];announcementAt=Date.now()}
+      const rows=announcementRows;
       const mine=await api('/api/saas/notifications').catch(()=>({notifications:[],unread:0}));
       const freshAlert=mine.notifications.find(n=>!n.read_at&&(!alerts.length||!alerts.some(o=>o.id===n.id)));
-      alerts=mine.notifications;alertUnread=Number(mine.unread||0);
+      alerts=mine.notifications||[];alertUnread=Number(mine.unread||0);if(mine.preferences){Object.assign(prefs,mine.preferences);if(!preferenceForm.contains(document.activeElement))syncPreferences()}
+      dialog.querySelector('[data-delivery-tab]').hidden=!['owner','admin'].includes(window.GDS_SESSION?.user?.role);
       render(rows);
-      if(showToast&&freshAlert&&alerts.length)window.GDSLive?.push?.(freshAlert.title,'success');
-      const unread=Number(d.unread||0);
-      if(showToast && unread>prev){
+      if(showToast&&freshAlert&&bootstrapped)notifyFresh(freshAlert);bootstrapped=true;
+      const unread=rows.filter(x=>!x.read).length;
+      if(showToast && !prefs.muted && unread>prev){
         const newest=rows.find(x=>!x.read);
         if(newest) window.GDSLive?.push?.((newest.kind==='maintenance'?'Scheduled maintenance':newest.kind==='incident'?'Service notice':'Platform update')+': '+newest.title,newest.severity==='critical'?'error':'success');
       }
@@ -113,9 +127,10 @@
     }catch{}
   }
 
-  bell.onclick=async()=>{await load(false);dialog.showModal();if(alertUnread){await api('/api/saas/notifications/read',{method:'POST',body:'{}'}).catch(()=>{});setTimeout(()=>load(false),1500)}};
+  bell.onclick=async()=>{await load(false);dialog.showModal();if(alertUnread){await api('/api/saas/notifications/read',{method:'POST',body:JSON.stringify({ids:alerts.filter(a=>!a.read_at).map(a=>a.id)})}).catch(()=>{});setTimeout(()=>load(false),1500)}};
   setTimeout(()=>load(true),1200);
-  setInterval(()=>load(true),60000);
+  setInterval(()=>{if(!document.hidden||prefs.browser){load(true);if(!document.hidden&&dialog.open&&deliveryActive)loadDelivery()}},5000);
+  window.addEventListener('focus',()=>load(true));
 
   window.SuperProPlatformNotices={load,open:()=>dialog.showModal()};
 })();

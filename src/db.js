@@ -1637,6 +1637,7 @@ export function createDb(databasePath = resolveDatabasePath()) {
     db.close();
     throw error;
   }
+  if(!db.prepare('PRAGMA table_info(account_recovery_challenges)').all().some(c=>c.name==='verification_provider'))db.exec("ALTER TABLE account_recovery_challenges ADD COLUMN verification_provider TEXT NOT NULL DEFAULT 'local'");
   return db;
 }
 

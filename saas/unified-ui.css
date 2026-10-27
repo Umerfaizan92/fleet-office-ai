@@ -168,3 +168,14 @@ html[data-theme="light"] #org-role-side{color:var(--sp-accent);border-color:var(
  .copilot-panel>header>div:last-child{width:100%;justify-content:flex-end;flex-wrap:wrap}
  .copilot-panel>header select{min-width:92px;min-height:40px}
 }
+
+.topbar-actions>[aria-label="Notifications"]{display:inline-flex!important}
+.notification-preferences{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid var(--sp-border);border-radius:12px;background:var(--sp-elevated)}
+.notification-preferences label{display:flex;align-items:center;gap:6px;font-size:12px}.notification-preferences input{width:auto}
+.notification-preferences button,.notification-tabs button{border:1px solid var(--sp-border);border-radius:9px;padding:8px 10px;background:var(--sp-surface);color:var(--sp-text);min-height:40px}
+.notification-tabs{display:flex;gap:8px}.delivery-activity{display:grid;gap:10px;max-height:55dvh;overflow:auto}
+html body .platform-notice-dialog{background:var(--sp-surface);color:var(--sp-text)}
+.platform-notice-dialog .platform-notice-item{background:var(--sp-elevated);color:var(--sp-text);border-color:var(--sp-border)}
+.platform-notice-dialog :is(p,small){color:var(--sp-muted)}
+
+body:has(.sc-panel:not([hidden])) .gds-live-toasts{top:10px!important;bottom:auto;right:10px;width:min(300px,calc(100vw - 20px))}.staff-availability-form button{background:var(--sc-gold);color:var(--sc-ink);border:1px solid var(--sc-gold-line);font-weight:700}

@@ -45,7 +45,7 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
  }
  const own=offer(employee.id,employee.email),sameEmail=offer(null,employee.email),extra=offer(owner.id,'extra@example.invalid');
  const port=13200+Math.floor(Math.random()*1000),base=`http://127.0.0.1:${port}`;
- const child=spawn(process.execPath,['src/server.js'],{env:{...process.env,NODE_ENV:'test',PORT:String(port),DATABASE_PATH:database,UPLOAD_DIR:path.join(root,'uploads'),PUBLIC_BASE_URL:base,ALLOWED_ORIGINS:base},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['src/server.js'],{env:{...process.env,NODE_ENV:'test',SUPERPRO_SKIP_DOTENV:'1',RESEND_API_KEY:'',TELNYX_API_KEY:'',TELNYX_VERIFY_PROFILE_ID:'',PORT:String(port),DATABASE_PATH:database,UPLOAD_DIR:path.join(root,'uploads'),PUBLIC_BASE_URL:base,ALLOWED_ORIGINS:base},stdio:['ignore','pipe','pipe']});
  let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
  const pause=ms=>new Promise(r=>setTimeout(r,ms));
  async function request(actor,route,method='GET',body,org=actor.org){return fetch(base+route,{method,headers:{cookie:`fp_session=${actor.token}`,'X-Organisation-Id':org,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});}
@@ -149,6 +149,28 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   assert.equal(ownerNeedsPhone.status,403,'staff invitations cannot bypass owner mobile verification');
   assert.equal((await request(owner,`/api/saas/team-accounts/members/${staff.id}`,'DELETE')).status,200);
   assert.ok(db.prepare('SELECT 1 FROM memberships WHERE organisation_id=? AND user_id=?').get(orgB,staff.id),'revocation preserves other business membership');
+  const hiringRole=crypto.randomUUID(),hiringAd=crypto.randomUUID();
+  db.prepare("INSERT INTO hiring_roles(id,organisation_id,title,employment_type,public_token,created_at,updated_at) VALUES (?,?,?,'casual',?,?,?)").run(hiringRole,orgA,'Office assistant',crypto.randomUUID(),now,now);
+  db.prepare("INSERT INTO hiring_ads(id,organisation_id,role_id,platform,body,status,created_at) VALUES (?,?,?,'email','Invitation to apply','draft',?)").run(hiringAd,orgA,hiringRole,now);
+  const sendPath=`/api/saas/hiring/ads/${hiringAd}/send`,sendBody={request_id:crypto.randomUUID(),email:'applicant@example.invalid',phone:'0412345678',message:'Please review the role',follow_up:true};
+  assert.equal((await request(employee,sendPath,'POST',sendBody)).status,403);
+  assert.equal((await request(outsider,sendPath,'POST',sendBody)).status,404);
+  assert.equal((await request(owner,sendPath,'POST',sendBody)).status,409,'drafts require approval');
+  db.prepare("UPDATE hiring_ads SET status='approved' WHERE id=?").run(hiringAd);
+  const sentInvitation=await request(owner,sendPath,'POST',sendBody);assert.equal(sentInvitation.status,200);const delivery=await sentInvitation.json();assert.equal(delivery.delivery.email.sent,false);assert.equal(delivery.delivery.sms.sent,false,'no false success without providers');
+  const deliveryCount=db.prepare('SELECT COUNT(*) n FROM communication_deliveries WHERE organisation_id=?').get(orgA).n;
+  assert.equal((await request(owner,sendPath,'POST',sendBody)).status,200);assert.equal(db.prepare('SELECT COUNT(*) n FROM communication_deliveries WHERE organisation_id=?').get(orgA).n,deliveryCount,'repeated send request does not resend');
+  assert.equal((await request(owner,sendPath,'POST',{...sendBody,message:'Changed request'})).status,409);
+  assert.equal((await request(employee,'/api/saas/message-delivery')).status,403);
+  assert.equal((await request(employee,'/api/saas/message-delivery/settings','PUT',{follow_ups:false})).status,403);
+  assert.equal((await (await request(outsider,'/api/saas/message-delivery')).json()).deliveries.length,0);
+  const recoveryActor=user('employee',orgA,'recovery-test@example.invalid'),challenge=crypto.randomUUID();
+  db.prepare('INSERT INTO account_recovery_challenges(id,user_id,recovery_type,channel,destination,code_hash,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)').run(challenge,recoveryActor.id,'password','sms','+61412345678',crypto.createHash('sha256').update(challenge+':012345').digest('hex'),later,now,now);
+  const recovered=await request(recoveryActor,'/api/saas/recovery/verify','POST',{challenge_id:challenge,code:'۰۱۲ ۳۴۵'});assert.equal(recovered.status,200);const recovery=await recovered.json();assert.ok(recovery.reset_token);
+  assert.equal((await request(recoveryActor,'/api/saas/recovery/verify','POST',{challenge_id:challenge,code:'012345'})).status,409,'recovery code is single-use');
+  assert.equal((await request(recoveryActor,'/api/saas/recovery/reset-password','POST',{challenge_id:challenge,reset_token:recovery.reset_token,password:'Recovered password 42!',confirm_password:'Recovered password 42!'})).status,200);
+  assert.equal((await request(recoveryActor,'/api/saas/me')).status,401,'reset invalidates existing sessions');
+
  }finally{
   child.kill();await new Promise(resolve=>child.once('exit',resolve));db.close();try{rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:200})}catch{}
  }

@@ -153,6 +153,27 @@ try{
       assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);
     }finally{await employee.close()}
   });
+  await check('notification preferences and delivery activity are visible on mobile',async()=>{
+    await page.locator('[aria-label="Notifications"]').click();const dialog=page.locator('#superpro-platform-notices');await dialog.waitFor({state:'visible'});
+    await dialog.locator('input[name=muted]').check();await dialog.getByRole('button',{name:'Save preferences',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-preferences-status]')?.textContent==='Preferences saved.');
+    assert.equal((await (await context.request.get(base+'/api/saas/notification-preferences')).json()).preferences.muted,true);
+    await dialog.locator('input[name=muted]').uncheck();await dialog.getByRole('button',{name:'Save preferences',exact:true}).click();
+    await dialog.locator('[data-delivery-tab]').click();await dialog.getByRole('heading',{name:'Delivery & follow-ups'}).waitFor();
+    await dialog.locator('[data-notice-close]').click();
+  });
+  await check('staff sender identity, sent/seen receipts and compact availability work across sessions',async()=>{
+    const employee=await browser.newContext();try{
+      assert.ok((await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}})).ok());
+      const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.waitForFunction(()=>!!window.SuperProStaffChat);
+      await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());localStorage.setItem('superpro_copilot_voice','off')});
+      await page.evaluate(()=>window.SuperProStaffChat.open());const chat=page.locator('#gds-staff-chat');await chat.locator('.sc-compose textarea').fill('Delivery receipt browser test');await chat.locator('.sc-send').click();await chat.locator('.sc-msg.mine').last().getByText('UI Test Owner',{exact:true}).waitFor();
+      await p.evaluate(()=>window.SuperProStaffChat.open());await p.locator('.sc-bubble p').filter({hasText:'Delivery receipt browser test'}).waitFor();
+      await chat.locator('.sc-msg.mine').last().locator('.sc-ticks').filter({hasText:'Seen'}).waitFor({timeout:12000});
+      await chat.locator('.sc-team>summary').click();await chat.locator('.staff-status-editor>summary').click();await chat.locator('.staff-availability-form select').selectOption('busy');await chat.locator('input[name=reason]').fill('Reviewing enquiries');await chat.getByRole('button',{name:'Update my status'}).click();
+      await chat.locator('.staff-directory-person').filter({hasText:'UI Test Owner'}).filter({hasText:'busy'}).waitFor();
+      assert.ok(await chat.locator('.staff-directory-list').evaluate(e=>e.clientHeight<=120));await screenshot(page,'staff-chat-availability');await page.evaluate(()=>window.SuperProStaffChat.close());
+    }finally{await employee.close()}
+  });
   await check('closing AI before playback context resumes prevents late audio',async()=>{
     await page.locator('.copilot-launch').click();
     await page.evaluate(()=>{window.__spoken=0;window.__stopped=0;window.SuperProAIClient={ensurePlaybackContext:()=>new Promise(r=>window.__resume=r),speak:()=>{window.__spoken++;return Promise.resolve()},stopSpeech:()=>window.__stopped++,stopListening:()=>{}};window.GDSProductGuide.answerAsync=async()=>({text:'A delayed test reply',language:'en'})});

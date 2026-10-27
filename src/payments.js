@@ -79,11 +79,11 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
   const ownerContact = (org) => db.prepare(`SELECT u.email,u.phone,u.full_name FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.organisation_id=? AND m.role='owner' AND m.status='active' ORDER BY m.rowid LIMIT 1`).get(org) || {};
   // Messages to customers use the business's own name, colour and logo. Messages to the owner about their business use the platform's.
   const INTERNAL_KINDS = new Set(['owner_reminder', 'payment_received', 'payment_review']);
-  async function sendEmailNotice(org, { recipient, subject, body, internal }) {
+  async function sendEmailNotice(org, { recipient, subject, body, internal, category }) {
     const brand = internal ? platformBrand(env) : tenantBrandFor(db, uploadRoot, org);
     const link = body.match(/https?:\/\/\S+/)?.[0];
     const rendered = renderEmail(brand, { heading: subject, paragraphs: body.split('\n\n'), button: link && !internal ? { label: 'Pay securely online', url: link } : null });
-    return sendBrandedEmail(env, { to: recipient, subject, rendered, kind: internal ? 'platform' : 'tenant', fromName: internal ? undefined : brand.name, attachments: brand.attachments || [] });
+    return sendBrandedEmail(env, { to: recipient, delivery:{organisationId:org,category,subject}, subject, rendered, kind: internal ? 'platform' : 'tenant', fromName: internal ? undefined : brand.name, attachments: brand.attachments || [] });
   }
   async function notice(org, { job, payment, kind, channel, recipient, subject, body, dedupe }) {
     const id = crypto.randomUUID();
@@ -91,7 +91,7 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
       .run(id, org, job?.id || null, payment?.id || null, kind, channel, recipient || null, subject || null, body, dedupe || null, iso());
     if (!ins.changes) return null;
     if (channel === 'in_app') return { id, status: 'recorded' };
-    const res = channel === 'email' ? await sendEmailNotice(org, { recipient, subject, body, internal: INTERNAL_KINDS.has(kind) }) : await sendTextMessage(env, { to: recipient, text: body }, fetchImpl);
+    const res = channel === 'email' ? await sendEmailNotice(org, { recipient, subject, body, category:kind, internal: INTERNAL_KINDS.has(kind) }) : await sendTextMessage(env, { to: recipient, text: body,delivery:{organisationId:org,category:kind,subject} }, fetchImpl);
     const status = res.sent ? 'sent' : /not_configured/.test(res.reason || '') ? 'not_configured' : 'failed';
     db.prepare(`UPDATE payment_notices SET status=?,detail=? WHERE id=?`).run(status, res.sent ? null : res.reason, id);
     return { id, status, reason: res.reason };

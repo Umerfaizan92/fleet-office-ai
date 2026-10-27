@@ -1,8 +1,9 @@
 // Real-browser regression checks against an isolated local server and throwaway accounts.
 // Setup: npx playwright install chromium; npm run test:ui
 import { chromium } from 'playwright';
+import {createDb} from '../src/db.js';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -128,6 +129,43 @@ try{
     await page.locator('#cust-new').click();const dialog=page.locator('#cust-dialog');assert.ok(await dialog.isVisible());
     const b=await dialog.boundingBox();assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=391&&b.y+b.height<=701,JSON.stringify(b));
     await dialog.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await dialog.isVisible(),false);
+  });
+  await check('owner can find role authorisation and save employee permissions',async()=>{
+    await page.evaluate(()=>location.hash='people/staff');await page.locator('#team-view').waitFor({state:'visible'});
+    await page.locator('#team-open-invite').waitFor({state:'visible'});
+    const worker=await post('/api/saas/workers',{full_name:'UI Test Employee',email:'ui.employee@example.test',role_title:'Office employee',employment_type:'casual',work_status:'australian_citizen'});
+    const invitation=await post('/api/saas/team-accounts/invitations',{worker_id:worker.id,email:'ui.employee@example.test',role:'employee'});
+    const db=createDb(path.join(temp,'test.sqlite'));
+    try{const now=new Date().toISOString();db.prepare('INSERT INTO team_invite_verifications(invite_id,code_hash,expires_at,sent_at) VALUES (?,?,?,?)').run(invitation.id,createHash('sha256').update(invitation.id+':654321').digest('hex'),new Date(Date.now()+600000).toISOString(),now)}finally{db.close()}
+    await post('/api/saas/team-accounts/accept',{token:invitation.invite_path.split('#')[1],email:'ui.employee@example.test',password,email_code:'654321',consent:true});
+    await page.reload();await page.locator('[data-team-role]').waitFor({state:'visible'});
+    const form=page.locator('[data-team-role]').first();await form.locator('select').selectOption('manager');await form.getByRole('button',{name:'Save role'}).click();await page.waitForFunction(()=>document.querySelector('#team-status')?.textContent.includes('Role authorised'));
+    await page.locator('[data-team-role] select').selectOption('employee');await page.locator('[data-team-role] button').click();await page.waitForFunction(()=>document.querySelector('[data-team-role] select')?.value==='employee');
+  });
+  await check('employee sends an AI question and receives a text answer',async()=>{
+    const employee=await browser.newContext();try{
+      const r=await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}});assert.ok(r.ok());const employeeLegal=await (await employee.request.get(base+'/api/saas/legal')).json();assert.ok((await employee.request.post(base+'/api/saas/legal/accept',{data:{version:employeeLegal.version,agree:true}})).ok());
+      const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});
+      await p.evaluate(slug=>{localStorage.setItem(`gds-tour-${slug}`,'done');document.querySelectorAll('dialog[open]').forEach(d=>d.close())},me.organisation.slug);
+      await p.locator('#sp-ask-input').fill('How do I see my assigned work?');await p.locator('.sp-ask-send').click();
+      await p.locator('[data-copilot-speaker]').click();
+      await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
+      assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);
+    }finally{await employee.close()}
+  });
+  await check('closing AI before playback context resumes prevents late audio',async()=>{
+    await page.locator('.copilot-launch').click();
+    await page.evaluate(()=>{window.__spoken=0;window.__stopped=0;window.SuperProAIClient={ensurePlaybackContext:()=>new Promise(r=>window.__resume=r),speak:()=>{window.__spoken++;return Promise.resolve()},stopSpeech:()=>window.__stopped++,stopListening:()=>{}};window.GDSProductGuide.answerAsync=async()=>({text:'A delayed test reply',language:'en'})});
+    await page.locator('.copilot-panel textarea').fill('Test delayed reply');await page.locator('.copilot-send').click();await page.waitForFunction(()=>typeof window.__resume==='function');
+    await page.locator('[data-copilot-close]').click();await page.evaluate(()=>window.__resume());await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>window.__spoken),0);assert.ok(await page.evaluate(()=>window.__stopped)>0);
+    await page.reload();await page.locator('#workspace').waitFor({state:'visible'});
+  });
+  await check('light and dark chat controls keep readable text and contained layout',async()=>{
+    for(const theme of ['light','dark']){
+      await page.evaluate(t=>{localStorage.setItem('foai-theme',t);document.documentElement.dataset.theme=t},theme);await page.locator('.copilot-launch').click();await page.waitForTimeout(100);assert.equal(await page.locator('html').getAttribute('data-theme'),theme);
+      const styles=await page.locator('.copilot-panel textarea').evaluate(e=>{const s=getComputedStyle(e);return {color:s.color,bg:s.backgroundColor}});assert.notEqual(styles.color,styles.bg);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'chat-'+theme);await page.locator('[data-copilot-close]').click();
+    }
   });
   await screenshot(page,'business-mobile');
   await page.emulateMedia({reducedMotion:'reduce'});await check('reduced motion disables decorative animation',async()=>assert.equal(await page.locator('.sp-logo').first().evaluate(e=>getComputedStyle(e).animationName),'none'));

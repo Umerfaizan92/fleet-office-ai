@@ -1,3 +1,4 @@
+const workspaceSpeakerIcon=on=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/>${on?'<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>':'<path d="m16 9 5 6m0-6-5 6"/>'}</svg>`;
 (()=>{
   if(!location.pathname.includes('/saas/workspace'))return;
   const $=s=>document.querySelector(s);
@@ -8,7 +9,7 @@
   const maleHints=/male|asad|david|mark|guy|ryan|george|daniel|james|ravi|hemant|imran|liam|aaron|onyx|cedar/i;
   const speechSupported='speechSynthesis' in window&&'SpeechSynthesisUtterance' in window;
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  let recognition=null,listening=false,voiceReplies=localStorage.getItem('superpro_workspace_voice')!=='off',lastLanguage='en',lastTopic='',speechRun=0,heartbeat=null,voices=[],serverAudio=null,serverAudioUrl='',mediaRecorder=null,mediaStream=null;
+  let recognition=null,listening=false,voiceReplies=localStorage.getItem('superpro_workspace_voice')!=='off',lastLanguage='en',lastTopic='',speechRun=0,sessionRun=0,answerController=null,heartbeat=null,voices=[],serverAudio=null,serverAudioUrl='',mediaRecorder=null,mediaStream=null;
 
   function installStyle(){
     if($('#spai-v16-style'))return;
@@ -69,14 +70,14 @@
     const runtime=window.SuperProAIClient;
     if(runtime){
       if(runtime.isListening?.()){runtime.stopListening?.();return}
-      stopSpeech();
+      stopSpeech();const run=speechRun;
       try{
         const result=await runtime.listen({
           language:languageValue(),
           onStatus:(message,state)=>voiceReplies&&run===speechRun&&setStatus(message,state==='transcribing'?'AI transcription':'Voice input'),
           onListening:(active)=>{listening=active;$('#spai-mic')?.classList.toggle('listening',active)}
         });
-        if(result?.text){
+        if(result?.text&&run===speechRun&&!$('#assistant-view')?.hidden){
           const input=$('#spai-input');input.value=result.text;
           lastLanguage=result.language||detectLanguage(result.text);resize();
           setStatus(`Detected ${lastLanguage.toUpperCase()} · transcription ready.`,'AI transcription');
@@ -99,10 +100,10 @@
     for(const x of recent){addMessage('user',x.q);addMessage('ai',x.a,'Remembered guidance')}setStatus(`Restored ${recent.length} recent conversation turn${recent.length===1?'':'s'} from expanded workspace memory.`,'Memory active')
   }
   async function ask(question){
-    const q=String(question||'').trim();if(!q)return;const input=$('#spai-input'),send=$('#spai-send');if(send.disabled)return;stopSpeech();lastLanguage=detectLanguage(q);addMessage('user',q);input.value='';resize();send.disabled=true;const waiting=addMessage('ai','Thinking with product knowledge and conversation context…','Super Pro AI');waiting?.querySelector('.spai-bubble')?.classList.add('typing');setStatus('Reviewing the relevant product, workspace and conversation context…','Thinking');
+    const q=String(question||'').trim();if(!q)return;const input=$('#spai-input'),send=$('#spai-send');if(send.disabled)return;stopSpeech();const requestSession=sessionRun;answerController?.abort();const controller=new AbortController();answerController=controller;lastLanguage=detectLanguage(q);addMessage('user',q);input.value='';resize();send.disabled=true;const waiting=addMessage('ai','Thinking with product knowledge and conversation context…','Super Pro AI');waiting?.querySelector('.spai-bubble')?.classList.add('typing');setStatus('Reviewing the relevant product, workspace and conversation context…','Thinking');
     try{
-      const guide=window.GDSProductGuide;if(!guide?.answerAsync)throw new Error('AI guide is not ready.');const result=await guide.answerAsync(q,'workspace',lastTopic,languageValue());lastTopic=result.topic||lastTopic;lastLanguage=result.language||lastLanguage;waiting?.remove();addMessage('ai',result.text,'Super Pro AI');setQuick(result.suggestions||[]);const source=result.source==='configured-ai-provider'?'Connected AI + product memory':result.source==='expanded-product-memory'?'Expanded product memory':'Product guidance';setStatus('Answer ready. Ask a follow-up and the assistant will use the conversation context.',source);paintProviderStatus(result.source);void speak(result.text,lastLanguage).catch(()=>{if(voiceReplies)setStatus('Text answer is ready. Voice playback is unavailable.','Voice unavailable')})
-    }catch(err){waiting?.remove();addMessage('ai','I could not complete that answer. Please try the question again; your previous conversation remains available.','Super Pro AI');setStatus(err.message||'The AI request could not be completed.','Retry available')}finally{send.disabled=false;input.focus()}
+      const guide=window.GDSProductGuide;if(!guide?.answerAsync)throw new Error('AI guide is not ready.');const result=await guide.answerAsync(q,'workspace',lastTopic,languageValue(),{signal:controller.signal});if(requestSession!==sessionRun){waiting?.remove();return}lastTopic=result.topic||lastTopic;lastLanguage=result.language||lastLanguage;waiting?.remove();addMessage('ai',result.text,'Super Pro AI');setQuick(result.suggestions||[]);const source=result.source==='configured-ai-provider'?'Connected AI + product memory':result.source==='expanded-product-memory'?'Expanded product memory':'Product guidance';setStatus('Answer ready. Ask a follow-up and the assistant will use the conversation context.',source);paintProviderStatus(result.source);void speak(result.text,lastLanguage).catch(()=>{if(voiceReplies)setStatus('Text answer is ready. Voice playback is unavailable.','Voice unavailable')})
+    }catch(err){waiting?.remove();if(requestSession!==sessionRun)return;addMessage('ai','I could not complete that answer. Please try the question again; your previous conversation remains available.','Super Pro AI');setStatus(err.message||'The AI request could not be completed.','Retry available')}finally{send.disabled=false;input.focus()}
   }
   function paintProviderStatus(source){
     const pill=$('#assistant-view .page-heading .status-pill');if(!pill)return;
@@ -125,7 +126,7 @@
   function initRecognition(){
     if(!Recognition)return null;const r=new Recognition();r.interimResults=true;r.continuous=false;r.lang=speechLocale(languageValue()==='auto'?lastLanguage:languageValue());
     r.onstart=()=>{listening=true;$('#spai-mic')?.classList.add('listening');setStatus(`Listening in ${r.lang}… speak naturally.`,'Voice input')};
-    r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;const input=$('#spai-input');input.value=text;input.dir='auto';resize();const last=e.results[e.results.length-1];if(last?.isFinal)setTimeout(()=>ask(input.value),180)};
+    r.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;const input=$('#spai-input');input.value=text;input.dir='auto';resize();const last=e.results[e.results.length-1];if(last?.isFinal){const run=speechRun;setTimeout(()=>{if(run===speechRun&&!$('#assistant-view')?.hidden)ask(input.value)},180)}};
     r.onerror=e=>setStatus(e.error==='not-allowed'?'Microphone permission is blocked. Allow microphone access or type your question.':'Voice recognition could not start. Try again or type your question.','Voice input');
     r.onend=()=>{listening=false;$('#spai-mic')?.classList.remove('listening')};return r
   }
@@ -133,7 +134,7 @@
   function install(){
     const view=$('#assistant-view');if(!view||$('#spai-v16'))return false;installStyle();
     const panel=document.createElement('article');panel.id='spai-v16';panel.className='spai-v16';panel.innerHTML=`
-      <div class="spai-head"><div><h2>Super Pro AI Workspace Guide</h2><p>Ask about the software, your workspace, setup, connections, navigation or an operational workflow. Answers stay concise and approval-aware.</p></div><div class="spai-head-actions"><select id="spai-language" aria-label="Reply language"><option value="auto">Auto language</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option><option value="pa">Punjabi</option><option value="ar">Arabic</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="es">Spanish</option><option value="fr">French</option></select><select id="spai-voice-style" aria-label="Voice preference"><option value="auto">Voice: Auto</option><option value="female">Voice: Female</option><option value="male">Voice: Male</option></select><button id="spai-speaker" type="button" class="active" aria-pressed="true" title="Toggle spoken replies">🔊</button><button id="spai-clear" type="button" title="Clear this device conversation memory">Clear</button></div></div>
+      <div class="spai-head"><div><h2>Super Pro AI Workspace Guide</h2><p>Ask about the software, your workspace, setup, connections, navigation or an operational workflow. Answers stay concise and approval-aware.</p></div><div class="spai-head-actions"><select id="spai-language" aria-label="Reply language"><option value="auto">Auto language</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option><option value="pa">Punjabi</option><option value="ar">Arabic</option><option value="bn">Bengali</option><option value="ta">Tamil</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="es">Spanish</option><option value="fr">French</option></select><select id="spai-voice-style" aria-label="Voice preference"><option value="auto">Voice: Auto</option><option value="female">Voice: Female</option><option value="male">Voice: Male</option></select><button id="spai-speaker" type="button" class="active" aria-pressed="true" aria-label="Toggle spoken replies" title="Toggle spoken replies">🔊</button><button id="spai-clear" type="button" title="Clear this device conversation memory">Clear</button></div></div>
       <div class="spai-memory-bar"><span><b>Expanded memory</b> · up to 500 conversation turns on this device, with relevant older context recalled automatically.</span><span>Product knowledge + current workspace context · secrets are never included.</span></div>
       <div class="spai-log" id="spai-log" aria-live="polite"><div class="spai-msg ai"><span class="spai-avatar">AI</span><div class="spai-bubble" dir="auto"><b>Super Pro AI</b><p dir="auto">Ask me what you want to do. I can explain features, guide setup and connections, answer follow-up questions, or help you work through the current workspace.</p></div></div></div>
       <div class="spai-quick" id="spai-quick"><button type="button">How do I use this software?</button><button type="button">How do I connect WhatsApp?</button><button type="button">How do I add an employee?</button><button type="button">What still needs setup?</button></div>
@@ -146,14 +147,17 @@
     const language=$('#spai-language'),voice=$('#spai-voice-style');const savedLang=localStorage.getItem('superpro_workspace_language');if(savedLang&&[...language.options].some(o=>o.value===savedLang))language.value=savedLang;const savedVoice=localStorage.getItem('superpro_workspace_voice_style');if(savedVoice&&[...voice.options].some(o=>o.value===savedVoice))voice.value=savedVoice;
     language.onchange=()=>{localStorage.setItem('superpro_workspace_language',language.value);lastLanguage=language.value==='auto'?'en':language.value;if(recognition)recognition.lang=speechLocale(lastLanguage);setStatus(language.value==='auto'?'Auto language is active. For microphone accuracy, choose the language you plan to speak.':`Text replies and microphone input are set to ${language.selectedOptions[0].textContent}.`,'Language ready')};
     voice.onchange=()=>{localStorage.setItem('superpro_workspace_voice_style',voice.value);setStatus(`Voice preference: ${voice.selectedOptions[0].textContent.replace('Voice: ','')}. Language matching takes priority.`,'Voice ready')};
-    const speaker=$('#spai-speaker');speaker.textContent=voiceReplies?'🔊':'🔇';speaker.classList.toggle('active',voiceReplies);speaker.setAttribute('aria-pressed',String(voiceReplies));
-    $('#spai-speaker').onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_workspace_voice',voiceReplies?'on':'off');const b=$('#spai-speaker');b.textContent=voiceReplies?'🔊':'🔇';b.classList.toggle('active',voiceReplies);b.setAttribute('aria-pressed',String(voiceReplies));if(!voiceReplies){stopSpeech();setStatus('Spoken replies are off. Text answers remain active.','Voice off')}else setStatus('Spoken replies are on. Server AI voice is preferred; the device voice is used only as a fallback.','Voice on')};
-    $('#spai-clear').onclick=()=>{stopSpeech();window.GDSProductGuide?.memory?.clear?.('workspace');$('#spai-log').innerHTML='<div class="spai-msg ai"><span class="spai-avatar">AI</span><div class="spai-bubble" dir="auto"><b>Fresh conversation</b><p dir="auto">Conversation memory on this device has been cleared. Ask a new Super Pro question whenever you are ready.</p></div></div>';lastTopic='';setStatus('Fresh conversation ready.','Memory cleared')};
+    const speaker=$('#spai-speaker');speaker.innerHTML=workspaceSpeakerIcon(voiceReplies);speaker.classList.toggle('active',voiceReplies);speaker.setAttribute('aria-pressed',String(voiceReplies));
+    $('#spai-speaker').onclick=()=>{voiceReplies=!voiceReplies;localStorage.setItem('superpro_workspace_voice',voiceReplies?'on':'off');const b=$('#spai-speaker');b.innerHTML=workspaceSpeakerIcon(voiceReplies);b.classList.toggle('active',voiceReplies);b.setAttribute('aria-pressed',String(voiceReplies));if(!voiceReplies){stopSpeech();setStatus('Spoken replies are off. Text answers remain active.','Voice off')}else setStatus('Spoken replies are on. Server AI voice is preferred; the device voice is used only as a fallback.','Voice on')};
+    $('#spai-clear').onclick=()=>{sessionRun++;answerController?.abort();stopSpeech();window.GDSProductGuide?.memory?.clear?.('workspace');$('#spai-log').innerHTML='<div class="spai-msg ai"><span class="spai-avatar">AI</span><div class="spai-bubble" dir="auto"><b>Fresh conversation</b><p dir="auto">Conversation memory on this device has been cleared. Ask a new Super Pro question whenever you are ready.</p></div></div>';lastTopic='';setStatus('Fresh conversation ready.','Memory cleared')};
     $('#spai-form').onsubmit=e=>{e.preventDefault();ask($('#spai-input').value)};$('#spai-input').addEventListener('input',resize);$('#spai-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#spai-form').requestSubmit()}});$('#spai-quick').querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
     recognition=initRecognition();$('#spai-mic').onclick=()=>{stopSpeech();const runtime=window.SuperProAIClient;if(runtime?.isListening?.()){runtime.stopListening();return}if(runtime){autoListen();return}if(languageValue()==='auto'){autoListen();return}if(!recognition){setStatus('This browser does not expose speech recognition. Automatic server transcription may still be available; choose Auto language or type your question.','Voice input unavailable');return}if(listening)recognition.stop();else{recognition.lang=speechLocale(languageValue());try{recognition.start()}catch{setStatus('Microphone recognition is already starting.','Voice input')}}};
     if(speechSupported){refreshVoices();speechSynthesis.addEventListener?.('voiceschanged',refreshVoices)}else if(!window.SuperProAIClient){$('#spai-speaker').disabled=true;setStatus('This browser does not expose spoken reply playback. Text and supported microphone input remain available.','Text mode')}
     if(window.GDS_SESSION)restoreConversation();else window.addEventListener('superpro:workspace-ready',restoreConversation,{once:true});refreshProviderStatus();window.dispatchEvent(new CustomEvent('superpro:ai-operations-ready',{detail:{version:VERSION}}));return true
   }
 
+  const stopSession=()=>{sessionRun++;answerController?.abort();stopSpeech();window.SuperProAIClient?.stopListening?.(true);try{recognition?.abort()}catch{}mediaStream?.getTracks().forEach(t=>t.stop())};
+  window.addEventListener('gds:viewchange',event=>{if(event.detail?.view!=='assistant')stopSession()});
+  window.addEventListener('pagehide',stopSession);
   let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>80)clearInterval(timer)},100);
 })();

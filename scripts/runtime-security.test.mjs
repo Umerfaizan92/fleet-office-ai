@@ -109,6 +109,15 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   const staffActor={id:staff.id,org:orgA,token:decodeURIComponent(login.headers.get('set-cookie').match(/fp_session=([^;]+)/)[1])};
   assert.equal((await request(staffActor,'/api/saas/me')).status,200);
   assert.equal((await request(staffActor,`/api/saas/workers/${employeeWorker}/documents`)).status,404);
+  const rolePath=`/api/saas/team-accounts/members/${staff.id}/role`;
+  assert.equal((await request(employee,rolePath,'PATCH',{role:'admin'})).status,403);
+  assert.equal((await request(outsider,rolePath,'PATCH',{role:'admin'})).status,404);
+  assert.equal((await request(owner,rolePath,'PATCH',{role:'owner'})).status,400);
+  assert.equal((await request(owner,`/api/saas/team-accounts/members/${owner.id}/role`,'PATCH',{role:'employee'})).status,409);
+  assert.equal((await request(owner,rolePath,'PATCH',{role:'manager'})).status,200);
+  assert.equal((await (await request(staffActor,'/api/saas/me')).json()).user.role,'manager','existing session reads new authority');
+  assert.equal((await request(owner,rolePath,'PATCH',{role:'employee'})).status,200);
+  assert.equal((await request(staffActor,'/api/saas/ai/threads')).status,403,'downgrade takes effect immediately');
   assert.equal((await request(owner,`/api/saas/team-accounts/members/${owner.id}`,'DELETE')).status,409);
   assert.equal((await request(owner,`/api/saas/team-accounts/members/${staff.id}`,'DELETE')).status,200);
   assert.ok([401,403].includes((await request(staffActor,'/api/saas/me')).status),'revoked member cannot reuse session in this business');

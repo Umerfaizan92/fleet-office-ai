@@ -16,21 +16,16 @@
   const set=(text,kind)=>{state.textContent=text;dot.className='pulse-dot'+(kind?' '+kind:'')};
   function send(text){
     text=String(text||'').trim();if(!text)return;
-    const go=document.createElement('button');go.hidden=true;go.dataset.jump='assistant';document.body.appendChild(go);go.click();go.remove();
-    setTimeout(()=>{
-      const f=document.getElementById('assistant-form'),t=f&&f.querySelector('textarea[name="message"]');
-      if(!t){set('Open the AI page to continue','warn');return}
-      t.value=text;t.dispatchEvent(new Event('input',{bubbles:true}));
-      set('Working on it','info');input.value='';
-      if(f.requestSubmit)f.requestSubmit();else f.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
-      setTimeout(()=>set('Ready'),4000);
-    },250);
+    window.dispatchEvent(new CustomEvent('superpro:ask',{detail:{question:text}}));
+    input.value='';set('Opened AI conversation');
   }
   form.addEventListener('submit',e=>{e.preventDefault();send(input.value)});
   bar.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>send(b.dataset.q)));
   if(Rec){
     let rec=null,listening=false,heard='';
     const stop=()=>{listening=false;mic.setAttribute('aria-pressed','false');mic.classList.remove('is-listening')};
+    const cancel=()=>{try{rec?.abort()}catch{}stop()};
+    window.addEventListener('pagehide',cancel);window.addEventListener('gds:viewchange',event=>{if(event.detail?.view!=='dashboard')cancel()});
     mic.addEventListener('click',()=>{
       if(listening&&rec){rec.stop();return}
       rec=new Rec();rec.lang=document.documentElement.lang||'en-AU';rec.interimResults=true;rec.continuous=false;heard='';

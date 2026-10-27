@@ -197,14 +197,15 @@
     const scope=memoryKey(context);if(!scope)return crypto.randomUUID();const key=scope.replace('superpro_ai_memory_current:','superpro_conversation_current:');
     try{let id=localStorage.getItem(key)||'';if(!id){id=crypto?.randomUUID?.()||`sp-${Date.now()}-${Math.random().toString(36).slice(2)}`;localStorage.setItem(key,id)}return id}catch{return `sp-${Date.now()}`}
   }
-  async function answerAsync(query,context='public',previousTopic='',language='auto'){
+  async function answerAsync(query,context='public',previousTopic='',language='auto',options={}){
     const q=String(query||'').trim(),local=answer(q,context,previousTopic);
     const detected=language&&language!=='auto'?language:detectLanguage(q);
     const memory=relevantMemory(context,q);
     const knowledge=knowledgeContext(q),providerQuestion=[q,knowledge&&`Verified product context: ${knowledge}`,memory&&`Relevant recent conversation context:\n${memory}`].filter(Boolean).join('\n\n');
     try{
-      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout?AbortSignal.timeout(8000):undefined,headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion,context,language:detected,conversation_id:conversationId(context)})});
+      const r=await fetch('/api/product-guide/answer',{method:'POST',credentials:'same-origin',cache:'no-store',signal:options.signal&&AbortSignal.any&&AbortSignal.timeout?AbortSignal.any([options.signal,AbortSignal.timeout(8000)]):options.signal||(AbortSignal.timeout?AbortSignal.timeout(8000):undefined),headers:{'content-type':'application/json'},body:JSON.stringify({question:providerQuestion.slice(0,2000),context,language:detected,conversation_id:conversationId(context)})});
       const d=await r.json().catch(()=>({}));
+      if(options.signal?.aborted)throw new Error('Conversation closed.');
       if(r.ok&&d.text){
         const result={...local,text:plainText(d.text),language:d.language||detected,source:d.source||'server-guidance',provider:d.provider||'',model:d.model||'',configuration_required:Boolean(d.configuration_required)};
         // Provider outages and free-tier quotas must never make the Product
@@ -223,6 +224,7 @@
         remember(context,q,result.text,result);return result;
       }
     }catch{}
+    if(options.signal?.aborted)throw new Error('Conversation closed.');
     let result;
     if(detected!=='en'&&emergencyLanguageReply[detected])result={...local,text:emergencyLanguageReply[detected],language:detected,source:'localized-browser-fallback'};
     else result={...local,text:plainText(local.text),language:detected,source:'browser-product-knowledge'};

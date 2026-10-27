@@ -8,7 +8,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function runtime(fetch){
  const audio=[],spoken=[],statuses=[];
  const synth={cancel(){},resume(){},getVoices(){return []},speak(u){spoken.push(u);u.onstart?.()}};
- const context={window:{speechSynthesis:synth,SpeechSynthesisUtterance:class{}},speechSynthesis:synth,SpeechSynthesisUtterance:class{},fetch,AbortController,setTimeout,clearTimeout,URL:{createObjectURL(){return 'blob:test'},revokeObjectURL(){}},Audio:class{constructor(){audio.push(this)}play(){this.onplay?.();return Promise.resolve()}pause(){this.paused=true}}};
+ const context={window:{addEventListener(){},speechSynthesis:synth,SpeechSynthesisUtterance:class{}},speechSynthesis:synth,SpeechSynthesisUtterance:class{},fetch,AbortController,setTimeout,clearTimeout,URL:{createObjectURL(){return 'blob:test'},revokeObjectURL(){}},Audio:class{constructor(){audio.push(this)}play(){this.onplay?.();return Promise.resolve()}pause(){this.paused=true}}};
  vm.runInNewContext(source,context);
  return {api:context.window.SuperProAIClient,audio,spoken,statuses,speak:()=>context.window.SuperProAIClient.speak('Test answer','en',{onStatus:(...s)=>statuses.push(s)})};
 }
@@ -30,4 +30,13 @@ test('service skills have no orphaned conjunctions',()=>{
  const suggestions=workforceSkillSuggestions({services:['Customer enquiries & quoting','coordination and painting']});
  const names=suggestions.filter(x=>x.source==='business_service').map(x=>x.name);
  assert.ok(names.includes('quoting'));assert.ok(names.includes('painting'));assert.ok(!names.some(x=>/^&|^and /i.test(x)));
+});
+
+test('closing before microphone permission resolves releases tracks without recording',async()=>{
+ let allow,stops=0,recorders=0;
+ const context={window:{addEventListener(){}},navigator:{mediaDevices:{getUserMedia:()=>new Promise(r=>allow=r)}},MediaRecorder:class{constructor(){recorders++}},AbortController};
+ context.window.MediaRecorder=context.MediaRecorder;vm.runInNewContext(source,context);
+ const pending=context.window.SuperProAIClient.listen();context.window.SuperProAIClient.stopListening(true);
+ allow({getTracks:()=>[{stop(){stops++}}]});const result=await pending;
+ assert.equal(result.cancelled,true);assert.equal(stops,1);assert.equal(recorders,0);
 });

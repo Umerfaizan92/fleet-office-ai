@@ -40,3 +40,35 @@ test('closing before microphone permission resolves releases tracks without reco
  allow({getTracks:()=>[{stop(){stops++}}]});const result=await pending;
  assert.equal(result.cancelled,true);assert.equal(stops,1);assert.equal(recorders,0);
 });
+
+function recordingRuntime(fetch){
+ const recorders=[],statuses=[],listening=[];let stops=0;
+ class Recorder{
+  static isTypeSupported(){return true}
+  constructor(){this.state='inactive';this.mimeType='audio/webm';recorders.push(this)}
+  start(){this.state='recording';this.onstart?.()}
+  stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['a'.repeat(800)])});this.onstop?.()}
+ }
+ const context={window:{addEventListener(){},MediaRecorder:Recorder},MediaRecorder:Recorder,navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stops++}}]})}},fetch,AbortController,Blob,FormData,setTimeout,clearTimeout,clearInterval};
+ vm.runInNewContext(source,context);
+ return {api:context.window.SuperProAIClient,recorders,statuses,listening,get stops(){return stops},listen:()=>context.window.SuperProAIClient.listen({onStatus:(...s)=>statuses.push(s),onListening:s=>listening.push(s)})};
+}
+test('closing during transcription aborts the request without stale status callbacks',{timeout:1500},async()=>{
+ let signal;const r=recordingRuntime((_url,options)=>new Promise((_resolve,reject)=>{signal=options.signal;signal.addEventListener('abort',()=>reject(new Error('aborted')))}));
+ const pending=r.listen();await tick();r.recorders[0].stop();await tick();
+ assert.equal(r.stops,1);assert.equal(r.api.isListening(),false);const count=r.statuses.length;
+ r.api.stopListening(true);assert.equal(signal.aborted,true);assert.equal((await pending).cancelled,true);assert.equal(r.statuses.length,count);
+});
+test('a replacement recording cancels earlier transcription without changing its UI',{timeout:1500},async()=>{
+ const requests=[];const r=recordingRuntime((_url,options)=>new Promise((resolve,reject)=>{requests.push({signal:options.signal,resolve});options.signal.addEventListener('abort',()=>reject(new Error('aborted')))}));
+ const first=r.listen();await tick();r.recorders[0].stop();await tick();
+ const second=r.listen();await tick();assert.equal(requests[0].signal.aborted,true);assert.equal((await first).cancelled,true);
+ assert.equal(r.api.isListening(),true);assert.equal(r.listening.at(-1),true);
+ r.recorders[1].stop();await tick();requests[1].resolve({ok:true,json:async()=>({text:'Current request',language:'en'})});
+ assert.equal((await second).text,'Current request');assert.equal(r.stops,2);
+});
+test('provider transcription failure still reports an actionable error',{timeout:1500},async()=>{
+ const r=recordingRuntime(async()=>({ok:false,json:async()=>({error:'Voice temporarily unavailable'})}));
+ const pending=r.listen();await tick();const failed=assert.rejects(pending,/Voice temporarily unavailable/);r.recorders[0].stop();await failed;
+ assert.equal(r.statuses.at(-1)[1],'limited');assert.equal(r.stops,1);
+});

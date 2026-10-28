@@ -163,7 +163,9 @@
 
   async function listen({language='auto',onStatus,onListening}={}){
     if(isListening()){stopListening();return {text:'',stopped:true}}
-    stopSpeech();const run=++captureRun;
+    // A stopped recorder can still own an in-flight transcription. Cancel it
+    // before replacing its capture so an older result cannot update this view.
+    stopSpeech();stopListening(true);const run=++captureRun;
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw new Error('Microphone recording is not supported in this browser.');
 
     const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
@@ -179,11 +181,13 @@
       const cleanup=()=>{
         if(monitorTimer)clearInterval(monitorTimer);if(noSpeechTimer)clearTimeout(noSpeechTimer);if(hardStopTimer)clearTimeout(hardStopTimer);
         try{sourceNode?.disconnect()}catch{}try{analyser?.disconnect()}catch{}try{audioContext?.close()}catch{}
-        stream.getTracks().forEach(t=>t.stop());if(activeCapture===state)activeCapture=null;onListening?.(false);
+        stream.getTracks().forEach(t=>t.stop());onListening?.(false);
       };
 
+      const release=()=>{if(activeCapture===state)activeCapture=null};
+
       recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      recorder.onerror=e=>{cleanup();reject(e.error||new Error('Microphone recording failed.'))};
+      recorder.onerror=e=>{cleanup();release();if(state.cancelled||run!==captureRun)resolve({text:'',cancelled:true});else reject(e.error||new Error('Microphone recording failed.'))};
       recorder.onstart=()=>{
         onListening?.(true);onStatus?.('Listening… speak naturally. Normal pauses will not cut you off.','listening');
         try{
@@ -213,11 +217,11 @@
       };
 
       recorder.onstop=async()=>{
-        const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});cleanup();
-        if(state.cancelled||run!==captureRun)return resolve({text:'',cancelled:true});
-        if(blob.size<700){onStatus?.('No speech detected. Microphone stopped.','ready');return resolve({text:'',noSpeech:true})}
-        onStatus?.('Understanding what you said…','transcribing');
         try{
+          const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});cleanup();
+          if(state.cancelled||run!==captureRun)return resolve({text:'',cancelled:true});
+          if(blob.size<700){onStatus?.('No speech detected. Microphone stopped.','ready');return resolve({text:'',noSpeech:true})}
+          onStatus?.('Understanding what you said…','transcribing');
           const fd=new FormData();fd.append('audio',blob,'speech.webm');fd.append('language',language);
           const response=await fetch('/api/saas/voice/transcribe',{method:'POST',credentials:'same-origin',signal:state.controller.signal,body:fd});
           const d=await response.json().catch(()=>({}));
@@ -228,7 +232,10 @@
           const result={...d,text,language:d.language||detectLanguage(text)};
           onStatus?.(`Heard ${String(result.language||'auto').toUpperCase()} · preparing reply…`,'ready');
           resolve(result);
-        }catch(err){onStatus?.(err.message||'Voice transcription failed.','limited');reject(err)}
+        }catch(err){
+          if(state.cancelled||run!==captureRun)return resolve({text:'',cancelled:true});
+          onStatus?.(err.message||'Voice transcription failed.','limited');reject(err);
+        }finally{release()}
       };
       recorder.start(120);
     });

@@ -4,11 +4,12 @@
   'use strict';
   const view=document.getElementById('dashboard-view');if(!view||document.getElementById('sp-askbar'))return;
   const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const serverCapture=Boolean(navigator.mediaDevices?.getUserMedia&&window.MediaRecorder),voiceAvailable=serverCapture||Rec;
   const bar=document.createElement('section');bar.id='sp-askbar';bar.className='sp-askbar';bar.setAttribute('aria-label','Ask Super Pro');
   bar.innerHTML=`<div class="sp-ask-head"><h2>What would you like done today?</h2><p class="sp-ask-status" role="status" aria-live="polite"><span class="pulse-dot"></span><span data-ask-state>Ready</span></p></div>
   <form class="sp-ask-form" autocomplete="off"><label class="sr-only" for="sp-ask-input">Ask Super Pro</label>
   <input id="sp-ask-input" type="text" placeholder="Type a request, or press the microphone and speak" maxlength="2000"/>
-  <button type="button" class="sp-ask-mic" aria-pressed="false" aria-label="Speak your request" title="Speak your request"${Rec?'':' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>${Rec?'Speak':'Voice unavailable'}</span></button>
+  <button type="button" class="sp-ask-mic" aria-pressed="false" aria-label="Speak your request" title="Speak your request"${voiceAvailable?'':' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>${voiceAvailable?'Speak':'Voice unavailable'}</span></button>
   <button type="submit" class="primary-button sp-ask-send">Send</button></form>
   <div class="sp-ask-chips" role="group" aria-label="Quick requests"><button type="button" data-q="What needs my attention today?">What needs attention today</button><button type="button" data-q="Draft replies to new enquiries for my approval.">Draft replies for approval</button><button type="button" data-q="Which workers have compliance documents expiring soon?">Expiring compliance</button><button type="button" data-q="Summarise this week's jobs and income.">This week's jobs and income</button></div>`;
   const first=view.firstElementChild;view.insertBefore(bar,first);
@@ -21,7 +22,30 @@
   }
   form.addEventListener('submit',e=>{e.preventDefault();send(input.value)});
   bar.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>send(b.dataset.q)));
-  if(Rec){
+  if(serverCapture){
+    let run=0,busy=false;
+    const stopped=()=>{mic.setAttribute('aria-pressed','false');mic.classList.remove('is-listening')};
+    const cancel=()=>{run++;busy=false;window.SuperProAIClient?.stopListening(true);stopped()};
+    window.addEventListener('pagehide',cancel);
+    window.addEventListener('gds:viewchange',event=>{if(event.detail?.view!=='dashboard')cancel()});
+    window.addEventListener('superpro:ask',cancel);
+    mic.addEventListener('click',async()=>{
+      const client=window.SuperProAIClient;
+      if(!client){set('Voice is loading. Please try again.','warn');return}
+      if(busy){if(client.isListening())client.stopListening();else{cancel();set('Ready')}return}
+      const current=++run;busy=true;
+      try{
+        const result=await client.listen({
+          onStatus:(text,kind)=>{if(current===run)set(text,kind==='limited'?'warn':kind==='listening'?'info':'')},
+          onListening:on=>{if(current!==run)return;mic.setAttribute('aria-pressed',String(on));mic.classList.toggle('is-listening',on)}
+        });
+        if(current!==run||result.cancelled)return;
+        if(result.text){input.value=result.text;set('Heard you. Check the text, then press Send.')}
+        else set('No speech was understood. Please try again.','warn');
+      }catch(error){if(current===run)set(error.message||'Could not hear you. Try again.','warn')}
+      finally{if(current===run){busy=false;stopped()}}
+    });
+  }else if(Rec){
     let rec=null,listening=false,heard='';
     const stop=()=>{listening=false;mic.setAttribute('aria-pressed','false');mic.classList.remove('is-listening')};
     const cancel=()=>{try{rec?.abort()}catch{}stop()};

@@ -94,6 +94,14 @@ try{
     await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>location.hash='customers/jobs');await page.locator('#jobs-view').waitFor({state:'visible'});
     const card=page.locator('#jobs-view .sp-surface-card:visible').first();await card.waitFor({state:'visible'});assert.ok(await card.locator('.sp-section-icon').count()>0);await card.hover();await page.waitForTimeout(220);assert.notEqual(await card.evaluate(e=>getComputedStyle(e).translate),'none');await screenshot(page,'jobs-shared-layering');await page.mouse.move(0,0);
   });
+  await check('live card heading updates retain one shared icon without mutation loops',async()=>{
+    await page.evaluate(()=>{const card=document.createElement('section');card.id='sp-test-live-card';card.className='panel';card.innerHTML='<h2>Live jobs</h2>';document.querySelector('#jobs-view').append(card)});
+    const card=page.locator('#sp-test-live-card');await card.locator('.sp-section-icon').waitFor();
+    await card.locator('h2').evaluate(e=>e.textContent='Updated jobs');await card.locator('.sp-section-icon').waitFor();
+    await page.evaluate(()=>{window.spTestMutations=0;window.spTestObserver=new MutationObserver(r=>window.spTestMutations+=r.length);window.spTestObserver.observe(document.querySelector('#sp-test-live-card'),{childList:true,subtree:true})});
+    await page.waitForTimeout(200);assert.equal(await card.locator('.sp-section-icon').count(),1);assert.equal(await page.evaluate(()=>window.spTestMutations),0);
+    await page.evaluate(()=>{window.spTestObserver.disconnect();document.querySelector('#sp-test-live-card').remove();delete window.spTestObserver;delete window.spTestMutations});
+  });
   await check('short dashboard pages do not push the footer down with blank viewport space',async()=>{
     await page.evaluate(()=>location.hash='today/home');
     for(const width of [390,980,1440]){
@@ -226,10 +234,18 @@ try{
 
   });
   await check('employee sends an AI question and receives a text answer',async()=>{
-    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
+    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{Object.defineProperty(window,'SpeechRecognition',{value:undefined,configurable:true});Object.defineProperty(window,'webkitSpeechRecognition',{value:undefined,configurable:true});if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
       const r=await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}});assert.ok(r.ok());const employeeLegal=await (await employee.request.get(base+'/api/saas/legal')).json();assert.ok((await employee.request.post(base+'/api/saas/legal/accept',{data:{version:employeeLegal.version,agree:true}})).ok());
       const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});
       await p.evaluate(slug=>{localStorage.setItem(`gds-tour-${slug}`,'done');document.querySelectorAll('dialog[open]').forEach(d=>d.close())},me.organisation.slug);
+      // The Home microphone must work with MediaRecorder even when the browser
+      // does not provide the separate SpeechRecognition API. No real mic or
+      // paid transcription provider is invoked by this regression.
+      await p.evaluate(()=>{window.spOriginalAIClient=window.SuperProAIClient;window.spAskEvents=0;window.addEventListener('superpro:ask',()=>window.spAskEvents++);window.SuperProAIClient={...window.SuperProAIClient,listen:async({onListening})=>{onListening(true);onListening(false);return {text:'Review my assigned jobs'}},stopListening(){},isListening(){return false}}});
+      assert.ok(await p.locator('.sp-ask-mic').isEnabled());await p.locator('.sp-ask-mic').click();await p.waitForFunction(()=>document.querySelector('#sp-ask-input').value==='Review my assigned jobs');assert.equal(await p.evaluate(()=>window.spAskEvents),0);
+      await p.locator('#sp-ask-input').fill('');await p.evaluate(()=>{window.SuperProAIClient.listen=()=>new Promise(resolve=>window.spLateTranscript=resolve)});await p.locator('.sp-ask-mic').click();
+      await p.evaluate(()=>{window.dispatchEvent(new CustomEvent('gds:viewchange',{detail:{view:'jobs'}}));window.spLateTranscript({text:'Cancelled old request'})});await p.waitForTimeout(50);assert.equal(await p.locator('#sp-ask-input').inputValue(),'');assert.equal(await p.locator('.sp-ask-mic').getAttribute('aria-pressed'),'false');
+      await p.evaluate(()=>window.SuperProAIClient=window.spOriginalAIClient);
       await p.locator('#sp-ask-input').fill('How do I see my assigned work?');await p.locator('.sp-ask-send').click();
       await p.locator('[data-copilot-speaker]').click();
       await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
@@ -248,7 +264,7 @@ try{
     await dialog.locator('[data-notice-close]').click();
   });
   await check('staff sender identity, sent/seen receipts and compact availability work across sessions',async()=>{
-    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
+    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{Object.defineProperty(window,'SpeechRecognition',{value:undefined,configurable:true});Object.defineProperty(window,'webkitSpeechRecognition',{value:undefined,configurable:true});if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
       assert.ok((await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}})).ok());
       const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.waitForFunction(()=>!!window.SuperProStaffChat);
       await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());localStorage.setItem('superpro_copilot_voice','off')});

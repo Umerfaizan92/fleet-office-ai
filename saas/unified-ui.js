@@ -81,7 +81,7 @@
     new MutationObserver(records=>{for(const record of records){for(const node of record.removedNodes){if(!(node instanceof Element))continue;for(const target of [node,...node.querySelectorAll('.sp-motion-target')]){observer.unobserve(target);observed.delete(target);visible.delete(target)}}for(const node of record.addedNodes)register(node)}refresh()}).observe(document.body,{childList:true,subtree:true});
     window.addEventListener('gds:viewchange',()=>{html.classList.remove('sp-view-arriving');requestAnimationFrame(()=>html.classList.add('sp-view-arriving'))});
   }
-  function init(){installSkip();installOffice();installMenuScroll();installMotion();for(const d of document.querySelectorAll('dialog')){if(!d.getAttribute('aria-label')&&!d.getAttribute('aria-labelledby')){const title=d.querySelector('h1,h2,h3');if(title){if(!title.id)title.id='sp-dialog-title-'+d.id;d.setAttribute('aria-labelledby',title.id)}}}}
+  function init(){const backdrop=document.createElement('div');backdrop.className='sp-cinematic-backdrop';backdrop.setAttribute('aria-hidden','true');document.body.prepend(backdrop);installSkip();installOffice();installMenuScroll();installMotion();for(const d of document.querySelectorAll('dialog')){if(!d.getAttribute('aria-label')&&!d.getAttribute('aria-labelledby')){const title=d.querySelector('h1,h2,h3');if(title){if(!title.id)title.id='sp-dialog-title-'+d.id;d.setAttribute('aria-labelledby',title.id)}}}}
   window.addEventListener('superpro:nav-ready',installMenuScroll);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

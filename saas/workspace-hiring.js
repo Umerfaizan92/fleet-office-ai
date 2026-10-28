@@ -76,7 +76,7 @@
 
   async function render(){
     const host=root();if(!host)return;
-    if(!['owner','admin'].includes(role())){host.replaceChildren(el('p',{class:'muted',text:'Only an owner or admin can open Hiring.'}));return}
+    if(window.GDS_SESSION?.access?.mode==='custom'?!window.SuperProCan('hiring'):!['owner','admin'].includes(role())){host.replaceChildren(el('p',{class:'muted',text:'Only an owner or admin can open Hiring.'}));return}
     try{meta=await api('/api/saas/hiring/summary')}catch(e){host.replaceChildren(el('p',{class:'muted',text:e.message}));return}
     const ap=meta.applicants||{},total=Object.values(ap).reduce((n,x)=>n+x,0);
     const head=[el('p',{class:'hire-lock',text:'Private to owners and admins. Applicants\' details and documents are stored apart from everything else, are never used for customers, jobs or search, and are deleted automatically after 12 months.'}),

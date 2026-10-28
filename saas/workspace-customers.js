@@ -73,7 +73,7 @@
   window.SuperProJobMedia={open:openMedia};
 
   async function fillJobCustomers(){
-    if(!SENIOR.includes(role()))return;
+    if(window.GDS_SESSION?.access?.mode==='custom'?!window.SuperProCan('customers'):!SENIOR.includes(role()))return;
     try{const c=(await api('/api/saas/customers')).customers;const sel=$('#job-customer');if(sel){sel.replaceChildren(el('option',{value:'',text:'No customer linked'}),...c.map(x=>el('option',{value:x.id,text:x.name})));$('#job-customer-field').hidden=false}}catch{}
   }
   onView('customers',{enter:loadList});

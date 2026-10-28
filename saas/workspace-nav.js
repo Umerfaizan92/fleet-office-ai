@@ -43,7 +43,9 @@
     ]}
   ];
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const allowed=(item,role)=>!item.roles||item.roles.includes(role);
+  const featureFor={dashboard:'dashboard',assistant:'ai',approvals:'approvals',customers:'customers',stock:'stock',comms:'inbox',jobs:'jobs',workforce:'workforce',hiring:'hiring',video:'content',growth:'growth',visibility:'visibility',integrations:'integrations',finance:'finance',billing:'billing',onboarding:'settings',governance:'governance'};
+  const allowed=(item,role)=>{const access=window.GDS_SESSION?.access;if(access?.mode==='custom'&&featureFor[item.view])return access.grants.includes(featureFor[item.view]+'.read');return !item.roles||item.roles.includes(role)};
+  window.SuperProCan=(feature,action='read')=>{const a=window.GDS_SESSION?.access;return a?.mode==='owner'||a?.grants?.includes(feature+'.'+action)||false};
   const icon=name=>`<svg aria-hidden="true"><use href="#${name}"></use></svg>`;
   const ROLE_LABELS={owner:'Owner',admin:'Admin',super_admin:'Super admin',manager:'Manager',director:'Director',employee:'Employee',contractor:'Contractor'};
 

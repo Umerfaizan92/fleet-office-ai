@@ -41,18 +41,16 @@ try{
   });
   for(const width of [390,768,1440]){
     await page.setViewportSize({width,height:900});await page.goto(base+'/saas/sign-in.html');
-    await check(`sign-in at ${width}px: no horizontal overflow; shared font and tabs`,async()=>{
+    await check(`sign-in at ${width}px: no horizontal overflow; shared font and separate business form`,async()=>{
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       assert.match(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily),/Manrope/);
-      const business=page.getByRole('tab',{name:'Business sign-in'}),operator=page.getByRole('tab',{name:'Platform operator'});
-      await business.focus();await business.press('ArrowRight');assert.equal(await operator.getAttribute('aria-selected'),'true');assert.ok(await page.locator('#operator-form').isVisible());
-      await operator.press('Home');assert.ok(await page.locator('#login-form').isVisible());
+      assert.equal(await page.locator('#operator-form').count(),0);assert.ok(await page.locator('#login-form').isVisible());
       await page.locator('#login-form .pw-eye').click();assert.equal(await page.locator('#login-form input[name=password]').getAttribute('type'),'text');
       await page.locator('#login-form .pw-eye').click();assert.equal(await page.locator('#login-form input[name=password]').getAttribute('type'),'password');
     });
     await screenshot(page,'signin-'+width);
   }
-  await page.goto(base+'/saas/sign-in.html#operator');await check('operator deep link preserves the selected access mode',async()=>assert.ok(await page.locator('#operator-form').isVisible()));
+  await page.goto(base+'/saas/sign-in.html#operator');await page.waitForURL(base+'/saas/operator-sign-in.html');await check('legacy operator deep link opens separate founder sign-in',async()=>assert.ok(await page.locator('#operator-form').isVisible()));
   const password='UI-only-'+secret()+'!';
   const post=async(url,data)=>{const r=await context.request.post(base+url,{data});assert.ok(r.ok(),`${url}: ${r.status()} ${await r.text()}`);return r.json()};
   const registration=await post('/api/saas/registration/start',{business_name:'Design Test Services',identifier_type:'ABN',business_identifier:'33051775556',state:'WA',postcode:'6000',full_name:'UI Test Owner',email:'ui.owner@example.test',phone:'0411222667',password,confirm_password:password,plan_id:'starter',accept_terms:true,terms_version:'2026-09'});
@@ -73,7 +71,7 @@ try{
       await screenshot(page,'compact-terms-'+width);await dialog.locator('#legal-agree').check();await dialog.getByRole('button',{name:'I agree and continue'}).click();await dialog.waitFor({state:'hidden'});
       if(width===390){const d=createDb(path.join(temp,'test.sqlite'));try{d.prepare('DELETE FROM legal_acceptances').run()}finally{d.close()}}
     }
-    await page.setViewportSize({width:1440,height:900});
+    await page.setViewportSize({width:1440,height:900});assert.ok(await page.locator('#logout').isVisible());
   });
   // Dismiss first-run notices in this throwaway workspace; no production records are touched.
   await page.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());document.querySelector('[data-tour-skip]')?.click()});
@@ -163,6 +161,10 @@ try{
     const b=await dialog.boundingBox();assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=391&&b.y+b.height<=701,JSON.stringify(b));
     await dialog.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await dialog.isVisible(),false);
   });
+  await check('Smart setup and Eligibility engine controls reach their working sections',async()=>{
+    await page.evaluate(()=>location.hash='setup/settings');await page.locator('#onboarding-view').waitFor({state:'visible'});await page.getByRole('button',{name:'Smart setup',exact:true}).click();assert.equal(await page.locator('#industry-search').evaluate(e=>e===document.activeElement),true);
+    await page.evaluate(()=>location.hash='customers/jobs');await page.locator('#jobs-view').waitFor({state:'visible'});await page.getByRole('button',{name:'Eligibility engine',exact:true}).click();await page.locator('#workforce-view').waitFor({state:'visible'});
+  });
   await check('owner can find role authorisation and save employee permissions',async()=>{
     await page.evaluate(()=>location.hash='people/staff');await page.locator('#team-view').waitFor({state:'visible'});
     await page.locator('#team-open-invite').waitFor({state:'visible'});
@@ -174,6 +176,10 @@ try{
     await page.reload();await page.locator('[data-team-role]').waitFor({state:'visible'});
     const form=page.locator('[data-team-role]').first();await form.locator('select').selectOption('manager');await form.getByRole('button',{name:'Save role'}).click();await page.waitForFunction(()=>document.querySelector('#team-status')?.textContent.includes('Role authorised'));
     await page.locator('[data-team-role] select').selectOption('employee');await page.locator('[data-team-role] button').click();await page.waitForFunction(()=>document.querySelector('[data-team-role] select')?.value==='employee');
+    await page.locator('[data-staff-permissions]').first().click();const access=page.locator('.sp-access-dialog');await access.waitFor({state:'visible'});
+    await access.locator('select[name=mode]').selectOption('custom');await access.locator('input[value="customers.read"]').check();await access.getByRole('button',{name:'Save this member’s access'}).click();await page.waitForFunction(()=>document.querySelector('#staff-access-note')?.textContent.startsWith('Saved.'));
+    await access.locator('select[name=mode]').selectOption('role');await access.getByRole('button',{name:'Save this member’s access'}).click();await page.waitForTimeout(300);await access.getByRole('button',{name:'Close',exact:true}).click();
+
   });
   await check('employee sends an AI question and receives a text answer',async()=>{
     const employee=await browser.newContext();try{
@@ -184,6 +190,8 @@ try{
       await p.locator('[data-copilot-speaker]').click();
       await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
       assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);
+      await p.setViewportSize({width:390,height:844});assert.ok(await p.locator('#logout').isVisible());await p.locator('#logout').click();await p.waitForURL(base+'/saas/');assert.equal((await employee.request.get(base+'/api/saas/me')).status(),401);
+
     }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
   });
   await check('notification preferences and delivery activity are visible on mobile',async()=>{

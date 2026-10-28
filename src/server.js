@@ -1,3 +1,4 @@
+import {createStaffAccess} from './staff-access.js';
 import {installStaffPresence} from './staff-presence.js';
 import {installCommunicationTracking,trackCommunication} from './message-delivery.js';
 import {renderEmail,platformBrand} from './email-templates.js';
@@ -435,6 +436,7 @@ const storagePlan = prepareStorage({ env, backendRoot });
 storagePlan.warnings.forEach(w => console.warn('[STORAGE]', w));
 const databasePath = storagePlan.databasePath;
 const db = createDb(databasePath);
+const staffAccess=createStaffAccess({db,audit:(...args)=>saasAudit(...args)});
 const startedAtMs = Date.now();
 runStartupDiagnostics({ db, env, storage: storagePlan });
 const socialStats = createSocialStatsService(env, backendRoot);
@@ -2082,6 +2084,7 @@ function requireSaasUser(req,res,next){
   res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);
   req.saas=row;
   const state=syncSubscriptionLifecycle(row.organisation_id);req.subscription=state.subscription;req.subscription_lifecycle=state.lifecycle;
+  if(!staffAccess.enforce(req,res))return;
   // Account identity and saved workspace data must remain available after billing changes.
   next();
 }
@@ -2621,9 +2624,9 @@ app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{
   })});
 });
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name||db.prepare('SELECT full_name FROM users WHERE id=?').get(req.saas.user_id)?.full_name||'Team member',sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:{id:row.id,sender_name:row.sender_name,sender_role:row.sender_role,message:row.message,created_at:row.created_at,mine:true}})});
-app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,action event_type,entity_type,created_at FROM audit_logs WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id);res.json({ok:true,events:rows})});
+app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,action event_type,entity_type,created_at FROM audit_logs WHERE organisation_id=? AND (?='owner' OR user_id=?) ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id,req.saas.role,req.saas.user_id);res.json({ok:true,events:rows})});
 
-app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
+app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,access:staffAccess.snapshot(req),user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
 // System branding is public; tenant branding is visible only to a signed-in member.
 const defaultSaasBranding=Object.freeze({
   display_name:'Super Pro AI Office Manager',
@@ -3365,7 +3368,7 @@ function saasAudit(req,eventType,entityType=null,entityId=null,detail={}){
 function requireSaasRole(...roles){
   return (req,res,next)=>{
     const role=String(req.saas?.role||'').toLowerCase();
-    if(!roles.map(r=>String(r).toLowerCase()).includes(role))return res.status(403).json({ok:false,error:'This area is restricted to authorised senior roles.'});
+    if(!roles.map(r=>String(r).toLowerCase()).includes(role)&&!(roles.length>1&&staffAccess.delegated(req)))return res.status(403).json({ok:false,error:'This area is restricted to authorised senior roles.'});
     next();
   };
 }
@@ -3378,7 +3381,7 @@ function optionalSaasSession(req){
   return db.prepare(`SELECT s.id session_id,s.user_id,u.email,u.phone,u.full_name,u.mfa_enabled,u.email_verified,u.phone_verified,m.organisation_id,m.role,o.name organisation_name,o.slug,o.abn,o.legal_name,o.abn_status FROM user_sessions s JOIN users u ON u.id=s.user_id JOIN memberships m ON m.user_id=u.id JOIN organisations o ON o.id=m.organisation_id WHERE s.token_hash=? AND s.expires_at>? AND u.status='active' AND m.status='active' ORDER BY m.created_at LIMIT 1`).get(sha256(raw),new Date().toISOString())||null;
 }
 
-app.get('/api/saas/dashboard',requireSaasUser,(req,res)=>{const org=req.saas.organisation_id;if(!['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.json({ok:true,restricted:true,metrics:{workers:0,ready:0,attention:0,jobs:0,expiring:0}});const workers=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND status!='archived'`).get(org).count;const ready=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active'`).get(org).count;const attention=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=0 AND status!='archived'`).get(org).count;const jobs=db.prepare(`SELECT COUNT(*) count FROM work_orders WHERE organisation_id=? AND status IN ('awaiting_allocation','offered')`).get(org).count;const expiring=db.prepare(`SELECT COUNT(*) count FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE w.organisation_id=? AND d.expiry_date IS NOT NULL AND d.expiry_date<=date('now','+30 day')`).get(org).count;res.json({ok:true,metrics:{workers,ready,attention,jobs,expiring}})});
+app.get('/api/saas/dashboard',requireSaasUser,(req,res)=>{const org=req.saas.organisation_id;if(!['owner','admin','manager','super_admin','director'].includes(String(req.saas.role||'').toLowerCase()))return res.json({ok:true,restricted:true,metrics:{workers:0,ready:0,attention:0,jobs:0,expiring:0}});const workers=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND status!='archived'`).get(org).count;const ready=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active'`).get(org).count;const attention=db.prepare(`SELECT COUNT(*) count FROM workers WHERE organisation_id=? AND approved_for_scheduling=0 AND status!='archived'`).get(org).count;const jobs=db.prepare(`SELECT COUNT(*) count FROM work_orders WHERE organisation_id=? AND status IN ('awaiting_allocation','offered')`).get(org).count;const expiring=db.prepare(`SELECT COUNT(*) count FROM worker_documents d JOIN workers w ON w.id=d.worker_id WHERE w.organisation_id=? AND d.expiry_date IS NOT NULL AND d.expiry_date<=date('now','+30 day')`).get(org).count;res.json({ok:true,metrics:{workers:staffAccess.can(req,'workforce')?workers:0,ready:staffAccess.can(req,'workforce')?ready:0,attention:staffAccess.can(req,'workforce')?attention:0,jobs:staffAccess.can(req,'jobs')?jobs:0,expiring:staffAccess.can(req,'workforce')?expiring:0}})});
 
 
 
@@ -3474,7 +3477,7 @@ app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
 });
 
 app.post('/api/saas/approvals/:id/decision',requireSaasUser,(req,res)=>{
-  if(!approvalCanDecide(req.saas.role))return res.status(403).json({ok:false,error:'Only an authorised owner, administrator, manager or director can decide approvals.'});
+  if(!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','approve'))return res.status(403).json({ok:false,error:'Only an authorised owner, administrator, manager or director can decide approvals.'});
   const parsed=z.object({decision:z.enum(['approve','reject']),note:z.string().trim().max(2000).optional(),edited_payload:z.record(z.string(),z.any()).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose approve or reject.'});
   const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
@@ -4002,7 +4005,7 @@ app.post('/api/saas/job-offers/:id/respond',requireSaasUser,(req,res)=>{
   res.json({ok:true,accepted_workers:accepted});
 });
 
-app.get('/api/saas/ai/threads',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? ORDER BY t.updated_at DESC`).all(req.saas.organisation_id)}));
+app.get('/api/saas/ai/threads',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>res.json({ok:true,threads:db.prepare(`SELECT t.*,(SELECT m.content FROM ai_thread_messages m WHERE m.thread_id=t.id AND m.role='assistant' ORDER BY m.created_at DESC LIMIT 1) AS last_ai_response FROM ai_threads t WHERE t.organisation_id=? AND (?=0 OR t.created_by=?) ORDER BY t.updated_at DESC`).all(req.saas.organisation_id,staffAccess.snapshot(req).mode==='custom'?1:0,req.saas.user_id)}));
 app.get('/api/saas/ai/status',requireSaasUser,(req,res)=>{const status=aiProviderStatus(),free=freeAiModeEnabled(),geminiReady=Boolean(geminiApiKey()),openAiReady=Boolean(openAiSpeechConfig()),speechReady=free?geminiReady:(geminiReady||openAiReady);res.json({ok:true,ai:{configured:status.configured,provider:status.provider,model:status.model,free_mode:free},voice:{server_tts:speechReady,server_stt:speechReady,provider:free?(geminiReady?'gemini-free':null):(openAiReady?'openai':geminiReady?'gemini':null),browser_fallback:true},message:status.configured?'AI provider is operationally configured.':free?'Free AI mode is active. Add GEMINI_API_KEY for server AI; built-in product guidance and browser voice fallbacks remain available.':'AI provider credentials are not configured on this deployment.'})});
 app.post('/api/saas/ai/threads',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),async(req,res)=>{
   const parsed=z.object({title:z.string().trim().min(1).max(200),message:z.string().trim().min(1).max(50000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Title and message required.'});
@@ -5303,8 +5306,8 @@ app.get('/api/saas/governance/overview',requireSaasUser,(req,res)=>{
   const policies=db.prepare(`SELECT p.*,CASE WHEN a.id IS NULL THEN 0 ELSE 1 END acknowledged FROM governance_policies p LEFT JOIN policy_acknowledgements a ON a.policy_id=p.id AND a.organisation_id=? AND a.user_id=? AND a.policy_version=p.version WHERE p.jurisdiction='AU' AND (p.industry='all' OR lower(p.industry)=lower(?)) AND (?=1 OR p.audience='all' OR p.audience='staff' OR lower(p.audience)=lower(?)) ORDER BY p.title`).all(req.saas.organisation_id,req.saas.user_id,industry,senior?1:0,req.saas.role);
   const caseCounts=senior?db.prepare(`SELECT status,severity,COUNT(*) count FROM support_cases WHERE organisation_id=? GROUP BY status,severity`).all(req.saas.organisation_id):[];
   const notifications=senior?db.prepare(`SELECT id,severity,notification_type,title,message,audience_role,status,related_entity_type,related_entity_id,created_at,read_at FROM security_notifications WHERE organisation_id=? AND (audience_role='senior' OR lower(audience_role)=lower(?)) ORDER BY created_at DESC LIMIT 20`).all(req.saas.organisation_id,req.saas.role):[];
-  const audit=senior?db.prepare(`SELECT id,action event_type,entity_type,entity_id,created_at,event_hash,prev_hash FROM audit_logs WHERE organisation_id=? ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id):[];
-  const ledger=senior?db.prepare(`SELECT id,event_type,entity_type,entity_id,payload_hash,prev_hash,event_hash,created_at FROM governance_ledger WHERE organisation_id=? ORDER BY created_at DESC LIMIT 20`).all(req.saas.organisation_id):[];
+  const audit=senior?db.prepare(`SELECT id,action event_type,entity_type,entity_id,created_at,event_hash,prev_hash FROM audit_logs WHERE organisation_id=? AND (?='owner' OR user_id=?) ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id,req.saas.role,req.saas.user_id):[];
+  const ledger=req.saas.role==='owner'?db.prepare(`SELECT id,event_type,entity_type,entity_id,payload_hash,prev_hash,event_hash,created_at FROM governance_ledger WHERE organisation_id=? ORDER BY created_at DESC LIMIT 20`).all(req.saas.organisation_id):[];
   res.json({ok:true,role:req.saas.role,senior_access:senior,industry,policies,case_counts:caseCounts,notifications,audit,ledger,controls:{tenant_isolation:true,append_only_ledger:true,mfa_available:true,privileged_audit_restricted:true,confidential_case_routing:true,legal_review_required:true}});
 });
 
@@ -5607,7 +5610,7 @@ app.get('/api/saas/referrals',requireSaasUser,requireSaasRole('owner','admin','s
 installDiagnosticsRoute(app,{db,env,storage:storagePlan,requireAdmin,startedAt:startedAtMs});
 const notifications=installNotifications(app,{db,env,requireSaasUser});
 const communicationTracking=installCommunicationTracking(app,{db,env,requireSaasUser,requireSaasRole,notify:notifications,verifyTelnyx:verifyTelnyxWebhook,receiveEmail:data=>recordInbound(db,data),timers:process.env.NODE_ENV!=='test',sendFollowUp:(row,payload)=>sendBrandedEmail(env,{to:row.recipient,subject:payload.subject,rendered:renderEmail(payload.brand||platformBrand(env),payload.frame),replyTo:payload.replyTo,delivery:{organisationId:row.organisation_id,userId:row.user_id,category:'follow_up',subject:payload.subject}})});
-const saasPlatform=installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles,uploadRoot});
+const saasPlatform=installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles,uploadRoot,canAccess:staffAccess.can});
 
 const lifecycle=createLifecycle({db,env,notify:notifications});
 installSubscribers(app,{db,requireAdmin,lifecycle});
@@ -5633,6 +5636,7 @@ const billingSetup=createBillingSetup({db});billingSetup.install(app,{requireSaa
 installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised});
 
 // Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
+staffAccess.install(app,{requireSaasUser,requireSaasRole});
 installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,env,sendVerification:payload=>sendSaasVerificationEmail(env,payload)});
 
 /*

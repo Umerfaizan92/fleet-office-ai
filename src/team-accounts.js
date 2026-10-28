@@ -58,6 +58,7 @@ export function installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,auth
   if(!member)return res.status(404).json({ok:false,error:'Member not found.'});
   if(member.role==='owner')return res.status(409).json({ok:false,error:'Owner access cannot be revoked here.'});
   db.transaction(()=>{
+   db.prepare('DELETE FROM staff_access_policies WHERE organisation_id=? AND user_id=?').run(org,req.params.id);
    db.prepare('DELETE FROM memberships WHERE organisation_id=? AND user_id=?').run(org,req.params.id);
    db.prepare("UPDATE workers SET status='inactive',approved_for_scheduling=0,updated_at=? WHERE organisation_id=? AND user_id=?").run(new Date().toISOString(),org,req.params.id);
    db.prepare("UPDATE team_account_invites SET status='revoked' WHERE organisation_id=? AND status='pending' AND worker_id IN (SELECT id FROM workers WHERE organisation_id=? AND user_id=?)").run(org,org,req.params.id);

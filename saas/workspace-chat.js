@@ -30,7 +30,10 @@
     document.body.append(shell);
 
     let state='closed',lastKey='',unread=0,watching=new Map(); // message id -> {delivered,read}
-    const open=()=>{state=state==='closed'?'normal':state;apply();window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:'staff'}}));document.querySelector('#gds-copilot .copilot-panel')?.setAttribute('hidden','');const cp=document.querySelector('#gds-copilot .copilot-launch');if(cp)cp.hidden=true;load(true);loadTeam();ta.focus()};
+    const permitted=action=>window.GDS_SESSION?.access?.mode!=='custom'||window.SuperProCan('staff_chat',action);
+    const syncAccess=()=>{shell.hidden=!permitted('read');if(shell.hidden){state='closed';panel.hidden=true;log.replaceChildren();dir.replaceChildren()}send.disabled=!permitted('create');avail.querySelector('button').disabled=!permitted('edit')};
+    window.addEventListener('superpro:workspace-ready',syncAccess);window.addEventListener('superpro:access-changed',syncAccess);syncAccess();
+    const open=()=>{if(!permitted('read'))return;state=state==='closed'?'normal':state;apply();window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:'staff'}}));document.querySelector('#gds-copilot .copilot-panel')?.setAttribute('hidden','');const cp=document.querySelector('#gds-copilot .copilot-launch');if(cp)cp.hidden=true;load(true);loadTeam();ta.focus()};
     const close=()=>{state='closed';apply();window.dispatchEvent(new CustomEvent('superpro:floating-chat',{detail:{active:''}}))};
     function apply(){
       const closed=state==='closed';panel.hidden=closed;launch.hidden=!closed;launch.setAttribute('aria-expanded',String(!closed));
@@ -66,6 +69,7 @@
       if(nearBottom||!lastKey)log.scrollTop=log.scrollHeight;
     }
     async function load(visible){
+      if(!permitted('read'))return;
       try{
         const d=await api('/api/saas/staff-chat'+(!document.hidden&&visible&&(state==='normal'||state==='max')?'?read=1':'')),rows=d.messages||[];
         unread=d.unread||0;badge.hidden=!unread||state!=='closed';badge.textContent=unread>9?'9+':String(unread);launch.classList.toggle('has-unread',!!unread&&state==='closed');

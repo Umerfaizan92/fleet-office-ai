@@ -60,7 +60,7 @@
       cards.push(tile({key:'profit',label:'Profit this month',value:f.profit_cents/100,fmt:v=>money(Math.round(v*100)),sub:`${T.revenue} ${money(f.revenue_cents)}, ${T.costs.toLowerCase()} ${money(f.expense_cents)}`,graphic:spark(f.daily_revenue_cents),jump:'finance',tone:f.profit_cents<0?'alert':'good'}));
     }
     const head=el('div',{class:'gx-head'},el('div',{},el('h2',{text:d.business.name?`${d.business.name} right now`:'Your business right now'}),el('p',{text:d.business.industry&&d.business.code!=='custom'?`Tuned for ${d.business.industry.toLowerCase()}. Figures refresh by themselves.`:'Figures refresh by themselves.'})),el('span',{class:'gx-live'},el('i'),'Live'));
-    board.replaceChildren(head,el('div',{class:'gx-grid'},cards));
+    const features={comms:'inbox',approvals:'approvals',jobs:'jobs',workforce:'workforce',finance:'finance'};const shown=cards.filter(c=>window.GDS_SESSION?.access?.mode!=='custom'||window.SuperProCan(features[c.dataset.jump]));board.replaceChildren(head,el('div',{class:'gx-grid'},shown));
   }
   async function load(){
     if(!board)return;

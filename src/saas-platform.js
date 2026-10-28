@@ -129,7 +129,7 @@ export function recordTelnyxComms(db, eventType, payload) {
 
 // ---------------------------------------------------------------------------------------------
 export function installSaasPlatform(app, deps) {
-  const { db, env, requireSaasUser, requireSaasRole, requireAdmin, saasAudit, createWorkspaceApproval, generateAiText, aiProviderStatus, recomputeWorkerEligibility, createWorkerWithCompliance, workforceSeniorRoles, financeRoles, uploadRoot } = deps;
+  const { db, env, requireSaasUser, requireSaasRole, requireAdmin, saasAudit, createWorkspaceApproval, generateAiText, aiProviderStatus, recomputeWorkerEligibility, createWorkerWithCompliance, workforceSeniorRoles, financeRoles, uploadRoot, canAccess } = deps;
   const ok = (res, data = {}, status = 200) => res.status(status).json({ ok: true, ...data });
   const fail = (res, status, error) => res.status(status).json({ ok: false, error });
   const exportLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, keyGenerator: (req) => `export:${req.saas?.user_id || 'anon'}`, standardHeaders: true, legacyHeaders: false, message: { ok: false, error: 'Export limit reached. Try again later.' } });
@@ -597,12 +597,13 @@ export function installSaasPlatform(app, deps) {
       },
       finance: null
     };
-    if (ADMINS.includes(String(req.saas.role || '').toLowerCase())) {
+    if (ADMINS.includes(String(req.saas.role || '').toLowerCase())&&(!canAccess||canAccess(req,'finance','read'))) {
       const month = day(0).slice(0, 7);
       const sum = (type, extra = '') => n(`SELECT COALESCE(SUM(amount_cents),0) c FROM organisation_finance_entries WHERE organisation_id=? AND entry_type='${type}' AND substr(occurred_on,1,7)=?${extra}`, org, month);
       const rev = sum('revenue'), exp = sum('expense');
       data.finance = { month, revenue_cents: rev, expense_cents: exp, profit_cents: rev - exp, daily_revenue_cents: series(`SELECT substr(occurred_on,1,10) d,COALESCE(SUM(amount_cents),0) c FROM organisation_finance_entries WHERE organisation_id=? AND entry_type='revenue' AND substr(occurred_on,1,10)>=? GROUP BY d`, -6, 7) };
     }
+    if(canAccess){if(!canAccess(req,'inbox','read'))data.inbox={needs_reply:0,week:0,daily:[],channels:[],drafts_waiting:0};if(!canAccess(req,'approvals','read'))data.approvals={pending:0};if(!canAccess(req,'jobs','read'))data.jobs={today:0,awaiting:0,allocated:0,next7:[]};if(!canAccess(req,'workforce','read'))data.team={total:0,ready:0,attention:0,expiring:0}}
     res.json(data);
   });
 

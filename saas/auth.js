@@ -135,24 +135,10 @@
     passForm.onsubmit=async e=>{e.preventDefault();show('');const b=objectFrom(passForm);if(b.password!==b.confirm_password){show('Passwords do not match.',true);return}try{const d=await api('/api/saas/recovery/reset-password',{method:'POST',body:JSON.stringify({challenge_id:recovery.challenge_id,reset_token:recovery.reset_token,password:b.password,confirm_password:b.confirm_password})});show(d.message||'Password changed successfully.');setTimeout(()=>location.href='sign-in.html',900)}catch(err){show(err.message,true)}};
   }
 
-  if(page==='login'){
-    const requestedOperator=location.hash==='#operator'||new URLSearchParams(location.search).get('as')==='operator';
-    const member=$('#login-form'),operator=$('#operator-form'),tabs=[...document.querySelectorAll('[data-signin-mode]')],msg=$('#operator-message'),codeLabel=$('#operator-code-label');
-    const mode=m=>{const op=m==='operator';member.hidden=op;operator.hidden=!op;tabs.forEach(t=>{const on=t.dataset.signinMode===m;t.classList.toggle('active',on);t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1});if(history.replaceState)history.replaceState(null,'',op?'#operator':location.pathname+location.search)};
-    tabs.forEach((t,index)=>{
-      const panel=t.dataset.signinMode==='operator'?operator:member;
-      t.id='signin-tab-'+t.dataset.signinMode;t.setAttribute('aria-controls',panel.id);
-      panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',t.id);
-      t.addEventListener('click',()=>mode(t.dataset.signinMode));
-      t.addEventListener('keydown',e=>{
-        if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
-        e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(index+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
-        mode(tabs[next].dataset.signinMode);tabs[next].focus();
-      });
-    });
-    mode('member');
-    if(requestedOperator)mode('operator');
-    window.addEventListener('hashchange',()=>mode(location.hash==='#operator'?'operator':'member'));
+  if(page==='login')window.addEventListener('hashchange',()=>{if(location.hash==='#operator')location.replace('operator-sign-in.html')});
+  if(page==='login'&&(location.hash==='#operator'||new URLSearchParams(location.search).get('as')==='operator'))location.replace('operator-sign-in.html');
+  if(page==='operator'){
+    const operator=$('#operator-form'),msg=$('#operator-message'),codeLabel=$('#operator-code-label');
     operator.onsubmit=async e=>{e.preventDefault();msg.textContent='';msg.className='auth-message';const x=operator.elements,body={key:x.key.value};if(x.code.value)body.code=x.code.value;
       try{const r=await fetch('/api/operator/login',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));
         if(!r.ok){if(d.code_required){codeLabel.hidden=false;x.code.focus()}msg.textContent=d.error||'Sign-in failed.';msg.className='auth-message error';return}

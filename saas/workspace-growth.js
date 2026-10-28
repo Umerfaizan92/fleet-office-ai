@@ -8,7 +8,7 @@
   const TYPE={text:'Text',image:'Image',carousel:'Carousel',reel:'Reel',color_bg:'Colour background'};
   let O=null,items=[];
   const badge=(t,tone)=>el('span',{class:`pay-badge pay-${tone}`,text:t});
-  const canApprove=()=>APPROVERS.includes(window.SuperProUI.role());
+  const canApprove=()=>window.GDS_SESSION?.access?.mode==='custom'?window.SuperProCan('growth','approve'):APPROVERS.includes(window.SuperProUI.role());
   const tab=name=>{document.querySelectorAll('[data-gr-tab]').forEach(b=>{const on=b.dataset.grTab===name;b.classList.toggle('active',on);b.setAttribute('aria-selected',on)});document.querySelectorAll('[data-gr-pane]').forEach(p=>p.hidden=p.dataset.grPane!==name);if(name==='calendar')loadCalendar();if(name==='activity')loadActivity()};
   document.addEventListener('click',e=>{const b=e.target.closest('[data-gr-tab]');if(b)tab(b.dataset.grTab)});
   const copy=async text=>{try{await navigator.clipboard.writeText(text);note('Copied.')}catch{note('Copy is blocked here. Select the text and copy it.',true)}};

@@ -303,3 +303,66 @@ html body .topbar-actions #logout{display:inline-flex!important;visibility:visib
 /* Shared original gold atmosphere: two compositor layers, no video or WebGL. */
 .sp-cinematic-backdrop{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}.sp-cinematic-backdrop:before,.sp-cinematic-backdrop:after{content:"";position:absolute;inset:-15%;background:radial-gradient(ellipse at 85% 15%,#c29b3820,transparent 45%),radial-gradient(ellipse at 10% 80%,#3d738218,transparent 45%);will-change:auto}.sp-cinematic-backdrop:after{background:repeating-linear-gradient(120deg,transparent 0 120px,#bd9c3910 121px,transparent 122px);opacity:.35}body{isolation:isolate}.sp-motion-enabled:not(.sp-page-hidden) .sp-cinematic-backdrop:before{animation:sp-atmosphere 24s ease-in-out infinite alternate}.sp-motion-enabled:not(.sp-page-hidden) .sp-cinematic-backdrop:after{animation:sp-atmosphere 32s ease-in-out infinite alternate-reverse}@keyframes sp-atmosphere{to{transform:translate3d(-3%,2%,0) rotate(2deg)}}
 @media(prefers-reduced-motion:reduce){.sp-cinematic-backdrop:before,.sp-cinematic-backdrop:after{animation:none!important}}
+
+/* Auto height plus inset:0 stretches absolutely positioned dialogs. Use intrinsic size. */
+html body dialog.sp-access-dialog{width:min(1000px,calc(100% - 24px));height:fit-content!important;block-size:fit-content!important;min-height:0!important;max-height:calc(100dvh - 24px);padding:18px}
+html body .sp-access-dialog #staff-access-form{height:auto;min-height:0;margin:0;padding:0}
+html body .sp-access-dialog .sp-access-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+html body .sp-access-dialog header button{border:1px solid var(--sp-border);background:var(--sp-elevated);color:var(--sp-text);border-radius:9px;min-height:36px;padding:6px 12px}
+html body .sp-access-dialog fieldset{background:linear-gradient(135deg,#e2bd7208,transparent 70%);border-color:var(--sp-border)}
+html body .sp-access-dialog legend{line-height:1.4;color:var(--sp-text)}
+html body .sp-access-dialog #staff-access-note:empty{display:none}
+@media(max-width:600px){html body .sp-access-dialog .sp-access-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}html body .sp-access-dialog fieldset{padding:8px}html body .sp-access-dialog legend{font-size:11px}html body .sp-access-dialog label{font-size:11px}html body .sp-access-dialog .sp-access-grid label{gap:4px;margin-right:6px}html body .sp-access-dialog header h2{font-size:17px}}
+
+/* One restrained card treatment across business and founder workspaces. */
+:is(.app-main,#app>main) :is(.panel,.row-card,.metric-card,.finance-kpi,.bill-card,.stats>div,.office-premium-cards article){position:relative;min-width:0;background-image:radial-gradient(ellipse at top left,#e2bd7209,transparent 65%);box-shadow:inset 0 1px #ffffff09,0 5px 20px #00000012!important;border-radius:14px;will-change:auto;transition:border-color 180ms ease,box-shadow 180ms ease}
+:is(.app-main,#app>main) :is(.panel,.row-card,.metric-card,.finance-kpi,.bill-card):focus-within{border-color:color-mix(in srgb,var(--sp-accent) 50%,var(--sp-border))}
+@media(hover:hover){:is(.app-main,#app>main) :is(.panel,.row-card,.metric-card,.finance-kpi,.bill-card,.stats>div,.office-premium-cards article):hover{border-color:color-mix(in srgb,var(--sp-accent) 38%,var(--sp-border));box-shadow:inset 0 1px #ffffff0c,0 8px 24px #0000001c!important}}
+/* Provider cards use normal-flow content, including every nested manager block. */
+html body #self-service-integration-grid{align-items:start;gap:12px}
+html body #self-service-integration-grid .integration-card{height:auto;min-height:0;padding:16px;align-self:start;overflow-wrap:anywhere;border-color:var(--sp-border);background:linear-gradient(145deg,#e2bd7208,transparent 65%),var(--sp-surface);box-shadow:inset 0 1px #ffffff08,0 6px 18px #0001}
+html body #self-service-integration-grid .integration-manager{grid-area:auto!important;grid-column:1/-1!important;grid-row:2!important;display:flex;flex-direction:column;gap:12px;padding-top:12px;margin:0;align-self:start}
+html body #self-service-integration-grid .integration-manager div{grid-area:auto!important;min-width:0;position:static}
+html body #self-service-integration-grid .integration-manager-actions{display:flex;flex-flow:row wrap;align-items:center;gap:8px}
+html body #self-service-integration-grid .integration-resource-picker{display:grid;gap:8px}
+html body #self-service-integration-grid .integration-resource-list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;max-height:220px;overflow:auto}
+html body #self-service-integration-grid .integration-resource-list label{display:flex;align-items:flex-start;gap:10px;min-width:0;padding:10px;border:1px solid var(--sp-border);background:var(--sp-elevated);border-radius:10px;cursor:pointer}
+html body #self-service-integration-grid input[data-im-resource]{position:static;flex:0 0 17px;width:17px;height:17px;min-width:17px;min-height:17px;margin:2px 0 0;padding:0;accent-color:var(--sp-accent)}
+html body #self-service-integration-grid .integration-resource-list label>span{display:grid;gap:3px;min-width:0}
+html body #self-service-integration-grid .integration-resource-picker>[data-im-save]{justify-self:start;margin:0}
+html body #self-service-integration-grid :is(.integration-manager-status,.integration-resource-list small){color:var(--sp-muted);line-height:1.5}
+html body .bill-grid{align-items:start;gap:12px}html body .bill-grid .bill-card{height:auto;min-height:0;padding:16px;align-self:start}html body .bill-head{gap:8px;flex-wrap:wrap}html body .bill-card .dialog-actions{justify-content:flex-start;margin-top:12px}
+html body #finance-view .finance-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+html body #finance-view .finance-kpi{padding:14px;gap:5px}
+html body #finance-view .fin-pane[data-fin-pane=overview]>.two-column-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px}
+html body #finance-view .fin-trend{height:150px}html body #finance-view #fin-breakdown{gap:6px}html body #finance-view #fin-breakdown .row-card{padding:10px 12px}
+@media(max-width:600px){html body #finance-view .finance-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}html body #finance-view .fin-pane[data-fin-pane=overview]>.two-column-layout{grid-template-columns:minmax(0,1fr)}html body #self-service-integration-grid .integration-card{padding:12px}}
+@media(prefers-reduced-motion:reduce){:is(.app-main,#app>main) :is(.panel,.row-card,.metric-card,.finance-kpi,.bill-card,.stats>div){transition:none!important}}
+
+/* Setup and usage tiles follow the same surface and focus treatment. */
+:is(.setup-step,.setup-item,.setup-task,.industry-browser-card,.plan-use-row,.plan-block){border-radius:12px;transition:border-color 180ms ease,box-shadow 180ms ease}
+.plan-use-row{padding:9px 10px;border:1px solid var(--sp-border);background:linear-gradient(120deg,#e2bd7206,transparent 70%)}
+@media(hover:hover){:is(.setup-step,.setup-item,.setup-task,.industry-browser-card,.plan-use-row):hover{border-color:#e2bd725c;box-shadow:inset 0 1px #ffffff08,0 6px 16px #0001}}
+.migration-help{display:grid;justify-items:start;gap:7px;margin-top:12px}.migration-help button{white-space:normal;text-align:left}.migration-help small{color:var(--sp-muted);line-height:1.5}
+@media(prefers-reduced-motion:reduce){:is(.setup-step,.setup-item,.setup-task,.industry-browser-card,.plan-use-row,.plan-block){transition:none!important}}
+/* Organise print reports as a row, with a full-width backup workspace below. */
+html body #exports-view .export-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none;gap:12px}
+html body #exports-view .export-grid>.panel{padding:18px;gap:10px;margin:0}
+html body #exports-view .export-grid h2{margin:0;font-size:16px}html body #exports-view .export-grid p{margin:0 0 4px;font-size:12px;line-height:1.6}
+html body #exports-view .export-backup{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;align-items:start}
+html body #exports-view .export-backup>:is(.panel-kicker,h2,p){grid-column:1}
+html body #exports-view .export-backup>#export-backup{grid-column:2;grid-row:1/3;align-self:center;justify-self:start}
+html body #exports-view .export-backup>.export-csv{grid-column:2;grid-row:3/5;display:flex;flex-wrap:wrap;gap:8px}
+html body #exports-view .export-backup>#export-feedback{grid-column:1/-1}
+html body .setup-list>li{min-width:0;border-radius:12px;background:linear-gradient(135deg,#e2bd7208,transparent 65%),var(--sp-surface);box-shadow:inset 0 1px #ffffff09,0 4px 12px #0001;transition:border-color 180ms ease,box-shadow 180ms ease}
+@media(hover:hover){html body .setup-list>li:hover{border-color:#e2bd725c;box-shadow:inset 0 1px #ffffff0c,0 6px 16px #0002}}
+@media(max-width:640px){html body #exports-view .export-grid{grid-template-columns:minmax(0,1fr)}html body #exports-view .export-backup{grid-template-columns:minmax(0,1fr)}html body #exports-view .export-backup>*{grid-column:1!important;grid-row:auto!important}html body #exports-view .export-backup>#export-backup{justify-self:stretch}}
+#workspace-context .ctx-sub{font-size:12px;color:var(--sp-muted);line-height:1.3}#workspace-context .ctx-designation{font-size:11px;color:var(--sp-accent);line-height:1.3}
+#workspace-context .sp-founder-shortcut{font-size:11px;color:var(--sp-accent);text-decoration:none;padding:5px 8px;border:1px solid #e2bd723f;border-radius:8px;justify-self:start}
+#workspace-context .sp-founder-shortcut:hover,#workspace-context .sp-founder-shortcut:focus-visible{background:#e2bd7210;border-color:var(--sp-accent)}
+
+.sp-card-icon{width:26px;height:26px;padding:4px;border:1px solid #e2bd7238;border-radius:8px;fill:none;stroke:var(--sp-accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;background:#e2bd7209}
+.sp-motion-enabled .sp-motion-visible.sp-card-icon{animation:sp-icon-breathe 6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.sp-card-icon{animation:none!important}}
+
+.sp-operator .stat .sp-card-icon{position:absolute;top:16px;right:14px}.sp-operator .stat{padding-right:52px!important}

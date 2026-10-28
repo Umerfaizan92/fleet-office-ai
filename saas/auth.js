@@ -139,9 +139,10 @@
   if(page==='login'&&(location.hash==='#operator'||new URLSearchParams(location.search).get('as')==='operator'))location.replace('operator-sign-in.html');
   if(page==='operator'){
     const operator=$('#operator-form'),msg=$('#operator-message'),codeLabel=$('#operator-code-label');
+    api('/api/saas/me').then(d=>{if(d.user.role!=='owner'||d.user.platform_owner)return;$('#operator-link-label').hidden=false;$('#operator-link-description').textContent='Add a private operator shortcut for '+d.user.full_name+' ('+d.user.email+'). Only link your own founder account.'}).catch(()=>{});
     operator.onsubmit=async e=>{e.preventDefault();msg.textContent='';msg.className='auth-message';const x=operator.elements,body={key:x.key.value};if(x.code.value)body.code=x.code.value;
       try{const r=await fetch('/api/operator/login',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));
         if(!r.ok){if(d.code_required){codeLabel.hidden=false;x.code.focus()}msg.textContent=d.error||'Sign-in failed.';msg.className='auth-message error';return}
-        sessionStorage.setItem('fp-admin-key',d.token);location.href='/office/'}catch{msg.textContent='Could not reach the server. Try again.';msg.className='auth-message error'}};
+        sessionStorage.setItem('fp-admin-key',d.token);if(x.link_workspace?.checked){const linked=await fetch('/api/operator/workspace-identity',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json','x-admin-key':d.token},body:JSON.stringify({confirm:true})});if(!linked.ok){const problem=await linked.json().catch(()=>({}));msg.textContent='Operator sign-in succeeded. '+(problem.error||'The workspace shortcut could not be linked.');const link=document.createElement('a');link.href='/office/';link.textContent=' Continue to operator console';msg.append(link);return}}location.href='/office/'}catch{msg.textContent='Could not reach the server. Try again.';msg.className='auth-message error'}};
   }
 })();

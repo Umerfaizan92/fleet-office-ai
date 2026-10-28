@@ -38,12 +38,14 @@
 
   function managerHtml(x){
     const resources=Array.isArray(x.resources)?x.resources:[];
-    const selected=new Set((x.selected_resources||[]).map(r=>String(r.id)));
-    const picker=resources.length?'<div><b>Authorised resources</b><small>Select what this workspace may actually use.</small><div class="integration-resource-list">'+resources.map(r=>'<label><input type="checkbox" data-im-resource="'+esc(r.id)+'" '+(selected.has(String(r.id))?'checked':'')+'><span><b>'+esc(r.label||r.id)+'</b><small>'+esc(String(r.type||'resource').replaceAll('_',' ')+(r.detail?' · '+r.detail:''))+'</small></span></label>').join('')+'</div><button type="button" class="secondary-button compact" data-im-save="'+esc(x.provider)+'">Save selection</button></div>':'';
+    const selected=new Set(pendingSelections.get(x.provider)||(x.selected_resources||[]).map(r=>String(r.id)));
+    const picker=resources.length?'<div class="integration-resource-picker"><b>Authorised resources</b><small>Select what this workspace may actually use.</small><div class="integration-resource-list">'+resources.map(r=>'<label><input type="checkbox" data-im-resource="'+esc(r.id)+'" '+(selected.has(String(r.id))?'checked':'')+'><span><b>'+esc(r.label||r.id)+'</b><small>'+esc(String(r.type||'resource').replaceAll('_',' ')+(r.detail?' · '+r.detail:''))+'</small></span></label>').join('')+'</div><button type="button" class="secondary-button compact" data-im-save="'+esc(x.provider)+'">Save selection</button></div>':'';
     const health=x.last_test_status==='pass'?'<span class="integration-health-pass">Last connection test passed</span>':x.last_test_status==='fail'?'<span class="integration-health-fail">Last connection test failed</span>':'<span>Connection test recommended</span>';
     return '<div class="integration-manager" data-im-manager="'+esc(x.provider)+'"><div class="integration-manager-status">'+health+(x.last_tested_at?' · '+esc(new Date(x.last_tested_at).toLocaleString()):'')+'</div><div class="integration-manager-actions"><button type="button" class="secondary-button compact" data-im-test="'+esc(x.provider)+'">Test connection</button><button type="button" class="secondary-button compact" data-im-disconnect="'+esc(x.provider)+'">Disconnect</button></div>'+picker+'</div>';
   }
 
+  const pendingSelections=new Map();
+  document.addEventListener('change',event=>{if(!event.target.matches('[data-im-resource]'))return;const card=event.target.closest('[data-provider-card]');pendingSelections.set(card.dataset.providerCard,[...card.querySelectorAll('[data-im-resource]:checked')].map(input=>input.dataset.imResource))});
   let enhancing=null;
   function enhance(){
     if(enhancing)return enhancing;
@@ -112,7 +114,7 @@
       save.disabled=true;
       try{
         await api('/api/saas/integrations/self-service/'+encodeURIComponent(provider)+'/resources',{method:'POST',body:JSON.stringify({resource_ids})});
-        notify('Authorised resource selection saved.');
+        pendingSelections.delete(provider);notify('Authorised resource selection saved.');
       }catch(err){notify(err.message,'error')}
       finally{save.disabled=false;await enhance()}
       return;
@@ -128,7 +130,7 @@
         notify(r.remote_revoked?'Provider access revoked and local credentials removed.':'Local credentials removed. Review the provider connected-app settings if you also want to revoke remote access.');
         if(typeof window.loadSelfServiceIntegrations==='function')await window.loadSelfServiceIntegrations(true);
         else location.reload();
-      }catch(err){notify(err.message,'error');disconnect.disabled=false}
+      }catch(err){notify(err.message,'error');disconnect.disabled=false;disconnect.textContent='Disconnect'}
       return;
     }
   },true);

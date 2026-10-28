@@ -1,3 +1,4 @@
+import {createFounderIdentity} from './founder-identity.js';
 import {createStaffAccess} from './staff-access.js';
 import {installStaffPresence} from './staff-presence.js';
 import {installCommunicationTracking,trackCommunication} from './message-delivery.js';
@@ -437,6 +438,7 @@ storagePlan.warnings.forEach(w => console.warn('[STORAGE]', w));
 const databasePath = storagePlan.databasePath;
 const db = createDb(databasePath);
 const staffAccess=createStaffAccess({db,audit:(...args)=>saasAudit(...args)});
+const founderIdentity=createFounderIdentity({db,audit:(...args)=>saasAudit(...args)});
 const startedAtMs = Date.now();
 runStartupDiagnostics({ db, env, storage: storagePlan });
 const socialStats = createSocialStatsService(env, backendRoot);
@@ -2626,7 +2628,7 @@ app.get('/api/saas/staff-chat',requireSaasUser,(req,res)=>{
 app.post('/api/saas/staff-chat',requireSaasUser,(req,res)=>{const parsed=z.object({message:z.string().trim().min(1).max(4000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Enter a staff message.'});const row={id:crypto.randomUUID(),organisation_id:req.saas.organisation_id,sender_user_id:req.saas.user_id,sender_name:req.saas.full_name||db.prepare('SELECT full_name FROM users WHERE id=?').get(req.saas.user_id)?.full_name||'Team member',sender_role:req.saas.role,message:parsed.data.message,created_at:new Date().toISOString()};db.prepare(`INSERT INTO staff_chat_messages (id,organisation_id,sender_user_id,sender_name,sender_role,message,created_at) VALUES (@id,@organisation_id,@sender_user_id,@sender_name,@sender_role,@message,@created_at)`).run(row);saasAudit(req,'staff_chat.message','staff_chat',row.id,{length:row.message.length});res.status(201).json({ok:true,message:{id:row.id,sender_name:row.sender_name,sender_role:row.sender_role,message:row.message,created_at:row.created_at,mine:true}})});
 app.get('/api/saas/live-activity',requireSaasUser,(req,res)=>{const rows=db.prepare(`SELECT id,action event_type,entity_type,created_at FROM audit_logs WHERE organisation_id=? AND (?='owner' OR user_id=?) ORDER BY created_at DESC LIMIT 30`).all(req.saas.organisation_id,req.saas.role,req.saas.user_id);res.json({ok:true,events:rows})});
 
-app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,access:staffAccess.snapshot(req),user:{email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
+app.get('/api/saas/me',requireSaasUser,(req,res)=>res.json({ok:true,access:staffAccess.snapshot(req),user:{platform_owner:founderIdentity.isFounder(req),role_title:db.prepare("SELECT role_title FROM workers WHERE organisation_id=? AND user_id=? AND status!='archived' ORDER BY updated_at DESC LIMIT 1").get(req.saas.organisation_id,req.saas.user_id)?.role_title||'',email:req.saas.email,phone:req.saas.phone,full_name:req.saas.full_name,role:req.saas.role,mfa_enabled:Boolean(req.saas.mfa_enabled),email_verified:Boolean(req.saas.email_verified),phone_verified:Boolean(req.saas.phone_verified)},organisation:{id:req.saas.organisation_id,name:req.saas.organisation_name,slug:req.saas.slug,abn:req.saas.abn,business_identifier_type:req.saas.business_identifier_type,business_identifier:req.saas.business_identifier,legal_name:req.saas.legal_name,abn_status:req.saas.abn_status,address:{unit:req.saas.address_unit||'',street_number:req.saas.address_street_number||'',street_name:req.saas.address_street_name||'',suburb:req.saas.address_suburb||'',state:req.saas.address_state||'',postcode:req.saas.address_postcode||'',formatted:req.saas.address_formatted||'',source:req.saas.address_source||''}},subscription_lifecycle:req.subscription_lifecycle}));
 // System branding is public; tenant branding is visible only to a signed-in member.
 const defaultSaasBranding=Object.freeze({
   display_name:'Super Pro AI Office Manager',
@@ -5637,6 +5639,7 @@ installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSa
 
 // Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
 staffAccess.install(app,{requireSaasUser,requireSaasRole});
+founderIdentity.install(app,{requireAdmin,requireSaasUser,requireSaasRole});
 installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,passwordHash,validTotp,saasAudit,env,sendVerification:payload=>sendSaasVerificationEmail(env,payload)});
 
 /*

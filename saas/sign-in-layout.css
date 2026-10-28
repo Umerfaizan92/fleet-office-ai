@@ -1,0 +1,59 @@
+/* Sign-in only. Natural content height prevents desktop-mode phones from inheriting full-viewport columns. */
+body[data-auth-page=login]{min-height:0}
+body[data-auth-page=login] .auth-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);grid-template-areas:"story form" "features form";align-items:start;align-content:center;gap:20px 40px;max-width:1280px;margin:0 auto;padding:28px 40px;min-height:0}
+body[data-auth-page=login] .auth-story{grid-area:story;min-height:0;padding:0;overflow:visible;border:0;background:none}
+body[data-auth-page=login] .auth-story::before,body[data-auth-page=login] .auth-story::after{display:none}
+body[data-auth-page=login] .auth-story-copy{margin:22px 0 0;max-width:520px}
+body[data-auth-page=login] .auth-story-copy .kicker{font-size:10px;margin:0}
+body[data-auth-page=login] .auth-story-copy h1{font-size:clamp(30px,3.4vw,48px);margin:10px 0 12px;line-height:1.08}
+body[data-auth-page=login] .auth-story-copy>p{font-size:13px;line-height:1.6;max-width:46ch}
+body[data-auth-page=login] .auth-form-side{grid-area:form;min-height:0;overflow:visible;width:100%;padding:24px;border:1px solid var(--sp-border);border-radius:22px;background:linear-gradient(145deg,#e2bd7209,transparent 55%),var(--sp-surface);box-shadow:0 18px 48px #0002}
+body[data-auth-page=login] .auth-form-card{max-width:500px;padding:0;margin:0 auto}
+body[data-auth-page=login] .auth-form-top{margin-bottom:18px;gap:12px}
+body[data-auth-page=login] .auth-form-top a{font-size:11px}
+body[data-auth-page=login] .auth-title{margin-bottom:16px}
+body[data-auth-page=login] .auth-title .kicker{margin:0;font-size:10px}
+body[data-auth-page=login] .auth-title h2{font-size:24px;line-height:1.15;margin:8px 0}
+body[data-auth-page=login] .auth-title p{font-size:12px;line-height:1.5}
+body[data-auth-page=login] .registration-grid{gap:10px}
+body[data-auth-page=login] .form-section-card{margin:0}
+body[data-auth-page=login] .registration-grid input:not([type=checkbox]){min-height:44px;padding:10px 12px;font-size:16px}
+body[data-auth-page=login] .remember-row{margin-top:10px!important;line-height:1.3}
+body[data-auth-page=login] .remember-row input{height:16px;min-height:16px;margin:0}
+body[data-auth-page=login] .mfa-field{margin-top:12px;padding:10px 12px;border:1px solid var(--sp-border);border-radius:10px;background:var(--sp-canvas)}
+body[data-auth-page=login] .mfa-field summary{cursor:pointer;font-size:12px;color:var(--sp-text)}
+body[data-auth-page=login] .mfa-field summary span{float:right;color:var(--sp-muted);font-size:11px}
+body[data-auth-page=login] .mfa-field[open] summary{margin-bottom:10px}
+body[data-auth-page=login] .mfa-field small{display:block;margin-top:6px;line-height:1.4}
+body[data-auth-page=login] .auth-message:empty{display:none}
+body[data-auth-page=login] .auth-switch{margin:0;font-size:11px}
+body[data-auth-page=login] .security-baseline{margin:0;padding-top:10px;gap:5px}
+body[data-auth-page=login] .security-baseline span{font-size:10px;padding:4px 6px}
+body[data-auth-page=login] .recovery-links{margin:0;gap:12px}
+body[data-auth-page=login] .recovery-links a{font-size:11px;min-height:24px;display:inline-flex;align-items:center}
+.signin-feature-panel{grid-area:features;min-width:0}
+.signin-feature-disclosure summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--sp-text);font-size:12px;font-weight:700;cursor:pointer}
+.signin-feature-disclosure summary::-webkit-details-marker{display:none}.signin-feature-disclosure summary small{color:var(--sp-muted);font-size:10px;font-weight:500}
+.signin-features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.signin-feature{position:relative;isolation:isolate;display:flex;align-items:flex-start;gap:10px;padding:14px 12px;border:1px solid var(--sp-border);border-radius:14px;background:linear-gradient(135deg,#e2bd7212,transparent 65%),var(--sp-surface);box-shadow:0 6px 18px #0001,inset 0 1px #ffffff08;transition:transform .2s,border-color .2s,box-shadow .2s}
+.signin-feature::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:radial-gradient(ellipse at top left,#e2bd721c,transparent 65%);opacity:0;transition:opacity .2s}
+.signin-feature h3{margin:0;font-size:12px;line-height:1.35}.signin-feature p{margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--sp-muted)}
+.signin-feature-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;color:var(--sp-accent);border:1px solid #e2bd7238;background:#e2bd7210;box-shadow:inset 0 1px #ffffff12}
+.signin-feature-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.signin-feature-note{margin:12px 0 0;color:var(--sp-muted);font-size:11px;line-height:1.6}.signin-feature-note a{display:block;color:var(--sp-accent);text-decoration:none}
+body[data-auth-page=login] .sp-global-trust-footer{margin-top:0;padding:12px 40px;gap:10px 24px;font-size:10px;line-height:1.45;grid-template-columns:1fr 1fr}
+body[data-auth-page=login] .sp-global-trust-footer b{font-size:10px}
+body[data-auth-page=login] .sp-global-trust-footer nav{grid-column:1/-1;justify-content:flex-start;gap:16px;padding-right:46px}
+@media(hover:hover){.signin-feature:hover{transform:translateY(-3px);border-color:#e2bd7280;box-shadow:0 12px 30px #0003}.signin-feature:hover::before{opacity:1}}
+@media(min-width:901px) and (min-height:800px){body[data-auth-page=login] .auth-layout{padding-block:38px;gap:24px 44px}.signin-feature{padding-block:18px}}
+@media(max-width:900px){body[data-auth-page=login] .auth-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"story" "form" "features";padding:20px;gap:16px;max-width:620px}body[data-auth-page=login] .auth-story-copy{display:none}body[data-auth-page=login] .auth-story .brand{font-size:12px}body[data-auth-page=login] .auth-form-side{padding:20px}body[data-auth-page=login] .auth-title h2{font-size:22px}.signin-feature-disclosure summary{margin:0;min-height:32px}.signin-feature-disclosure[open] summary{margin-bottom:12px}.signin-feature-disclosure summary small::after{content:" +"}body[data-auth-page=login] .sp-global-trust-footer{padding:12px 20px;gap:8px 16px}}
+@media(max-width:480px){body[data-auth-page=login] .auth-layout{padding:14px 12px;gap:12px}body[data-auth-page=login] .auth-form-side{padding:16px}body[data-auth-page=login] .auth-form-top{margin-bottom:14px}body[data-auth-page=login] .auth-title h2{font-size:21px}body[data-auth-page=login] .auth-title{margin-bottom:12px}.signin-features{gap:8px}.signin-feature{flex-direction:column;padding:12px}.signin-feature-disclosure summary small{font-size:9px}body[data-auth-page=login] .sp-global-trust-footer{padding:10px 12px;font-size:9px}body[data-auth-page=login] .sp-global-trust-footer b{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.signin-feature,.signin-feature::before{transition:none!important;transform:none!important}}
+
+/* Override older public-page !important spacing without shrinking touch targets. */
+body[data-auth-page=login] .auth-switch{margin:4px 0 0!important}
+body[data-auth-page=login] .security-baseline{margin:0!important;padding:9px 0 0!important;gap:5px!important;justify-content:flex-start}
+body[data-auth-page=login] .security-baseline span{padding:3px 6px!important;font-size:10px!important;letter-spacing:0!important}
+@media(max-width:480px){body[data-auth-page=login] .auth-title p{font-size:11px}body[data-auth-page=login] .registration-grid label{font-size:12px}body[data-auth-page=login] .auth-form-top a{font-size:10px}}
+body.auth-page[data-auth-page=login]{padding-bottom:0}
+body[data-auth-page=login] .gds-support-launch{bottom:12px!important}

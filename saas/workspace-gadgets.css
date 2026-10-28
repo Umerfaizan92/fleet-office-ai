@@ -37,3 +37,26 @@ div.gx-tile{cursor:default}
 @media (max-width:330px){.gx-grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.gx-tile{transition:none;transform:none}.gx-spark-line,.gx-live i{animation:none}}
 html[data-theme="light"] .gx-tile{box-shadow:0 1px 2px rgba(20,24,32,.06),0 10px 26px rgba(20,24,32,.08);background:radial-gradient(240px 160px at var(--mx) var(--my),rgba(217,173,89,.16),transparent 70%),#fff}
+
+/* Layered live cards share one icon system; real values remain the visual focus. */
+body .gx-tile{isolation:isolate;overflow:hidden;gap:9px;border-color:color-mix(in srgb,var(--gx-accent) 22%,var(--line));background:radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--gx-accent) 9%,transparent),transparent 65%),var(--panel);box-shadow:inset 0 1px #ffffff0c,0 8px 24px #0002}
+.gx-tile::after{content:"";position:absolute;z-index:-1;width:140px;height:140px;right:-75px;top:-75px;border:1px solid color-mix(in srgb,var(--gx-accent) 15%,transparent);border-radius:50%;box-shadow:0 0 0 18px color-mix(in srgb,var(--gx-accent) 3%,transparent),0 0 0 38px color-mix(in srgb,var(--gx-accent) 2%,transparent);pointer-events:none}
+.gx-tile-head{display:flex;align-items:center;gap:9px;transform:translateZ(16px);min-width:0}
+.gx-icon{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:10px;color:var(--gx-accent,var(--sp-accent));background:color-mix(in srgb,currentColor 8%,transparent);border:1px solid color-mix(in srgb,currentColor 25%,transparent);box-shadow:inset 0 1px #ffffff10,0 3px 8px #0001}
+.gx-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;fill:none}
+body .gx-label{line-height:1.35;transform:none;color:var(--text)}
+body .gx-tile .gx-main{min-height:42px;flex-direction:row;align-items:center}
+body .gx-tile .gx-num{font-size:clamp(1.6rem,2.6vw,2.1rem)}
+body .gx-tile .gx-ring{width:43px;height:43px}
+body .gx-tile .gx-spark{width:40%;max-width:112px;height:32px}
+.gx-workspace-links{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(120deg,#d9ad5906,transparent),var(--panel)}
+.gx-links-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.gx-links-head h3{font-size:13px;margin:0}.gx-links-head>span{font-size:11px;color:var(--muted)}
+.gx-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.gx-shortcut{display:flex;align-items:center;gap:9px;position:relative;min-width:0;padding:11px 10px;border:1px solid var(--line);border-radius:12px;color:var(--text);background:linear-gradient(140deg,#d9ad5909,transparent 70%),var(--panel-2);text-align:left;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.gx-shortcut b{display:block;font-size:12px;font-weight:650}.gx-shortcut small{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.4}.gx-shortcut-arrow{margin-left:auto;color:var(--muted);font-size:14px}.gx-shortcut .gx-icon{width:29px;height:29px;border-radius:9px}.gx-shortcut:focus-visible{outline:2px solid var(--sp-accent);outline-offset:2px}
+@media(hover:hover){.gx-shortcut:hover{transform:translateY(-2px);border-color:#d9ad5970;box-shadow:0 6px 16px #0002}.gx-shortcut:hover .gx-shortcut-arrow{color:var(--sp-accent)}}
+.sp-motion-enabled:not(.sp-page-hidden) .gx-in-view .gx-icon svg{animation:gxIconFloat 6s ease-in-out infinite}.gx-shortcut:nth-child(even) .gx-icon svg{animation-delay:-3s!important}@keyframes gxIconFloat{50%{transform:translateY(-1.5px);opacity:.75}}
+@media(min-width:1200px){body .gx-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(min-width:641px) and (max-width:1199px){body .gx-grid{grid-template-columns:repeat(6,minmax(0,1fr))}body .gx-tile{grid-column:span 2}.gx-board[data-cards="5"] .gx-tile:nth-child(n+4){grid-column:span 3}.gx-board[data-cards="4"] .gx-tile{grid-column:span 3}.gx-shortcuts{grid-template-columns:repeat(4,minmax(0,1fr))}.gx-shortcut{flex-wrap:wrap}.gx-shortcut-arrow{position:absolute;right:10px;top:10px}}
+@media(max-width:640px){.gx-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}.gx-workspace-links{padding:12px}.gx-shortcut{padding:10px 8px;gap:7px}.gx-shortcut small{font-size:10px}.gx-shortcut-arrow{display:none}.gx-tile-head{gap:7px}.gx-icon{width:28px;height:28px}body .gx-label{font-size:11px}body .gx-tile .gx-main{flex-direction:row}.gx-links-head>span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.gx-icon svg{animation:none!important}.gx-shortcut{transition:none!important;transform:none!important}}

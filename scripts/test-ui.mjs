@@ -43,6 +43,7 @@ try{
     await page.setViewportSize({width,height:900});await page.goto(base+'/saas/sign-in.html');
     await check(`sign-in at ${width}px: no horizontal overflow; shared font and separate business form`,async()=>{
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+      const fit=await page.evaluate(()=>({height:innerHeight,scroll:document.documentElement.scrollHeight,main:document.querySelector('main').getBoundingClientRect().height}));assert.ok(fit.scroll<=fit.height+1,JSON.stringify({width,...fit}));
       assert.match(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily),/Manrope/);
       assert.equal(await page.locator('#operator-form').count(),0);assert.ok(await page.locator('#login-form').isVisible());
       await page.locator('#login-form .pw-eye').click();assert.equal(await page.locator('#login-form input[name=password]').getAttribute('type'),'text');
@@ -50,6 +51,11 @@ try{
     });
     await screenshot(page,'signin-'+width);
   }
+  await check('sign-in desktop mode removes tall blank columns and keeps MFA reachable',async()=>{
+    await page.setViewportSize({width:980,height:2100});await page.goto(base+'/saas/sign-in.html');
+    assert.ok((await page.locator('.auth-layout').boundingBox()).height<900);assert.equal(await page.locator('.signin-feature').count(),6);
+    await page.locator('#mfa-details summary').click();assert.ok(await page.locator('input[name=mfa_code]').isVisible());await page.locator('#mfa-details summary').click();await screenshot(page,'signin-tall-desktop-mode');
+  });
   await page.goto(base+'/saas/sign-in.html#operator');await page.waitForURL(base+'/saas/operator-sign-in.html');await check('legacy operator deep link opens separate founder sign-in',async()=>assert.ok(await page.locator('#operator-form').isVisible()));
   const password='UI-only-'+secret()+'!';
   const post=async(url,data)=>{const r=await context.request.post(base+url,{data});assert.ok(r.ok(),`${url}: ${r.status()} ${await r.text()}`);return r.json()};
@@ -130,6 +136,7 @@ try{
     assert.equal(await page.locator('.sp-motion-toggle').count(),0);
     assert.equal(await page.locator('html').evaluate(e=>e.classList.contains('sp-motion-enabled')),true);
   });
+  assert.equal(await page.locator('#workspace-operator-link').isVisible(),false,'subscriber owners do not receive the founder shortcut');
   let integrationReads=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/saas/integrations/self-service')integrationReads++});
   await page.evaluate(()=>location.hash='marketing/connections');
   await check('connectors page two stays selected while readiness details update',async()=>{
@@ -152,6 +159,36 @@ try{
     const before=integrationReads;await page.waitForTimeout(700);assert.equal(integrationReads,before,'an idle connector list must not refetch itself');
     await pager.getByRole('button',{name:'← Previous',exact:true}).click();
     assert.match(await pager.innerText(),/Page 1 of/);
+  });
+  await check('connected TikTok resources stay separate from controls and save exact selections',async()=>{
+    let selected=['test-tiktok-account'],saved=null;
+    const fixture=async route=>{const response=await route.fetch(),data=await response.json();const item=data.integrations.find(x=>x.provider==='tiktok');Object.assign(item,{status:'connected',provider_ready:true,account_label:'UI Test Account',resources:[{id:'test-tiktok-account',label:'UI Test Account',type:'tiktok_account'}],selected_resources:selected.map(id=>({id})),last_test_status:'pass'});await route.fulfill({response,json:data})};
+    await page.route('**/api/saas/integrations/self-service',fixture);
+    await page.route('**/api/saas/integrations/self-service/tiktok/resources',async route=>{saved=route.request().postDataJSON().resource_ids;selected=saved;await route.fulfill({json:{ok:true}})});
+    await page.evaluate(()=>window.loadSelfServiceIntegrations(true));await page.evaluate(()=>window.SuperProIntegrationManager.enhance());
+    const card=page.locator('[data-provider-card="tiktok"]');await card.locator('[data-im-resource]').waitFor();
+    for(const width of [390,980,1440]){
+      await page.setViewportSize({width,height:1200});await page.waitForTimeout(200);const {actions,picker,box,input}=await card.evaluate(card=>{const rect=selector=>{const e=selector?card.querySelector(selector):card;return e?JSON.parse(JSON.stringify(e.getBoundingClientRect())):null};return {actions:rect('.integration-manager-actions'),picker:rect('.integration-resource-picker'),box:rect(),input:rect('[data-im-resource]')}});assert.ok(actions&&picker&&box&&input,JSON.stringify({width,actions,picker,box,input}));assert.ok(picker.y>=actions.y+actions.height-1,JSON.stringify({width,actions,picker}));assert.ok(input.width>0&&input.width<=20&&input.height<=20,JSON.stringify(input));assert.ok(picker.x>=box.x&&picker.x+picker.width<=box.x+box.width+1);await screenshot(page,'connected-tiktok-'+width);
+    }
+    await card.locator('[data-im-resource]').uncheck();await card.getByRole('button',{name:'Save selection'}).click();await page.waitForFunction(()=>!document.querySelector('[data-provider-card="tiktok"] [data-im-save]')?.disabled);assert.deepEqual(saved,[]);
+    await page.unroute('**/api/saas/integrations/self-service',fixture);await page.unroute('**/api/saas/integrations/self-service/tiktok/resources');
+  });
+  await check('Import help opens on mobile and supported files reach the dry-run review',async()=>{
+    await page.setViewportSize({width:390,height:900});await page.evaluate(()=>location.hash='setup/import');await page.locator('#migration-view').waitFor({state:'visible'});
+    await page.locator('#migration-help').click();await page.locator('.gds-support-panel').waitFor({state:'visible'});await page.locator('.gds-support-close').click();
+    await page.locator('#migration-entity').selectOption('workers');await page.locator('#migration-file').setInputFiles({name:'example.xlsx',mimeType:'application/octet-stream',buffer:Buffer.from('unsupported fixture')});await page.waitForFunction(()=>document.querySelector('#migration-file-info').textContent.includes('.csv or .json'));
+    await page.locator('#migration-file').setInputFiles({name:'workers.csv',mimeType:'text/csv',buffer:Buffer.from('Full name,Email\nImport Preview Person,preview@example.test\n')});await page.locator('#migration-preview').waitFor({state:'visible'});await page.locator('#migration-preview').click();await page.locator('#migration-result-panel').waitFor({state:'visible'});assert.match(await page.locator('#migration-counts').innerText(),/Will create/);await screenshot(page,'import-dry-run-mobile');
+  });
+  await check('Finance, Billing, setup and exports stay organised across phone and desktop widths',async()=>{
+    for(const width of [390,980]){
+      await page.setViewportSize({width,height:1200});
+      for(const view of ['finance','billing','onboarding','exports']){
+        await page.evaluate(view=>location.hash=view,view);await page.locator('#'+view+'-view').waitFor({state:'visible'});await page.waitForTimeout(180);
+        if(view==='billing'){const select=page.locator('#billing-view .focus-navigation select');for(const label of ['Payment connections','Usage & add-ons']){await select.selectOption({label});await page.waitForTimeout(150);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'billing-'+label.replaceAll(' ','-')+'-'+width)}}
+        if(view==='exports'){assert.ok(await page.locator('#export-backup').isVisible());const backup=await page.locator('.export-backup').boundingBox(),grid=await page.locator('.export-grid').boundingBox();assert.ok(backup.width>=grid.width-2)}
+        assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),view+' '+width);await screenshot(page,view+'-organised-'+width);
+      }
+    }
   });
   await page.evaluate(()=>location.hash='customers/list');await page.waitForTimeout(100);
   await check('customer dialog fits mobile and Cancel works with required fields empty',async()=>{
@@ -177,6 +214,7 @@ try{
     const form=page.locator('[data-team-role]').first();await form.locator('select').selectOption('manager');await form.getByRole('button',{name:'Save role'}).click();await page.waitForFunction(()=>document.querySelector('#team-status')?.textContent.includes('Role authorised'));
     await page.locator('[data-team-role] select').selectOption('employee');await page.locator('[data-team-role] button').click();await page.waitForFunction(()=>document.querySelector('[data-team-role] select')?.value==='employee');
     await page.locator('[data-staff-permissions]').first().click();const access=page.locator('.sp-access-dialog');await access.waitFor({state:'visible'});
+    await page.setViewportSize({width:980,height:2000});const bounds=await access.boundingBox(),formBounds=await access.locator('form').boundingBox();assert.ok(bounds.height<1100,JSON.stringify(bounds));assert.ok(bounds.y+bounds.height-formBounds.y-formBounds.height<45);await screenshot(page,'staff-access-compact');
     await access.locator('select[name=mode]').selectOption('custom');await access.locator('input[value="customers.read"]').check();await access.getByRole('button',{name:'Save this member’s access'}).click();await page.waitForFunction(()=>document.querySelector('#staff-access-note')?.textContent.startsWith('Saved.'));
     await access.locator('select[name=mode]').selectOption('role');await access.getByRole('button',{name:'Save this member’s access'}).click();await page.waitForTimeout(300);await access.getByRole('button',{name:'Close',exact:true}).click();
 
@@ -189,7 +227,7 @@ try{
       await p.locator('#sp-ask-input').fill('How do I see my assigned work?');await p.locator('.sp-ask-send').click();
       await p.locator('[data-copilot-speaker]').click();
       await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
-      assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);
+      assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);assert.equal(await p.locator('#workspace-operator-link').isVisible(),false);assert.match(await p.locator('#workspace-member-name').innerText(),/UI Test Employee/);
       await p.setViewportSize({width:390,height:844});assert.ok(await p.locator('#logout').isVisible());await p.locator('#logout').click();await p.waitForURL(base+'/saas/');assert.equal((await employee.request.get(base+'/api/saas/me')).status(),401);
 
     }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
@@ -234,8 +272,9 @@ try{
   });
   await screenshot(page,'business-mobile');
   await page.emulateMedia({reducedMotion:'reduce'});await check('reduced motion disables decorative animation',async()=>assert.equal(await page.locator('.sp-logo').first().evaluate(e=>getComputedStyle(e).animationName),'none'));
+  await page.setViewportSize({width:390,height:900});
   page.on('response',r=>{if(r.url().startsWith(base+'/api/admin/')&&r.status()>=400)failedFounderRequests.push(r.status()+' '+new URL(r.url()).pathname)});
-  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#app').waitFor({state:'visible'});
+  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-link-label').waitFor({state:'visible'});await page.locator('input[name=link_workspace]').check();await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#app').waitFor({state:'visible'});
   await check('founder mobile menu opens, filters, navigates and restores focus on Escape',async()=>{
     const menu=page.locator('.sp-office-menu');await menu.click();assert.equal(await menu.getAttribute('aria-expanded'),'true');await page.locator('.sp-nav-filter').fill('customer');await page.locator('aside .nav[data-view=customers]').waitFor({state:'visible'});assert.equal(await page.locator('aside .nav:visible').count(),1);await page.keyboard.press('Escape');assert.equal(await menu.getAttribute('aria-expanded'),'false');assert.ok(await menu.evaluate(e=>document.activeElement===e));
     await menu.click();await page.locator('.sp-nav-filter').fill('');await page.locator('aside .nav[data-view=customers]').click();assert.ok(await page.locator('#customers-view').isVisible());assert.equal(await menu.getAttribute('aria-expanded'),'false');
@@ -244,6 +283,10 @@ try{
   await check('founder navigation opens all 23 sections with one visible view',async()=>{const views=await page.locator('aside .nav').evaluateAll(nodes=>nodes.map(n=>n.dataset.view));for(const view of views){await page.locator(`aside .nav[data-view="${view}"]`).click();await page.locator(`#${view}-view`).waitFor({state:"visible"});assert.equal(await page.locator('#app .view:visible').count(),1,view);assert.ok(await page.locator(`#${view}-view`).isVisible(),view)}console.log('Founder sections checked:',views.length)});
   await page.locator('aside .nav[data-view=dashboard]').click();await page.locator('aside .sp-logo').waitFor({state:'visible'});await screenshot(page,'founder-desktop');
   await page.waitForTimeout(500);await check('founder API requests succeed across all sections',async()=>assert.deepEqual(failedFounderRequests,[]));
+  await check('only the independently verified founder sees the workspace operator shortcut',async()=>{
+    const me=await (await context.request.get(base+'/api/saas/me')).json();assert.equal(me.user.platform_owner,true);
+    const account=await context.newPage();try{await account.goto(base+'/saas/workspace.html');await account.locator('#workspace').waitFor({state:'visible'});assert.ok(await account.locator('#workspace-operator-link').isVisible());assert.equal(await account.locator('#workspace-operator-link').getAttribute('href'),'operator-sign-in.html')}finally{await account.close()}
+  });
   await check('no browser JavaScript exceptions',async()=>assert.deepEqual(errors,[]));
   console.log(`UI CHECKS PASSED: ${results.length}`);
 }finally{await browser?.close();child.kill('SIGTERM');await new Promise(r=>child.exitCode!==null?r():child.once('exit',r));fs.rmSync(temp,{recursive:true,force:true});}

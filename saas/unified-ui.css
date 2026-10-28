@@ -25,7 +25,7 @@ button,input,select,textarea{font-family:inherit}
 .sp-skip-link{position:fixed;top:12px;left:12px;z-index:10000;padding:12px 18px;border-radius:10px;background:var(--sp-accent);color:var(--sp-on-accent);font-weight:700;transform:translateY(-160%)}
 .sp-skip-link:focus{transform:translateY(0)}
 /* Dialogs stay inside the visual viewport at zoom and on small screens. */
-html body dialog{box-sizing:border-box;inset:0;width:min(640px,calc(100% - 32px));min-width:0;max-width:calc(100% - 32px);height:auto;max-height:calc(100dvh - 32px);margin:auto;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid var(--sp-border);border-radius:20px;background:var(--sp-surface);color:var(--sp-text);box-shadow:0 24px 100px #0008}
+html body dialog{box-sizing:border-box;inset:0;width:min(640px,calc(100% - 32px));min-width:0;max-width:calc(100% - 32px);height:fit-content;min-height:0;max-height:calc(100dvh - 32px);margin:auto;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid var(--sp-border);border-radius:20px;background:var(--sp-surface);color:var(--sp-text);box-shadow:0 24px 100px #0008}
 html body dialog.sp-dialog-wide{width:min(1000px,calc(100% - 32px))}
 dialog::backdrop{background:#03060bbf;backdrop-filter:blur(5px)}
 dialog :is(form,.modal-body,.dialog-body,.dialog-card){min-width:0;max-width:100%}
@@ -112,8 +112,6 @@ body.sp-operator{--bg:var(--sp-canvas);--panel:var(--sp-surface);--panel2:var(--
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 /* Flowstate-inspired depth and motion, rendered with the existing palette.
    No WebGL, video, fonts, animation libraries or remote assets are added. */
-.sp-motion-toggle{flex:none;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font:600 11px/1.2 var(--font-ui);white-space:nowrap;cursor:pointer}
-.sp-motion-toggle:hover{color:var(--text);border-color:var(--brand-line)}
 .sp-motion-target{transform-origin:center;transform-box:fill-box}
 .sp-motion-enabled .sp-motion-visible:is(.sp-logo,.ai-ico){animation:sp-live-icon 6s ease-in-out infinite}
 .sp-motion-enabled .sp-motion-visible:is(.sp-nav-icon,.nav-step svg){animation:sp-icon-breathe 5s ease-in-out infinite}
@@ -146,7 +144,6 @@ html:not(.sp-motion-enabled) :is(.sv-icon svg,.gx-live i,.sc-launch-icon),html:n
 @keyframes sp-icon-breathe{0%,100%{opacity:1}50%{opacity:.65}}
 @keyframes sp-fluid-drift{from{transform:translate3d(-2%,-1%,0) rotate(-8deg)}to{transform:translate3d(3%,3%,0) rotate(7deg)}}
 @keyframes sp-view-enter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:700px){.sp-motion-toggle{font-size:10px;min-height:34px}.auth-page .auth-form-top .sp-motion-toggle{margin-left:auto}}
 @media(prefers-reduced-motion:reduce){.sp-motion-target,.auth-story::after,.view>.page-heading{animation:none!important}.feature-card:hover,.metric-card:hover,.integration-card:hover{translate:none}}
 
 /* Shared semantic surfaces keep chat, invitation and operator controls legible in either mode. */
@@ -179,3 +176,121 @@ html body .platform-notice-dialog{background:var(--sp-surface);color:var(--sp-te
 .platform-notice-dialog :is(p,small){color:var(--sp-muted)}
 
 body:has(.sc-panel:not([hidden])) .gds-live-toasts{top:10px!important;bottom:auto;right:10px;width:min(300px,calc(100vw - 20px))}.staff-availability-form button{background:var(--sc-gold);color:var(--sc-ink);border:1px solid var(--sc-gold-line);font-weight:700}
+
+/* Content-led layouts: compact sections without viewport-sized empty rows. */
+body .hero,html.has-stage .stage-pane>.hero{min-height:0;height:auto;gap:clamp(20px,3vw,40px);padding:28px clamp(18px,4vw,56px);align-items:center}
+body .guide-shell,html.has-stage .guide-shell{min-height:0;height:auto;max-height:none;margin:0;width:100%}
+body .guide-card,html.has-stage .guide-card{height:440px;min-height:0;max-height:none;border-radius:18px}
+body .guide-card>header{padding:12px 16px;gap:10px;flex-wrap:wrap}
+body .guide-card .chat-log{min-height:120px;max-height:none;padding:16px;flex:1}
+body .hero-actions{margin:20px 0 14px;gap:10px}
+body .hero-lead{line-height:1.65}
+html.has-stage main{height:auto;min-height:0;overflow:visible;padding-bottom:68px}
+html.has-stage .stage-pane{height:auto;min-height:0;overflow:visible}
+html.has-stage .stage-pane::after{height:0}
+body .signal-bar{margin-block:0;padding-block:18px}
+body .superpro-newsletter{width:calc(100% - 36px);max-width:1180px;margin:18px auto;padding:18px 20px;gap:18px;border-radius:16px;background:radial-gradient(ellipse at top left,#e2bd7210,transparent 65%),var(--sp-surface)}
+body .superpro-newsletter h2{font-family:var(--font-ui);font-size:clamp(1.05rem,2vw,1.35rem);line-height:1.3;margin:5px 0 8px;max-width:34ch}
+body .superpro-newsletter p{margin:6px 0;font-size:12px;line-height:1.5}
+body .superpro-newsletter form{gap:8px;align-items:start}
+body .superpro-newsletter :is(input,button){min-height:42px;padding:9px 12px;border-radius:9px}
+body .superpro-newsletter .newsletter-consent{font-size:12px;line-height:1.4;gap:8px}
+body .superpro-newsletter .newsletter-consent input{min-height:0;padding:0;flex:none}
+body .superpro-newsletter form>small{grid-column:1/-1;line-height:1.4}
+body #product-newsletter-message:empty{display:none}
+body .superpro-newsletter .newsletter-secondary{font-size:12px}
+body .content-wrap{padding:20px clamp(16px,2.5vw,32px) 24px}
+body .page-heading{margin-bottom:16px;gap:12px}
+body :is(.two-column-layout,.two-col,.form-grid,.stats,.metric-grid){gap:14px}
+body :is(.panel,.metric-card){padding:18px}
+body :is(.panel-head,.form-section-head){margin-bottom:14px}
+body :is(.focus-navigation,.focus-pagination){padding:9px 12px;gap:8px;margin-bottom:12px}
+body .sp-global-trust-footer{margin-top:16px;padding-block:14px;gap:12px}
+body :is(.plan-card,.pricing-card){min-height:0;padding:18px;gap:8px;border-radius:14px;background:radial-gradient(ellipse at top left,#e2bd720b,transparent 65%),var(--sp-surface)}
+body :is(.plan-card.featured,.pricing-card.featured){border-color:var(--sp-accent);box-shadow:inset 0 1px #e2bd7228,0 10px 24px #0002}
+body :is(.plans-grid,.pricing-grid){gap:12px;margin-bottom:14px}
+body :is(.plan-card,.pricing-card) :is(h2,h3){font-family:var(--font-ui);font-size:clamp(1.6rem,2.5vw,2rem);margin:4px 0}
+body :is(.plan-card,.pricing-card) p{margin:0 0 8px;font-size:13px;line-height:1.5}
+body :is(.plan-card,.pricing-card) ul{margin:4px 0 12px;gap:6px}
+body :is(.plan-card,.pricing-card) li{font-size:12px;line-height:1.45}
+body .trial-hero{padding:16px 18px;gap:12px;margin-bottom:14px}
+body .trial-hero h2{font-size:20px;margin:3px 0}
+body .trial-count strong{font-size:36px;line-height:1.1}
+body .sidebar-trial-card{padding:10px 12px;margin-block:8px;min-height:0}
+body .plans-section{padding-block:20px}
+body .plans-head{margin-bottom:16px}
+.sp-operator #app>main{padding-bottom:20px}
+.sp-operator :is(.sub-breakdowns,.sub-stats,.sub-grid){gap:12px}
+.sp-operator :is(.sub-manage,.sub-breakdowns>.panel){padding:14px}
+@media(max-width:1100px){body .hero{grid-template-columns:1fr;gap:22px}.hero-copy{max-width:760px}body .guide-shell{max-width:760px;justify-self:start}}
+@media(max-width:700px){
+ body .hero{padding:24px 18px 20px;gap:20px}
+ body .hero h1{font-size:clamp(2.15rem,8vw,3rem);margin:14px 0}
+ body .guide-card{height:390px}
+ body .guide-card .chat-log{padding:12px}
+ body .superpro-newsletter{grid-template-columns:1fr;padding:16px;gap:12px;margin-block:14px}
+ body .superpro-newsletter form{grid-template-columns:1fr 1fr}
+ body .superpro-newsletter form>input[name=email]{grid-column:1/-1}
+ body .superpro-newsletter :is(input,button){grid-column:auto;min-width:0}
+ body .superpro-newsletter .newsletter-consent{grid-column:1/-1}
+ body .superpro-newsletter button{font-size:12px}
+ body .content-wrap{padding:14px 12px 20px}
+ body :is(.panel,.metric-card,.plan-card,.pricing-card){padding:14px}
+ body .trial-hero{grid-template-columns:1fr auto;gap:10px}
+ body .trial-progress{grid-column:1/-1}
+ body .trial-count strong{font-size:32px}
+ .auth-page .auth-form-side{padding:22px 20px 40px}
+ .auth-page .auth-form-card{padding-bottom:12px}
+}
+body .guide-shell{padding-bottom:0}
+body .guide-shell .floating-proof{display:none!important}
+body .guide-shell .voice-capability{position:static;inset:auto;width:100%;margin:10px 0 0;padding:8px 12px;min-height:0}
+body .app-shell,body .app-main,.sp-operator #app{min-height:0}
+body .app-footer{padding:12px clamp(12px,2.5vw,32px);gap:10px}
+body .content-wrap>.view{min-height:0}
+body .gx-board{margin-block:12px}
+body .gx-grid{gap:12px}
+body .gx-tile{padding:14px;min-height:0}
+.sp-operator .sub-row td{padding-block:10px}
+@media(max-width:1100px){body main .hero{gap:20px}}
+/* Keep the composer visible while chat history scrolls inside the card. */
+body .guide-card{height:440px}
+body .guide-card>header{flex-shrink:0}
+body .guide-card .chat-log{min-height:80px;flex:1 1 0;overflow:auto}
+body .guide-card .quick-prompts{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:8px 12px;flex-shrink:0;scrollbar-width:thin}
+body .guide-card .quick-prompts button{flex:none;white-space:nowrap;min-height:40px;padding:8px 12px}
+body .guide-card .chat-composer{flex-shrink:0;margin:0 12px 8px;padding:8px;min-height:60px}
+body .guide-card .voice-status{flex-shrink:0;padding:4px 12px 10px!important;font-size:11px}
+html.has-stage main{padding-bottom:0}
+html.has-stage body{padding-bottom:72px}
+body .superpro-newsletter button[type=submit]{background:linear-gradient(135deg,#f0d28a,#c99a43);color:#1b160c;border:1px solid #e2bd72;font-weight:700}
+@media(max-width:700px){
+ body .guide-card{height:440px}
+ body .guide-card>header{padding:10px 12px}
+ body .guide-card .guide-identity{flex:1 1 100%}
+ body .guide-card .guide-actions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:nowrap;width:100%}
+ body .guide-card .guide-actions select{min-width:0;max-width:120px;font-size:13px}
+ body .guide-card .guide-actions button{width:36px;min-width:36px}
+ body .trust-strip{gap:6px 12px;padding-right:0}
+}
+
+/* Dialogs shrink to their contents instead of stretching between top/bottom insets. */
+html body dialog{padding:20px;border-radius:16px;background:radial-gradient(ellipse at top left,#e2bd7209,transparent 65%),var(--sp-surface);border-color:var(--sp-border)}
+html body dialog>form{padding:0}
+html body dialog :is(h1,h2){margin:0 0 10px;line-height:1.3}
+html body dialog p{margin:8px 0;line-height:1.5}
+html body dialog .dialog-actions{margin-top:14px;gap:8px}
+html body dialog :is(.modal-body,.dialog-body,.dialog-card){min-height:0;height:auto}
+html body dialog :is(.release-card,.tour-step){padding:0}
+html body dialog.legal-modal{width:min(520px,calc(100% - 24px))}
+html body dialog.legal-modal .legal-agree{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;margin-top:12px}
+html body dialog.legal-modal .legal-agree input{width:16px;height:16px;min-height:0;flex:none;margin-top:3px}
+html body dialog [role=alert]:empty{display:none}
+@media(max-width:480px){html body dialog{padding:18px}.legal-modal .dialog-actions button{flex:1;min-height:44px}}
+@media(min-width:901px){
+ .sp-operator #app>aside{position:fixed;left:0;top:0;width:268px}
+ .sp-operator #app>main{grid-column:2}
+ .sp-operator>.sp-global-trust-footer{margin-left:268px}
+}
+@media(max-width:900px){.auth-page .auth-layout,.auth-page .auth-form-side{min-height:0}}
+body .app-footer{margin-bottom:0}

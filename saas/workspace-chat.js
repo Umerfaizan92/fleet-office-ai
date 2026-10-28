@@ -15,11 +15,11 @@
     const bMin=btn('Minimise staff chat','—',{'data-sc':'min'}),bMax=btn('Maximise staff chat','⤢',{'data-sc':'max'}),bClose=btn('Close staff chat','×',{'data-sc':'close'});
     const log=el('div',{class:'sc-log',role:'log','aria-live':'polite'},el('p',{class:'sc-empty',text:'Loading messages…'}));
     const dir=el('div',{class:'staff-directory-list','aria-live':'polite',text:'Loading team…'});
-    const inactiveBox=el('input',{type:'checkbox'}),inactiveToggle=el('label',{class:'staff-inactive-toggle',hidden:true},inactiveBox,' Show inactive accounts (managers only)');
+    const offlineList=el('div',{class:'staff-offline-list'}),inactiveToggle=el('details',{class:'staff-offline',hidden:true},el('summary',{text:'Offline staff (managers only)'}),offlineList);
     const statusSel=el('select',{name:'status'},...Object.entries(STATUS_LABEL).map(([v,t])=>el('option',{value:v,text:t})));
     const avail=el('form',{class:'staff-availability-form'},el('label',{},'Status ',statusSel),el('label',{},'Short reason (optional) ',el('input',{name:'reason',maxlength:'120',placeholder:'e.g. On a customer call'})),el('label',{},'Return time (optional) ',el('input',{name:'returns_at',type:'datetime-local'})),el('button',{type:'submit',text:'Update my status'}));
     const availabilityEditor=el('details',{class:'staff-status-editor'},el('summary',{text:'Update my availability'}),avail);
-    const team=el('details',{class:'staff-directory sc-team'},el('summary',{text:'Team availability'}),inactiveToggle,dir,availabilityEditor);
+    const team=el('details',{class:'staff-directory sc-team'},el('summary',{text:'Active staff & availability'}),dir,inactiveToggle,availabilityEditor);
     const ta=el('textarea',{rows:'1',maxlength:'4000',placeholder:'Message your team…',required:true,'aria-label':'Message your team'});
     const send=el('button',{class:'sc-send',type:'submit','aria-label':'Send message'},el('span',{text:'Send'}));
     const form=el('form',{class:'sc-compose'},ta,send);
@@ -87,21 +87,28 @@
 
     async function loadTeam(){
       try{
-        const r=await api('/api/saas/staff-availability'+(inactiveBox.checked?'?include_inactive=1':''));
+        const r=await api('/api/saas/staff-availability'+(inactiveToggle.open?'?include_inactive=1':''));
         const me=r.staff?.find(p=>p.id===r.me);if(me&&!avail.contains(document.activeElement)){statusSel.value=me.availability;avail.elements.reason.value=me.reason||'';if(me.returns_at){const d=new Date(me.returns_at);avail.elements.returns_at.value=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)}else avail.elements.returns_at.value=''}
-        inactiveToggle.hidden=!r.can_view_inactive;if(!r.can_view_inactive)inactiveBox.checked=false;
-        dir.replaceChildren(...((r.staff||[]).map(p=>{const status=p.availability||'unavailable',label=(p.account_status==='active'?status:'inactive').replaceAll('_',' ');
-          return el('div',{class:'staff-directory-person'},el('span',{class:'staff-status-dot','data-status':status,'aria-hidden':'true'}),el('span',{},el('b',{text:p.full_name}),' ',el('small',{text:`${p.designation} · ${label}${p.reason?' · '+p.reason:''}${p.returns_at?' · Returns '+new Date(p.returns_at).toLocaleString():''}`})))}))||[]);
-        if(!dir.children.length)dir.textContent='No active team members found.';
+        inactiveToggle.hidden=!r.can_view_inactive;if(!r.can_view_inactive)inactiveToggle.open=false;
+        const person=p=>{const status=p.online?p.availability:'unavailable',label=p.online?status.replaceAll('_',' '):'offline';return el('div',{class:'staff-directory-person'},el('span',{class:'staff-status-dot','data-status':status,'aria-hidden':'true'}),el('span',{},el('b',{text:p.full_name}),el('small',{text:`${p.designation} · ${label}${p.reason?' · '+p.reason:''}${p.returns_at?' · Returns '+new Date(p.returns_at).toLocaleString():''}`})))};
+        dir.replaceChildren(...(r.staff||[]).filter(p=>p.online).map(person));offlineList.replaceChildren(...(r.staff||[]).filter(p=>!p.online).map(person));
+        if(!dir.children.length)dir.textContent='No staff online right now.';
+        if(!offlineList.children.length)offlineList.textContent='No offline staff.';
       }catch(e){dir.textContent=e.message}
     }
-    inactiveBox.addEventListener('change',loadTeam);
+    inactiveToggle.addEventListener('toggle',()=>{if(inactiveToggle.open)loadTeam()});
     team.addEventListener('toggle',()=>{if(team.open)loadTeam()});
     avail.addEventListener('submit',async e=>{e.preventDefault();const b=avail.querySelector('button'),f=new FormData(avail),raw=String(f.get('returns_at')||'');b.disabled=true;
       try{await api('/api/saas/staff-availability/me',{method:'PUT',body:JSON.stringify({status:f.get('status'),reason:f.get('reason'),returns_at:raw?new Date(raw).toISOString():null})});await loadTeam()}catch(err){live(err.message,'error')}finally{b.disabled=false}});
 
+    const presenceView=crypto.randomUUID();
+    const heartbeat=()=>{if(window.GDS_SESSION&&!document.hidden)api('/api/saas/staff-presence/heartbeat',{method:'POST',body:JSON.stringify({view_id:presenceView})}).catch(()=>{})};
+    const leave=()=>{if(!window.GDS_SESSION)return;try{navigator.sendBeacon('/api/saas/staff-presence/leave',new Blob([JSON.stringify({view_id:presenceView})],{type:'application/json'}))}catch{}};
+    window.addEventListener('superpro:workspace-ready',heartbeat);window.addEventListener('pagehide',leave);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)leave();else{heartbeat();if(team.open)loadTeam()}});
+    heartbeat();setInterval(heartbeat,25000);
     apply();load(false);
-    setInterval(()=>{if(document.hidden)return;load(state==='normal'||state==='max')},3000);
+    setInterval(()=>{if(document.hidden)return;load(state==='normal'||state==='max');if(team.open&&state!=='closed')loadTeam()},3000);
     window.addEventListener('focus',()=>{load(state==='normal'||state==='max');if(team.open)loadTeam()});
     window.SuperProStaffChat={open,close};
   }

@@ -1,3 +1,4 @@
+import {installStaffPresence} from './staff-presence.js';
 import {installCommunicationTracking,trackCommunication} from './message-delivery.js';
 import {renderEmail,platformBrand} from './email-templates.js';
 import {normalizeRecoveryCode,verifyRecoveryChallenge} from './recovery-verification.js';
@@ -2853,11 +2854,11 @@ const staffAvailabilitySchema=z.object({
   reason:z.string().trim().max(200).optional().default(''),
   returns_at:z.string().trim().max(40).nullable().optional().refine(v=>!v||!Number.isNaN(Date.parse(v)),'Invalid return time.')
 });
+const staffPresence=installStaffPresence(app,{db,requireSaasUser});
 app.get('/api/saas/staff-availability',requireSaasUser,(req,res)=>{
   const manager=seniorRole(req.saas.role);
   const includeInactive=manager&&req.query.include_inactive==='1';
-  const rows=db.prepare(`SELECT u.id,u.full_name,CASE WHEN m.status='active' THEN u.status ELSE 'inactive' END account_status,m.role,COALESCE(a.status,'unavailable') availability,COALESCE(a.reason,'') reason,a.returns_at FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN staff_availability a ON a.organisation_id=m.organisation_id AND a.user_id=m.user_id WHERE m.organisation_id=? ${includeInactive?'':"AND u.status='active' AND m.status='active'"} ORDER BY u.full_name COLLATE NOCASE LIMIT 500`).all(req.saas.organisation_id);
-  res.json({ok:true,me:req.saas.user_id,can_view_inactive:manager,staff:rows.map(r=>({id:r.id,full_name:r.full_name,designation:String(r.role||'').replaceAll('_',' '),account_status:r.account_status,availability:r.availability,reason:r.reason,returns_at:r.returns_at||null}))});
+  res.json({ok:true,me:req.saas.user_id,can_view_inactive:manager,staff:staffPresence.list(req.saas.organisation_id,includeInactive)});
 });
 app.put('/api/saas/staff-availability/me',requireSaasUser,(req,res)=>{
   const parsed=staffAvailabilitySchema.safeParse(req.body||{});

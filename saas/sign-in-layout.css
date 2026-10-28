@@ -32,8 +32,8 @@ body[data-auth-page=login] .security-baseline span{font-size:10px;padding:4px 6p
 body[data-auth-page=login] .recovery-links{margin:0;gap:12px}
 body[data-auth-page=login] .recovery-links a{font-size:11px;min-height:24px;display:inline-flex;align-items:center}
 .signin-feature-panel{grid-area:features;min-width:0}
-.signin-feature-disclosure summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--sp-text);font-size:12px;font-weight:700;cursor:pointer}
-.signin-feature-disclosure summary::-webkit-details-marker{display:none}.signin-feature-disclosure summary small{color:var(--sp-muted);font-size:10px;font-weight:500}
+.signin-feature-disclosure .signin-feature-toggle{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--sp-text);font-size:12px;font-weight:700;cursor:pointer}
+.signin-feature-disclosure .signin-feature-toggle::-webkit-details-marker{display:none}.signin-feature-disclosure .signin-feature-toggle small{color:var(--sp-muted);font-size:10px;font-weight:500}
 .signin-features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .signin-feature{position:relative;isolation:isolate;display:flex;align-items:flex-start;gap:10px;padding:14px 12px;border:1px solid var(--sp-border);border-radius:14px;background:linear-gradient(135deg,#e2bd7212,transparent 65%),var(--sp-surface);box-shadow:0 6px 18px #0001,inset 0 1px #ffffff08;transition:transform .2s,border-color .2s,box-shadow .2s}
 .signin-feature::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:radial-gradient(ellipse at top left,#e2bd721c,transparent 65%);opacity:0;transition:opacity .2s}
@@ -46,8 +46,8 @@ body[data-auth-page=login] .sp-global-trust-footer b{font-size:10px}
 body[data-auth-page=login] .sp-global-trust-footer nav{grid-column:1/-1;justify-content:flex-start;gap:16px;padding-right:46px}
 @media(hover:hover){.signin-feature:hover{transform:translateY(-3px);border-color:#e2bd7280;box-shadow:0 12px 30px #0003}.signin-feature:hover::before{opacity:1}}
 @media(min-width:901px) and (min-height:800px){body[data-auth-page=login] .auth-layout{padding-block:38px;gap:24px 44px}.signin-feature{padding-block:18px}}
-@media(max-width:900px){body[data-auth-page=login] .auth-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"story" "form" "features";padding:20px;gap:16px;max-width:620px}body[data-auth-page=login] .auth-story-copy{display:none}body[data-auth-page=login] .auth-story .brand{font-size:12px}body[data-auth-page=login] .auth-form-side{padding:20px}body[data-auth-page=login] .auth-title h2{font-size:22px}.signin-feature-disclosure summary{margin:0;min-height:32px}.signin-feature-disclosure[open] summary{margin-bottom:12px}.signin-feature-disclosure summary small::after{content:" +"}body[data-auth-page=login] .sp-global-trust-footer{padding:12px 20px;gap:8px 16px}}
-@media(max-width:480px){body[data-auth-page=login] .auth-layout{padding:14px 12px;gap:12px}body[data-auth-page=login] .auth-form-side{padding:16px}body[data-auth-page=login] .auth-form-top{margin-bottom:14px}body[data-auth-page=login] .auth-title h2{font-size:21px}body[data-auth-page=login] .auth-title{margin-bottom:12px}.signin-features{gap:8px}.signin-feature{flex-direction:column;padding:12px}.signin-feature-disclosure summary small{font-size:9px}body[data-auth-page=login] .sp-global-trust-footer{padding:10px 12px;font-size:9px}body[data-auth-page=login] .sp-global-trust-footer b{font-size:9px}}
+@media(max-width:900px){body[data-auth-page=login] .auth-layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"story" "form" "features";padding:20px;gap:16px;max-width:620px}body[data-auth-page=login] .auth-story-copy{display:none}body[data-auth-page=login] .auth-story .brand{font-size:12px}body[data-auth-page=login] .auth-form-side{padding:20px}body[data-auth-page=login] .auth-title h2{font-size:22px}.signin-feature-disclosure .signin-feature-toggle{margin:0;min-height:32px}.signin-feature-disclosure.is-expanded summary{margin-bottom:12px}.signin-feature-disclosure .signin-feature-toggle small::after{content:" +"}body[data-auth-page=login] .sp-global-trust-footer{padding:12px 20px;gap:8px 16px}}
+@media(max-width:480px){body[data-auth-page=login] .auth-layout{padding:14px 12px;gap:12px}body[data-auth-page=login] .auth-form-side{padding:16px}body[data-auth-page=login] .auth-form-top{margin-bottom:14px}body[data-auth-page=login] .auth-title h2{font-size:21px}body[data-auth-page=login] .auth-title{margin-bottom:12px}.signin-features{gap:8px}.signin-feature{flex-direction:column;padding:12px}.signin-feature-disclosure .signin-feature-toggle small{font-size:9px}body[data-auth-page=login] .sp-global-trust-footer{padding:10px 12px;font-size:9px}body[data-auth-page=login] .sp-global-trust-footer b{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.signin-feature,.signin-feature::before{transition:none!important;transform:none!important}}
 
 /* Override older public-page !important spacing without shrinking touch targets. */
@@ -57,3 +57,51 @@ body[data-auth-page=login] .security-baseline span{padding:3px 6px!important;fon
 @media(max-width:480px){body[data-auth-page=login] .auth-title p{font-size:11px}body[data-auth-page=login] .registration-grid label{font-size:12px}body[data-auth-page=login] .auth-form-top a{font-size:10px}}
 body.auth-page[data-auth-page=login]{padding-bottom:0}
 body[data-auth-page=login] .gds-support-launch{bottom:12px!important}
+/* Fit the composition to the screen, including phones using a desktop viewport. */
+body.auth-page[data-auth-page=login]{display:flex;flex-direction:column;min-height:100svh}
+body[data-auth-page=login] .auth-layout{width:100%;flex:1 0 auto}
+body[data-auth-page=login] .sp-global-trust-footer{flex-shrink:0}
+@media(min-width:901px) and (max-aspect-ratio:3/4){
+ body[data-auth-page=login] .auth-layout{max-width:880px;grid-template-columns:minmax(0,1fr);grid-template-areas:"story" "form" "features";grid-template-rows:auto auto minmax(min-content,1fr);align-content:start;gap:20px;padding:24px 40px}
+ body[data-auth-page=login] .auth-story-copy{display:none}
+ body[data-auth-page=login] .auth-story .brand{font-size:24px;gap:16px}
+ body[data-auth-page=login] .auth-story .brand small{font-size:16px}
+ body[data-auth-page=login] .auth-form-side{padding:32px;border-radius:26px}
+ body[data-auth-page=login] .auth-form-card{max-width:none}
+ body[data-auth-page=login] .auth-form-top{margin-bottom:24px}
+ body[data-auth-page=login] .auth-form-top a{font-size:18px}
+ body[data-auth-page=login] .auth-title{margin-bottom:24px}
+ body[data-auth-page=login] .auth-title .kicker{font-size:16px}
+ body[data-auth-page=login] .auth-title h2{font-size:38px}
+ body[data-auth-page=login] .auth-title p{font-size:20px}
+ body[data-auth-page=login] .registration-grid{gap:16px}
+ body[data-auth-page=login] .registration-grid label{font-size:22px!important;gap:10px}
+ body[data-auth-page=login] .registration-grid input:not([type=checkbox]){min-height:68px;padding:14px 18px;font-size:26px!important}
+ body[data-auth-page=login] .remember-row{margin-block:16px!important;font-size:20px}
+ body[data-auth-page=login] .remember-row input{width:24px;height:24px;min-height:24px;flex:none}
+ body[data-auth-page=login] .mfa-field{padding:16px}
+ body[data-auth-page=login] .mfa-field summary{font-size:20px}
+ body[data-auth-page=login] .mfa-field summary span{font-size:18px}
+ body[data-auth-page=login] .mfa-field small{font-size:18px}
+ body[data-auth-page=login] .auth-submit{min-height:66px!important;font-size:24px}
+ body[data-auth-page=login] .recovery-links a{font-size:18px;min-height:36px}
+ body[data-auth-page=login] .auth-switch{font-size:18px}
+ body[data-auth-page=login] .security-baseline span{font-size:16px!important;padding:7px 10px!important}
+ .signin-feature-panel{display:flex;flex-direction:column;align-self:stretch}
+ .signin-feature-disclosure.is-expanded{display:flex;flex-direction:column;flex:1}
+ .signin-feature-disclosure .signin-feature-toggle{font-size:22px;min-height:40px}
+ .signin-feature-disclosure .signin-feature-toggle small{font-size:16px}
+ .signin-features{flex:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .signin-feature{padding:20px 18px;gap:16px;align-items:center}
+ .signin-feature h3{font-size:20px}
+ .signin-feature p{font-size:17px}
+ .signin-feature-icon{width:46px;height:46px;border-radius:13px}
+ .signin-feature-icon svg{width:28px;height:28px}
+ .signin-feature-note{font-size:16px;margin-top:16px}
+ body[data-auth-page=login] .sp-global-trust-footer{padding:20px 40px;font-size:14px;gap:14px 24px}
+ body[data-auth-page=login] .sp-global-trust-footer b{font-size:14px}
+}
+
+.signin-feature-disclosure{display:flex;flex-direction:column;min-height:0}.signin-feature-content{display:flex;flex-direction:column;flex:1;min-height:0}.signin-feature-toggle{border:0;background:none;text-align:left;padding:0;color:inherit;font:inherit;cursor:pointer}.signin-feature-toggle:focus-visible{outline:2px solid var(--sp-accent);outline-offset:4px;border-radius:6px}
+.signin-operator-entry{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:0;font-size:11px}.signin-operator-entry a{color:var(--sp-accent);font-weight:700}.signin-operator-entry small{color:var(--sp-muted);font-size:10px}
+@media(min-width:901px) and (max-aspect-ratio:3/4){.signin-operator-entry{font-size:18px}.signin-operator-entry small{font-size:15px}.signin-feature-content .signin-features{flex:1}}

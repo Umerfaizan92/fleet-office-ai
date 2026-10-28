@@ -66,6 +66,15 @@
       menu.addEventListener('wheel',stop,{passive:true});
     });
   }
+  function surfaceCards(root){
+    const selector='#workspace .panel,#workspace .row-card,#workspace .metric-card,#workspace .industry-browser-card,#app .panel,#app .stat';
+    const cards=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
+    for(const card of cards){if(card.dataset.spSurface)continue;card.dataset.spSurface='1';card.classList.add('sp-surface-card');
+      const heading=card.querySelector(':scope>h2,:scope>.panel-head h2,:scope>.form-section-head h2');if(!heading||heading.querySelector('.sp-card-icon'))continue;
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('sp-card-icon','sp-section-icon');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');
+      const view=card.closest('.view')?.id||'';path.setAttribute('d',/job|workforce/.test(view)?'M3 7h18v14H3zM8 7V3h8v4m-13 6h18':/finance|billing/.test(view)?'M4 20V10m5 10V4m6 16v-7m5 7V7':/governance|team/.test(view)?'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6':'M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z');svg.append(path);heading.prepend(svg);
+    }
+  }
   function installMotion(){
     const html=document.documentElement,reduced=matchMedia('(prefers-reduced-motion:reduce)'),connection=navigator.connection;
     const sync=()=>{
@@ -74,10 +83,10 @@
     };
     reduced.addEventListener('change',sync);connection?.addEventListener?.('change',sync);document.addEventListener('visibilitychange',sync);sync();
     // Observe additions once, then animate only a small budget of on-screen icons.
-    const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.sp-card-icon,.hero,.auth-story';
+    const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.sp-card-icon,.signin-feature-icon svg,.hero,.auth-story';
     const refresh=()=>{let count=0;for(const node of visible){if(!node.isConnected){visible.delete(node);continue}node.classList.toggle('sp-motion-visible',count++<12)}};
     const observer=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting)visible.add(e.target);else{visible.delete(e.target);e.target.classList.remove('sp-motion-visible')}}refresh()},{threshold:.1});
-    const register=root=>{if(!(root instanceof Element))return;const nodes=[...(root.matches(selector)?[root]:[]),...root.querySelectorAll(selector)];for(const node of nodes){if(observed.has(node))continue;observed.add(node);node.classList.add('sp-motion-target');observer.observe(node)}};
+    const register=root=>{if(!(root instanceof Element))return;surfaceCards(root);const nodes=[...(root.matches(selector)?[root]:[]),...root.querySelectorAll(selector)];for(const node of nodes){if(observed.has(node))continue;observed.add(node);node.classList.add('sp-motion-target');observer.observe(node)}};
     register(document.body);
     new MutationObserver(records=>{for(const record of records){for(const node of record.removedNodes){if(!(node instanceof Element))continue;for(const target of [node,...node.querySelectorAll('.sp-motion-target')]){observer.unobserve(target);observed.delete(target);visible.delete(target)}}for(const node of record.addedNodes)register(node)}refresh()}).observe(document.body,{childList:true,subtree:true});
     window.addEventListener('gds:viewchange',()=>{html.classList.remove('sp-view-arriving');requestAnimationFrame(()=>html.classList.add('sp-view-arriving'))});

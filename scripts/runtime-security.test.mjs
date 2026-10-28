@@ -53,6 +53,24 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   let ready=false;
   for(let i=0;i<80;i++){try{if((await fetch(base+'/healthz')).ok){ready=true;break;}}catch{}await pause(100);}
   assert.ok(ready,logs);
+  const presenceActor=user('employee',orgA,'presence@example.invalid'),viewOne=crypto.randomUUID(),viewTwo=crypto.randomUUID();
+  await request(presenceActor,'/api/saas/staff-availability/me','PUT',{status:'available',reason:'Ready',returns_at:null});
+  assert.equal((await (await request(owner,'/api/saas/staff-availability')).json()).staff.some(p=>p.id===presenceActor.id),false,'saved availability cannot imply signed-in presence');
+  assert.equal((await request(presenceActor,'/api/saas/staff-presence/heartbeat','POST',{view_id:viewOne})).status,200);
+  assert.equal((await (await request(owner,'/api/saas/staff-availability')).json()).staff.find(p=>p.id===presenceActor.id).online,true);
+  assert.equal((await request(outsider,'/api/saas/staff-presence/heartbeat','POST',{view_id:crypto.randomUUID()},orgA)).status,403);
+  db.prepare('UPDATE staff_presence SET last_seen_at=? WHERE user_id=?').run(new Date(Date.now()-120000).toISOString(),presenceActor.id);
+  assert.equal((await (await request(owner,'/api/saas/staff-availability')).json()).staff.some(p=>p.id===presenceActor.id),false,'expired heartbeat removes stale online status');
+  const offline=(await (await request(owner,'/api/saas/staff-availability?include_inactive=1')).json()).staff.find(p=>p.id===presenceActor.id);assert.equal(offline.online,false);assert.equal(offline.availability,'unavailable');
+  const employeeDirectory=await (await request(employee,'/api/saas/staff-availability?include_inactive=1')).json();assert.equal(employeeDirectory.can_view_inactive,false);assert.equal(employeeDirectory.staff.some(p=>p.id===presenceActor.id),false);
+  await request(presenceActor,'/api/saas/staff-presence/heartbeat','POST',{view_id:viewOne});await request(presenceActor,'/api/saas/staff-presence/heartbeat','POST',{view_id:viewTwo});
+  await request(presenceActor,'/api/saas/staff-presence/leave','POST',{view_id:viewOne});
+  assert.equal((await (await request(owner,'/api/saas/staff-availability')).json()).staff.find(p=>p.id===presenceActor.id).online,true,'closing one tab preserves another live tab');
+  await request(presenceActor,'/api/saas/logout','POST',{});
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM staff_presence WHERE user_id=?').get(presenceActor.id).n,0,'sign-out removes session presence immediately');
+  assert.equal((await (await request(owner,'/api/saas/staff-availability')).json()).staff.some(p=>p.id===presenceActor.id),false);
+  db.prepare('DELETE FROM users WHERE id=?').run(presenceActor.id);
+
   assert.equal((await request(owner,'/api/saas/work-orders')).status,200);
   const foreign=await request(outsider,'/api/saas/work-orders');assert.equal(foreign.status,200);assert.deepEqual((await foreign.json()).jobs,[]);
   assert.ok([401,403,404].includes((await request(outsider,'/api/saas/work-orders','GET',undefined,orgA)).status));

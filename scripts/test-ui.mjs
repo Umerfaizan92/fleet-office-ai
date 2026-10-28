@@ -25,8 +25,19 @@ try{
   let ready=false;for(let i=0;i<100&&!ready;i++){if(child.exitCode!==null)throw Error(serverLog.slice(-2000));try{ready=(await fetch(base+'/healthz')).ok}catch{}if(!ready)await new Promise(r=>setTimeout(r,100))}assert.ok(ready,'local server starts');
   browser=await chromium.launch({headless:true,...(process.env.UI_CHROMIUM_PATH?{executablePath:process.env.UI_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']}:{} )});
   const context=await browser.newContext();const page=await context.newPage();page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
-  await check('public landing keeps its palette, motion control and responsive layout',async()=>{
-    for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.goto(base+'/saas/');await page.locator('.sp-motion-toggle').waitFor({state:'visible'});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'landing-'+width);}
+  await check('public landing keeps its palette and compact responsive layout',async()=>{
+    for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.goto(base+'/saas/');await page.locator('.guide-card').waitFor({state:'visible'});assert.equal(await page.locator('.sp-motion-toggle').count(),0);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'landing-'+width);}
+  });
+  await check('landing chat and newsletter avoid viewport-sized blank gaps, including desktop mode on a tall phone',async()=>{
+    for(const width of [390,980,1440]){
+      await page.setViewportSize({width,height:1800});await page.goto(base+'/saas/');await page.locator('.guide-card').waitFor();
+      const hero=await page.locator('.hero').boundingBox(),copy=await page.locator('.hero-copy').boundingBox(),guide=await page.locator('.guide-shell').boundingBox();
+      if(width<=1100)assert.ok(guide.y-copy.y-copy.height<=34,JSON.stringify({width,copy,guide}));
+      assert.ok(hero.height<1100,JSON.stringify({width,hero}));assert.ok((await page.locator('.guide-card').boundingBox()).height<=445);
+      const newsletter=await page.locator('.superpro-newsletter').boundingBox();if(newsletter)assert.ok(newsletter.height<500,JSON.stringify(newsletter));
+      const composer=await page.locator('.guide-card .chat-composer').boundingBox(),card=await page.locator('.guide-card').boundingBox();assert.ok(composer.y+composer.height<=card.y+card.height,JSON.stringify({composer,card}));
+      await screenshot(page,'compact-landing-'+width);
+    }
   });
   for(const width of [390,768,1440]){
     await page.setViewportSize({width,height:900});await page.goto(base+'/saas/sign-in.html');
@@ -53,6 +64,17 @@ try{
   await page.evaluate(slug=>{localStorage.setItem(`gds-tour-${slug}`,'done');localStorage.setItem(`gds-tour-${slug}-setup`,'prompted')},me.organisation.slug);
   const release=await (await context.request.get(base+'/api/saas/releases/latest')).json();if(release.release)await page.evaluate(v=>localStorage.setItem('superpro_release_seen:'+v,'1'),release.release.version);
   await page.reload();await page.locator('#workspace').waitFor({state:'visible'});
+  await check('terms dialog fits its content on mobile and tall desktop-mode screens',async()=>{
+    const db=createDb(path.join(temp,'test.sqlite'));try{db.prepare('DELETE FROM legal_acceptances').run()}finally{db.close()}
+    for(const width of [390,980]){
+      await page.setViewportSize({width,height:1500});await page.reload();const dialog=page.locator('dialog.legal-modal');await dialog.waitFor({state:'visible'});
+      const b=await dialog.boundingBox();assert.ok(b.height<600,JSON.stringify(b));assert.ok(b.y>=0&&b.y+b.height<=1501);
+      assert.equal(await dialog.getByRole('button',{name:'I agree and continue'}).isEnabled(),false);
+      await screenshot(page,'compact-terms-'+width);await dialog.locator('#legal-agree').check();await dialog.getByRole('button',{name:'I agree and continue'}).click();await dialog.waitFor({state:'hidden'});
+      if(width===390){const d=createDb(path.join(temp,'test.sqlite'));try{d.prepare('DELETE FROM legal_acceptances').run()}finally{d.close()}}
+    }
+    await page.setViewportSize({width:1440,height:900});
+  });
   // Dismiss first-run notices in this throwaway workspace; no production records are touched.
   await page.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());document.querySelector('[data-tour-skip]')?.click()});
   await check('business navigation resolves every owner route to one visible view',async()=>{
@@ -61,6 +83,17 @@ try{
     const hashes=views.length?views.map(v=>v.path):['today/home','today/approvals','customers/list','customers/stock','customers/inbox','customers/jobs','people/workers','people/staff','people/hiring','marketing/studio','marketing/growth','marketing/search','marketing/connections','money/ledger','money/billing','setup/settings','setup/import','setup/print','setup/trust','setup/help','setup/manual'];
     for(const hash of hashes){await page.evaluate(h=>{location.hash=h},hash);await page.waitForTimeout(80);assert.equal(await page.locator('#workspace .view:visible').count(),1,hash);const expected=views.find(v=>v.path===hash)?.view;if(expected)assert.ok(await page.locator('#'+expected+'-view').isVisible(),hash)}
     console.log('Business routes checked:',hashes.length);
+  });
+  await check('short dashboard pages do not push the footer down with blank viewport space',async()=>{
+    await page.evaluate(()=>location.hash='today/home');
+    for(const width of [390,980,1440]){
+      await page.setViewportSize({width,height:1500});await page.waitForTimeout(100);
+      const footer=await page.locator('.app-footer').boundingBox(),trust=await page.locator('.sp-global-trust-footer').boundingBox();
+      if(footer&&trust)assert.ok(trust.y-footer.y-footer.height<40,JSON.stringify({width,footer,trust}));
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+      await screenshot(page,'compact-dashboard-'+width);
+    }
+    await page.setViewportSize({width:1440,height:900});
   });
   await check('desktop menus open on hover, close on leave and support keyboard',async()=>{
     for(const domain of ['today','customers','people','marketing','money','setup']){
@@ -93,11 +126,11 @@ try{
       await menu.locator('[data-view="manual"]').tap();assert.ok(await p.locator('#manual-view').isVisible());
     }finally{await touch.close()}
   });
-  await check('live motion is bounded, uses existing colours and can be paused',async()=>{
+  await check('live motion is automatic, bounded and uses existing colours',async()=>{
     assert.equal(await page.locator('html').evaluate(e=>getComputedStyle(e).getPropertyValue('--sp-accent').trim()),'#e2bd72');
     assert.ok(await page.locator('.sp-motion-visible').count()<=12);
-    const toggle=page.locator('.sp-motion-toggle');await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'false');assert.equal(await page.locator('html').evaluate(e=>e.classList.contains('sp-motion-enabled')),false);
-    await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('.sp-motion-toggle').count(),0);
+    assert.equal(await page.locator('html').evaluate(e=>e.classList.contains('sp-motion-enabled')),true);
   });
   let integrationReads=0;page.on('request',r=>{if(new URL(r.url()).pathname==='/api/saas/integrations/self-service')integrationReads++});
   await page.evaluate(()=>location.hash='marketing/connections');
@@ -151,7 +184,7 @@ try{
       await p.locator('[data-copilot-speaker]').click();
       await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
       assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);
-    }finally{await employee.close()}
+    }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
   });
   await check('notification preferences and delivery activity are visible on mobile',async()=>{
     await page.locator('[aria-label="Notifications"]').click();const dialog=page.locator('#superpro-platform-notices');await dialog.waitFor({state:'visible'});
@@ -171,8 +204,11 @@ try{
       await chat.locator('.sc-msg.mine').last().locator('.sc-ticks').filter({hasText:'Seen'}).waitFor({timeout:12000});
       await chat.locator('.sc-team>summary').click();await chat.locator('.staff-status-editor>summary').click();await chat.locator('.staff-availability-form select').selectOption('busy');await chat.locator('input[name=reason]').fill('Reviewing enquiries');await chat.getByRole('button',{name:'Update my status'}).click();
       await chat.locator('.staff-directory-person').filter({hasText:'UI Test Owner'}).filter({hasText:'busy'}).waitFor();
+      assert.ok((await employee.request.post(base+'/api/saas/logout',{data:{}})).ok());await page.bringToFront();
+      await page.waitForFunction(()=>![...document.querySelectorAll('.staff-directory-list .staff-directory-person')].some(e=>e.textContent.includes('UI Test Employee')),{},{timeout:12000});
+      await chat.locator('.staff-offline>summary').click();await chat.locator('.staff-offline-list .staff-directory-person').filter({hasText:'UI Test Employee'}).filter({hasText:'offline'}).waitFor();
       assert.ok(await chat.locator('.staff-directory-list').evaluate(e=>e.clientHeight<=120));await screenshot(page,'staff-chat-availability');await page.evaluate(()=>window.SuperProStaffChat.close());
-    }finally{await employee.close()}
+    }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
   });
   await check('closing AI before playback context resumes prevents late audio',async()=>{
     await page.locator('.copilot-launch').click();

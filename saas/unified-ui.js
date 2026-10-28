@@ -67,18 +67,10 @@
   }
   function installMotion(){
     const html=document.documentElement,reduced=matchMedia('(prefers-reduced-motion:reduce)'),connection=navigator.connection;
-    let paused=false;try{paused=localStorage.getItem('superpro-motion')==='paused'}catch{}
-    const button=document.createElement('button');button.type='button';button.className='sp-motion-toggle';
-    const host=document.querySelector('.topbar-actions,.header-actions,.auth-form-top,.site-header');
-    if(host)host.append(button);
     const sync=()=>{
-      const enabled=!paused&&!reduced.matches&&!connection?.saveData;
+      const enabled=!reduced.matches&&!connection?.saveData;
       html.classList.toggle('sp-motion-enabled',enabled);html.classList.toggle('sp-page-hidden',document.hidden);
-      button.textContent=enabled?'◌ Motion on':'◌ Motion off';button.setAttribute('aria-pressed',String(enabled));
-      button.setAttribute('aria-label',enabled?'Pause decorative animations':'Enable decorative animations');
-      button.title=reduced.matches?'Reduced motion is enabled on your device':connection?.saveData?'Animation paused while Data Saver is on':'';
     };
-    button.addEventListener('click',()=>{paused=!paused;try{localStorage.setItem('superpro-motion',paused?'paused':'on')}catch{}sync()});
     reduced.addEventListener('change',sync);connection?.addEventListener?.('change',sync);document.addEventListener('visibilitychange',sync);sync();
     // Observe additions once, then animate only a small budget of on-screen icons.
     const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.hero,.auth-story';

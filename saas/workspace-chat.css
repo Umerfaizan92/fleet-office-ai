@@ -71,3 +71,5 @@ html[data-theme="light"] .sc-shell{--sc-ink:#fff;--sc-panel:#fff;--sc-card:#eef1
 .sc-team .staff-availability-form button{align-self:end;padding:8px;font-size:12px;border-radius:8px;min-height:36px}
 .sc-who b{font-size:12px}.sc-ticks{white-space:nowrap;font-size:10px}
 .sc-bubble{transition:border-color .2s,background .2s}.sc-bubble:hover{border-color:var(--sc-gold-line)}
+
+.sc-team .staff-offline{border-top:1px solid var(--sc-line);padding:8px 0}.sc-team .staff-offline>summary{font-size:12px;color:var(--sc-muted)}.sc-team .staff-offline-list{display:grid;gap:4px;max-height:110px;overflow:auto;margin-top:8px}

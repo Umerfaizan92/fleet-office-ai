@@ -375,3 +375,12 @@ html body :is(#workspace,#app) .sp-surface-card:focus-within{border-color:var(--
 @media(hover:none){html body :is(#workspace,#app) .sp-surface-card:active{border-color:var(--sp-accent);background-image:radial-gradient(ellipse at top left,#e2bd7230,transparent 70%)}}
 .sp-motion-enabled .sp-motion-visible:is(.signin-feature-icon svg,.sp-section-icon){animation:sp-icon-breathe 5s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){html body :is(#workspace,#app) .sp-surface-card{transition:none!important;translate:none!important}.sp-section-icon,.signin-feature-icon svg{animation:none!important}}
+/* Founder authentication uses the same compact surfaces, without viewport-height columns. */
+body.auth-page[data-auth-page=operator]{min-height:100svh;display:grid;align-items:center;padding:24px}
+body[data-auth-page=operator] .auth-layout{width:min(100%,1100px);margin:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+body[data-auth-page=operator] .auth-story{min-height:0;padding:28px;border:1px solid var(--sp-border);border-radius:20px;align-self:start}
+body[data-auth-page=operator] .auth-story-copy{margin:28px 0 0}
+body[data-auth-page=operator] .auth-story-copy h1{font-size:clamp(30px,4vw,48px)}
+body[data-auth-page=operator] .auth-form-side{min-height:0;padding:28px;border:1px solid var(--sp-border);border-radius:20px;overflow:visible}
+body[data-auth-page=operator] .auth-form-card{padding:0;max-width:none}
+@media(max-width:900px),(max-aspect-ratio:3/4){body[data-auth-page=operator] .auth-layout{max-width:780px;grid-template-columns:minmax(0,1fr)}body[data-auth-page=operator] .auth-story-copy{margin:16px 0 0}body[data-auth-page=operator] .auth-story-copy h1{margin:10px 0}}

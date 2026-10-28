@@ -366,3 +366,12 @@ html body .setup-list>li{min-width:0;border-radius:12px;background:linear-gradie
 @media(prefers-reduced-motion:reduce){.sp-card-icon{animation:none!important}}
 
 .sp-operator .stat .sp-card-icon{position:absolute;top:16px;right:14px}.sp-operator .stat{padding-right:52px!important}
+
+/* Visible shared depth for job/workspace cards, with equivalent touch feedback. */
+html body :is(#workspace,#app) .sp-surface-card{border-top:2px solid #e2bd7260;border-left-color:#e2bd7230;background-image:radial-gradient(ellipse at top left,#e2bd7217,transparent 58%);box-shadow:inset 0 1px #ffffff0b,0 8px 24px #00000028!important;transition:translate 180ms ease,border-color 180ms ease,box-shadow 180ms ease}
+.sp-section-icon{display:inline-block;vertical-align:middle;margin-right:9px;flex:none}
+@media(hover:hover) and (pointer:fine){html body :is(#workspace,#app) .sp-surface-card:hover{translate:0 -3px;border-color:#e2bd7280;box-shadow:inset 0 1px #ffffff12,0 0 0 1px #e2bd7228,0 14px 34px #00000040!important}}
+html body :is(#workspace,#app) .sp-surface-card:focus-within{border-color:var(--sp-accent);box-shadow:inset 0 1px #ffffff12,0 0 0 1px #e2bd7240,0 10px 28px #00000030!important}
+@media(hover:none){html body :is(#workspace,#app) .sp-surface-card:active{border-color:var(--sp-accent);background-image:radial-gradient(ellipse at top left,#e2bd7230,transparent 70%)}}
+.sp-motion-enabled .sp-motion-visible:is(.signin-feature-icon svg,.sp-section-icon){animation:sp-icon-breathe 5s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){html body :is(#workspace,#app) .sp-surface-card{transition:none!important;translate:none!important}.sp-section-icon,.signin-feature-icon svg{animation:none!important}}

@@ -45,16 +45,18 @@ try{
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       const fit=await page.evaluate(()=>({height:innerHeight,scroll:document.documentElement.scrollHeight,main:document.querySelector('main').getBoundingClientRect().height}));assert.ok(fit.scroll<=fit.height+1,JSON.stringify({width,...fit}));
       assert.match(await page.locator('body').evaluate(e=>getComputedStyle(e).fontFamily),/Manrope/);
-      assert.equal(await page.locator('#operator-form').count(),0);assert.ok(await page.locator('#login-form').isVisible());
+      assert.equal(await page.locator('#operator-form').count(),0);assert.ok(await page.locator('#login-form').isVisible());assert.equal(await page.getByRole('link',{name:'Operator sign-in',exact:true}).getAttribute('href'),'operator-sign-in.html');
       await page.locator('#login-form .pw-eye').click();assert.equal(await page.locator('#login-form input[name=password]').getAttribute('type'),'text');
       await page.locator('#login-form .pw-eye').click();assert.equal(await page.locator('#login-form input[name=password]').getAttribute('type'),'password');
     });
     await screenshot(page,'signin-'+width);
   }
   await check('sign-in desktop mode removes tall blank columns and keeps MFA reachable',async()=>{
-    await page.setViewportSize({width:980,height:2100});await page.goto(base+'/saas/sign-in.html');
-    assert.ok((await page.locator('.auth-layout').boundingBox()).height<900);assert.equal(await page.locator('.signin-feature').count(),6);
-    await page.locator('#mfa-details summary').click();assert.ok(await page.locator('input[name=mfa_code]').isVisible());await page.locator('#mfa-details summary').click();await screenshot(page,'signin-tall-desktop-mode');
+    for(const height of [1760,2100]){
+      await page.setViewportSize({width:980,height});await page.goto(base+'/saas/sign-in.html');
+      const form=await page.locator('.auth-form-side').boundingBox(),features=await page.locator('.signin-feature-panel').boundingBox(),footer=await page.locator('.sp-global-trust-footer').boundingBox();assert.ok(form.width>=980*.7);assert.ok(features.y>=form.y+form.height);assert.ok(footer.y-features.y-features.height<48,JSON.stringify({features,footer}));assert.ok(Math.abs(footer.y+footer.height-height)<=2,JSON.stringify(footer));assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1));assert.ok(Number.parseFloat(await page.locator('input[name=email]').evaluate(e=>getComputedStyle(e).fontSize))>=24);assert.equal(await page.locator('.signin-feature').count(),6);
+      await page.locator('#mfa-details summary').click();assert.ok(await page.locator('input[name=mfa_code]').isVisible());await page.locator('#mfa-details summary').click();await screenshot(page,'signin-tall-desktop-mode-'+height);
+    }
   });
   await page.goto(base+'/saas/sign-in.html#operator');await page.waitForURL(base+'/saas/operator-sign-in.html');await check('legacy operator deep link opens separate founder sign-in',async()=>assert.ok(await page.locator('#operator-form').isVisible()));
   const password='UI-only-'+secret()+'!';
@@ -87,6 +89,10 @@ try{
     const hashes=views.length?views.map(v=>v.path):['today/home','today/approvals','customers/list','customers/stock','customers/inbox','customers/jobs','people/workers','people/staff','people/hiring','marketing/studio','marketing/growth','marketing/search','marketing/connections','money/ledger','money/billing','setup/settings','setup/import','setup/print','setup/trust','setup/help','setup/manual'];
     for(const hash of hashes){await page.evaluate(h=>{location.hash=h},hash);await page.waitForTimeout(80);assert.equal(await page.locator('#workspace .view:visible').count(),1,hash);const expected=views.find(v=>v.path===hash)?.view;if(expected)assert.ok(await page.locator('#'+expected+'-view').isVisible(),hash)}
     console.log('Business routes checked:',hashes.length);
+  });
+  await check('Jobs uses visible shared depth, heading icons and actual hover feedback',async()=>{
+    await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>location.hash='customers/jobs');await page.locator('#jobs-view').waitFor({state:'visible'});
+    const card=page.locator('#jobs-view .sp-surface-card:visible').first();await card.waitFor({state:'visible'});assert.ok(await card.locator('.sp-section-icon').count()>0);await card.hover();await page.waitForTimeout(220);assert.notEqual(await card.evaluate(e=>getComputedStyle(e).translate),'none');await screenshot(page,'jobs-shared-layering');await page.mouse.move(0,0);
   });
   await check('short dashboard pages do not push the footer down with blank viewport space',async()=>{
     await page.evaluate(()=>location.hash='today/home');
@@ -220,7 +226,7 @@ try{
 
   });
   await check('employee sends an AI question and receives a text answer',async()=>{
-    const employee=await browser.newContext();try{
+    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
       const r=await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}});assert.ok(r.ok());const employeeLegal=await (await employee.request.get(base+'/api/saas/legal')).json();assert.ok((await employee.request.post(base+'/api/saas/legal/accept',{data:{version:employeeLegal.version,agree:true}})).ok());
       const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});
       await p.evaluate(slug=>{localStorage.setItem(`gds-tour-${slug}`,'done');document.querySelectorAll('dialog[open]').forEach(d=>d.close())},me.organisation.slug);
@@ -233,6 +239,7 @@ try{
     }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
   });
   await check('notification preferences and delivery activity are visible on mobile',async()=>{
+    const releaseNotice=page.locator('#superpro-release-dialog');if(await releaseNotice.isVisible())await releaseNotice.getByRole('button',{name:'Got it',exact:true}).click();
     await page.locator('[aria-label="Notifications"]').click();const dialog=page.locator('#superpro-platform-notices');await dialog.waitFor({state:'visible'});
     await dialog.locator('input[name=muted]').check();await dialog.getByRole('button',{name:'Save preferences',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-preferences-status]')?.textContent==='Preferences saved.');
     assert.equal((await (await context.request.get(base+'/api/saas/notification-preferences')).json()).preferences.muted,true);
@@ -241,7 +248,7 @@ try{
     await dialog.locator('[data-notice-close]').click();
   });
   await check('staff sender identity, sent/seen receipts and compact availability work across sessions',async()=>{
-    const employee=await browser.newContext();try{
+    const employee=await browser.newContext();await employee.addInitScript(({slug,version})=>{if(version)localStorage.setItem('superpro_release_seen:'+version,'1');localStorage.setItem('gds-tour-'+slug,'done')},{slug:me.organisation.slug,version:release.release?.version||''});try{
       assert.ok((await employee.request.post(base+'/api/saas/login',{data:{email:'ui.employee@example.test',password}})).ok());
       const p=await employee.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.waitForFunction(()=>!!window.SuperProStaffChat);
       await p.evaluate(()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());localStorage.setItem('superpro_copilot_voice','off')});

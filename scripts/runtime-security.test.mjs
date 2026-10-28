@@ -86,6 +86,7 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   assert.equal((await request(owner,permissionPath,'PUT',{mode:'custom',revision:1,grants:['dashboard.read']})).status,200);
   assert.equal((await request(employee,'/api/saas/customers')).status,403,'revocation applies immediately to an existing session');
   assert.equal((await request(employee,'/api/saas/me')).status,200,'account access stays reachable');
+  assert.equal((await (await request(employee,'/api/saas/access/me')).json()).role,'employee','navigation refresh includes the current server role');
   assert.equal((await request(owner,permissionPath,'PUT',{mode:'role',revision:2,grants:[]})).status,200);
   db.prepare('DELETE FROM memberships WHERE organisation_id=? AND user_id=?').run(orgB,employee.id);
   db.prepare('DELETE FROM users WHERE id=?').run(peer.id);

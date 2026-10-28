@@ -58,7 +58,7 @@ export function createStaffAccess({db,audit}){
  function delegated(req){const r=accessRoute(req);return Boolean(r&&r.feature!=='dashboard'&&!ownerOnlyPath(r.path)&&snapshot(req).mode==='custom'&&can(req,r.feature,r.action)&&can(req,r.feature,'read'))}
  function install(app,{requireSaasUser,requireSaasRole}){
   const owner=[requireSaasUser,requireSaasRole('owner')];
-  app.get('/api/saas/access/me',requireSaasUser,(req,res)=>res.json({ok:true,access:snapshot(req)}));
+  app.get('/api/saas/access/me',requireSaasUser,(req,res)=>res.json({ok:true,role:req.saas.role,access:snapshot(req)}));
   app.get('/api/saas/team-accounts/members/:id/permissions',...owner,(req,res)=>{
    const m=db.prepare("SELECT u.id,u.full_name,m.role FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.organisation_id=? AND m.user_id=? AND m.status='active'").get(req.saas.organisation_id,req.params.id);if(!m)return res.status(404).json({ok:false,error:'Staff membership not found.'});
    res.json({ok:true,member:m,catalog:ACCESS_FEATURES,policy:policy(req.saas.organisation_id,m.id,m.role)});

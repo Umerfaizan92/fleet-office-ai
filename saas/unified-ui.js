@@ -30,6 +30,7 @@
     const filter=document.createElement('input');filter.type='search';filter.className='sp-nav-filter';filter.placeholder='Find a section…';filter.setAttribute('aria-label','Find founder section');nav.before(filter);
     const groups={dashboard:'Today',enquiries:'Customers & work',expenses:'Money & insight',content:'Marketing',records:'Platform & tools'};
     const paths={dashboard:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',inbox:'M3 5h18v14H3zM3 5l9 7 9-7',approvals:'m5 12 4 4 10-10',customers:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',default:'M6 3h8l4 4v14H6zM14 3v5h5M9 12h6M9 16h6'};
+    Object.assign(paths,{"enquiries": "M4 5h16v14H4zM4 6l8 7 8-7", "quotes": "M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h3", "bookings": "M4 6h16v15H4zM8 3v6m8-6v6M4 11h16", "jobs": "M3 7h18v14H3zM8 7V3h8v4m-13 6h18", "expenses": "M4 20V10m5 10V4m6 16v-7m5 7V7", "performance": "M4 19l5-6 4 3 7-11M14 5h6v6", "content": "M3 5h18v14H3zM10 9l5 3-5 3z", "campaigns": "M4 10l14-6v16L4 14zM7 15l2 6", "connections": "M10 14l4-4m-7 5-2 2a3 3 0 0 0 4 4l4-4m-2-6 4-4a3 3 0 0 1 4 4l-2 2", "records": "M4 3h16v5H4zM6 8v13h12V8m-8 5h4", "officeai": "M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z", "aiquality": "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6", "subscribers": "M15 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8 1h4m-2-2v4", "subpay": "M3 6h18v14H3zM3 10h18m-13 6h3", "staffchat": "M4 4h16v12H9l-5 5zM8 8h8m-8 4h5", "help": "M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4m0 3v1M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0", "receptionist": "M4 13v-1a8 8 0 0 1 16 0v1M4 12H2v6h4v-6zm16 0h2v6h-4v-6zm0 6v3h-8", "website": "M3 4h18v16H3zM3 9h18m-14-3h1m2 0h1", "searchvisibility": "M20 20l-5-5m2-6a7 7 0 1 0-14 0 7 7 0 0 0 14 0m-10 0h6m-3-3v6"});
     const buttons=[...nav.querySelectorAll('button[data-view]')];
     for(const b of buttons){
       if(groups[b.dataset.view]){const label=document.createElement('div');label.className='sp-nav-group';label.textContent=groups[b.dataset.view];nav.insertBefore(label,b)}
@@ -73,7 +74,7 @@
     };
     reduced.addEventListener('change',sync);connection?.addEventListener?.('change',sync);document.addEventListener('visibilitychange',sync);sync();
     // Observe additions once, then animate only a small budget of on-screen icons.
-    const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.hero,.auth-story';
+    const observed=new WeakSet(),visible=new Set(),selector='.sp-logo,.feature-card .ai-ico,.nav-step svg,.sp-nav-icon,.integration-logo,.sp-card-icon,.hero,.auth-story';
     const refresh=()=>{let count=0;for(const node of visible){if(!node.isConnected){visible.delete(node);continue}node.classList.toggle('sp-motion-visible',count++<12)}};
     const observer=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting)visible.add(e.target);else{visible.delete(e.target);e.target.classList.remove('sp-motion-visible')}}refresh()},{threshold:.1});
     const register=root=>{if(!(root instanceof Element))return;const nodes=[...(root.matches(selector)?[root]:[]),...root.querySelectorAll(selector)];for(const node of nodes){if(observed.has(node))continue;observed.add(node);node.classList.add('sp-motion-target');observer.observe(node)}};

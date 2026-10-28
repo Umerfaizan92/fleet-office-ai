@@ -8,7 +8,7 @@
   document.addEventListener('click',e=>{const b=e.target.closest('[data-fin-tab]');if(b)tab(b.dataset.finTab)});
   const monthName=m=>new Date(m+'-01T00:00:00Z').toLocaleString('en-AU',{month:'short',timeZone:'UTC'});
 
-  function kpi(label,value,sub,tone){return el('article',{class:`panel finance-kpi fin-${tone||'plain'}`},el('small',{text:label}),el('strong',{text:value}),sub?el('span',{text:sub}):null)}
+  function kpi(label,value,sub,tone){const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');icon.classList.add('sp-card-icon');const path=document.createElementNS(icon.namespaceURI,'path');path.setAttribute('d',/cost|overhead/i.test(label)?'M4 7h16v14H4zM8 7V3h8v4M4 12h16':/profit/i.test(label)?'M4 19l5-6 4 3 7-11M14 5h6v6':/GST/i.test(label)?'M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h3':'M3 6h18v14H3zM3 10h18m-13 6h3');icon.append(path);return el('article',{class:`panel finance-kpi fin-${tone||'plain'}`},icon,el('small',{text:label}),el('strong',{text:value}),sub?el('span',{text:sub}):null)}
   function renderOverview(o){
     const c=o.current;
     $('#fin-kpis').replaceChildren(

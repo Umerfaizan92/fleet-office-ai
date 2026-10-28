@@ -45,7 +45,7 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
  }
  const own=offer(employee.id,employee.email),sameEmail=offer(null,employee.email),extra=offer(owner.id,'extra@example.invalid');
  const port=13200+Math.floor(Math.random()*1000),base=`http://127.0.0.1:${port}`;
- const child=spawn(process.execPath,['src/server.js'],{env:{...process.env,NODE_ENV:'test',SUPERPRO_SKIP_DOTENV:'1',RESEND_API_KEY:'',TELNYX_API_KEY:'',TELNYX_VERIFY_PROFILE_ID:'',PORT:String(port),DATABASE_PATH:database,UPLOAD_DIR:path.join(root,'uploads'),PUBLIC_BASE_URL:base,ALLOWED_ORIGINS:base},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['src/server.js'],{env:{...process.env,NODE_ENV:'test',SUPERPRO_SKIP_DOTENV:'1',RESEND_API_KEY:'',TELNYX_API_KEY:'',TELNYX_VERIFY_PROFILE_ID:'',ADMIN_API_KEY:'isolated-runtime-founder-key',PORT:String(port),DATABASE_PATH:database,UPLOAD_DIR:path.join(root,'uploads'),PUBLIC_BASE_URL:base,ALLOWED_ORIGINS:base},stdio:['ignore','pipe','pipe']});
  let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
  const pause=ms=>new Promise(r=>setTimeout(r,ms));
  async function request(actor,route,method='GET',body,org=actor.org){return fetch(base+route,{method,headers:{cookie:`fp_session=${actor.token}`,'X-Organisation-Id':org,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});}
@@ -53,6 +53,18 @@ test('runtime tenant boundaries and atomic offer allocation',async()=>{
   let ready=false;
   for(let i=0;i<80;i++){try{if((await fetch(base+'/healthz')).ok){ready=true;break;}}catch{}await pause(100);}
   assert.ok(ready,logs);
+  const bindFounder=(actor,key='isolated-runtime-founder-key',confirm=true)=>fetch(base+'/api/operator/workspace-identity',{method:'POST',headers:{cookie:`fp_session=${actor.token}`,'X-Organisation-Id':actor.org,'Content-Type':'application/json','x-admin-key':key},body:JSON.stringify({confirm,user_id:outsider.id})});
+  assert.equal((await (await request(owner,'/api/saas/me')).json()).user.platform_owner,false,'business ownership is not founder identity');
+  assert.equal((await bindFounder(owner,'')).status,401,'business session alone cannot link founder shortcut');
+  assert.equal((await bindFounder(employee)).status,403,'staff cannot link an operator shortcut');
+  assert.equal((await bindFounder(owner,undefined,false)).status,400,'link requires explicit account confirmation');
+  assert.equal((await bindFounder(owner)).status,200);
+  assert.equal((await (await request(owner,'/api/saas/me')).json()).user.platform_owner,true);
+  assert.equal((await (await request(outsider,'/api/saas/me')).json()).user.platform_owner,false,'subscriber owner never inherits founder shortcut');
+  assert.equal((await bindFounder(outsider)).status,409,'a second account cannot replace the linked founder');
+  assert.equal((await request(owner,'/api/admin/dashboard')).status,401,'founder business identity does not bypass independent operator authentication');
+  db.prepare('UPDATE workers SET role_title=? WHERE organisation_id=? AND user_id=?').run('Content creator',orgA,employee.id);
+  const staffIdentity=(await (await request(employee,'/api/saas/me')).json()).user;assert.equal(staffIdentity.role,'employee');assert.equal(staffIdentity.role_title,'Content creator');assert.equal(staffIdentity.platform_owner,false);
   const permissionPath='/api/saas/team-accounts/members/'+employee.id+'/permissions';
   const originalPermissions=await (await request(owner,permissionPath)).json();assert.equal(originalPermissions.policy.mode,'role');
   assert.equal((await request(employee,permissionPath)).status,403,'staff cannot inspect or edit authorisation');

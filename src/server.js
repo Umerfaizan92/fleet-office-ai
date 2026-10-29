@@ -21,7 +21,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
-import { createDb, appendAuditLog } from './db.js';
+import { createDb, appendAuditLog, verifyAuditChain } from './db.js';
 import { prepareStorage, runStartupDiagnostics, installDiagnosticsRoute } from './diagnostics.js';
 import { startUploadSync } from './s3-files.js';
 import { installPayments } from './payments.js';
@@ -50,6 +50,11 @@ import { aiProviderStatus, generateAiText, meaningfulConfigValue, resolveAiProvi
 import { createIntegrationRuntime } from './integration-runtime.js';
 import { workforceSkillSuggestions, workStatusRequirements, industryComplianceSuggestions, officialSource } from './workforce-compliance.js';
 import { installTeamAccounts } from './team-accounts.js';
+import { inspectUpload } from './file-safety.js';
+import { createJobQueue, installJobRoutes } from './job-queue.js';
+import { requestContext, installObservabilityRoutes } from './observability.js';
+import { createObjectStorage } from './object-storage.js';
+import { operatorMfaEnforced, passwordCandidates as policyPasswordCandidates, strictPasswordMatch, sessionTooOld } from './security-policy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -453,6 +458,10 @@ const socialStats = createSocialStatsService(env, backendRoot);
 const persistentStorageDetected = storagePlan.persistent;
 
 const uploadRoot = storagePlan.uploadRoot;
+// Primary private object storage (Phase 02). Off unless OBJECT_STORAGE_MODE=s3 and its own bucket and keys are set; backup keys are never used.
+const objectStorage=createObjectStorage({env,audit:e=>{try{appendAuditLog(db,{organisation_id:e.organisationId||null,user_id:e.actorId||null,user_name:null,user_role:null,action:e.action,module:'storage',entity_type:'object',entity_id:String(e.key||'').split('/').pop()||null,metadata:{size:e.size,sha256:e.sha256,scan:e.scan,ttl:e.ttl}})}catch(err){console.warn('[storage] audit write failed:',err.message)}}});
+if(objectStorage.config.mode==='s3'&&!objectStorage.config.ready)console.error('[storage] OBJECT_STORAGE_MODE=s3 but storage is not usable: '+objectStorage.config.problems.join(' ')+' New job evidence uploads are refused until this is fixed.');
+const objectStorageOrigin=objectStorage.config.ready?(objectStorage.config.endpoint?new URL(objectStorage.config.endpoint).origin:`https://${objectStorage.config.bucket}.s3.${objectStorage.config.region}.amazonaws.com`):null;
 
 const maxFileMb = Number(env.MAX_FILE_MB || 8);
 const maxFiles = Number(env.MAX_FILES || 10);
@@ -829,6 +838,8 @@ app.use((req,res,next)=>{
 app.disable('x-powered-by');
 
 app.set('trust proxy', 1);
+// Phase 02: every response carries an X-Request-Id; LOG_FORMAT=json writes one structured line per API request.
+app.use(requestContext({ env }));
 
 app.use(
   helmet({
@@ -871,12 +882,15 @@ app.use(
           'https://maps.google.com'
         ],
 
+        ...(objectStorageOrigin?{mediaSrc:["'self'",'blob:',objectStorageOrigin]}:{}),
+
         imgSrc: [
           "'self'",
           'data:',
           'blob:',
           'https://i.ytimg.com',
-          'https://img.youtube.com'
+          'https://img.youtube.com',
+          ...(objectStorageOrigin?[objectStorageOrigin]:[])
         ],
 
         objectSrc: [
@@ -897,9 +911,9 @@ app.use(
           'https://cdnjs.cloudflare.com'
         ],
 
+        // Phase 02: the old Fleet Parlour API origin was removed; no Super Pro page calls it.
         connectSrc: [
-          "'self'",
-          'https://api.fleetparlour.com.au'
+          "'self'"
         ],
 
         upgradeInsecureRequests:
@@ -2034,7 +2048,7 @@ const OPERATOR_SESSION_MS=12*60*60*1000;
 const operatorSessionKey=()=>crypto.createHash('sha256').update('operator-session:'+String(env.ADMIN_API_KEY||'')+':'+String(env.ADMIN_SESSION_SECRET||env.SESSION_SECRET||'')).digest();
 function operatorSessionIssue(){const exp=Date.now()+OPERATOR_SESSION_MS,mac=crypto.createHmac('sha256',operatorSessionKey()).update(String(exp)).digest('hex');return `sps.${exp}.${mac}`}
 function operatorSessionValid(token){const m=/^sps\.(\d{10,15})\.([0-9a-f]{64})$/.exec(String(token||''));if(!m||Number(m[1])<Date.now()||db.prepare('SELECT 1 FROM revoked_operator_sessions WHERE token_hash=?').get(crypto.createHash('sha256').update(String(token)).digest('hex')))return false;const mac=crypto.createHmac('sha256',operatorSessionKey()).update(m[1]).digest('hex');return crypto.timingSafeEqual(Buffer.from(mac),Buffer.from(m[2]))}
-const operatorMfaRequired=()=>Boolean(String(env.OPERATOR_TOTP_SECRET||'').trim());
+const operatorMfaRequired=()=>Boolean(String(env.OPERATOR_TOTP_SECRET||'').trim())||operatorMfaEnforced(env);
 function requireAdmin(req,res,next){
   const expected=env.ADMIN_API_KEY,provided=req.get('x-admin-key');
   const deny=()=>res.status(401).json({ok:false,error:'Unauthorized'});
@@ -2057,7 +2071,7 @@ const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const passwordHash=(password,salt)=>crypto.scryptSync(password,salt,64,{N:16384,r:8,p:1}).toString('hex');
 // Mobile keyboards often add a trailing space, capitalise the first letter or compose accents differently.
 // Try the exact password first, then a few safe variants of what was typed, so correct passwords are never rejected.
-function passwordCandidates(raw){const out=[raw],add=v=>{if(v&&!out.includes(v))out.push(v)};const t=raw.trim();add(t);add(raw.normalize('NFC'));add(t.normalize('NFC'));add(t.normalize('NFKC'));if(t.length){const f=t[0],sw=f===f.toLowerCase()?f.toUpperCase():f.toLowerCase();add(sw+t.slice(1));add((sw+t.slice(1)).normalize('NFC'))}return out.slice(0,7)}
+function passwordCandidates(raw){return policyPasswordCandidates(raw,{strict:strictPasswordMatch(env)})}
 function passwordMatches(password,user){const stored=Buffer.from(String(user.password_hash||''));let ok=false;for(const c of passwordCandidates(String(password))){const h=Buffer.from(passwordHash(c,user.password_salt));if(h.length===stored.length&&crypto.timingSafeEqual(h,stored))ok=true}return ok}
 const verificationTestMode=env.NODE_ENV!=='production'&&String(env.SAAS_VERIFICATION_TEST_MODE||'')==='1';
 function cookieValue(req,name){const row=String(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(`${name}=`));return row?decodeURIComponent(row.slice(name.length+1)):''}
@@ -2100,6 +2114,7 @@ function requireSaasUser(req,res,next){
       return res.status(403).json({ok:false,error:'You do not have access to that organisation.'});
     return res.status(401).json({ok:false,error:'Session expired'});
   }
+  if(sessionTooOld(db.prepare('SELECT created_at FROM user_sessions WHERE id=?').get(row.session_id)?.created_at,env)){db.prepare('DELETE FROM user_sessions WHERE id=?').run(row.session_id);return res.status(401).json({ok:false,error:'Session expired. Please sign in again.'})}
   const sessionNow=new Date(),sessionExpiry=new Date(sessionNow.getTime()+SESSION_TTL_MS);
   db.prepare(`UPDATE user_sessions SET last_seen_at=?,expires_at=? WHERE id=?`).run(sessionNow.toISOString(),sessionExpiry.toISOString(),row.session_id);
   res.setHeader('Set-Cookie',`${sessionCookieName}=${encodeURIComponent(raw)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${env.NODE_ENV==='production'?'; Secure':''}`);
@@ -2124,6 +2139,7 @@ app.post('/api/operator/login',operatorLoginLimiter,(req,res)=>{
   const expected=String(env.ADMIN_API_KEY||''),key=String(req.body?.key||''),code=String(req.body?.code||'').replace(/\s/g,'');
   const a=Buffer.from(key),b=Buffer.from(expected);
   if(!expected||a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(401).json({ok:false,error:'That admin key is not right.'});
+  if(operatorMfaEnforced(env)&&!String(env.OPERATOR_TOTP_SECRET||'').trim())return res.status(503).json({ok:false,error:'Founder sign-in needs an authenticator. Set OPERATOR_TOTP_SECRET in the server settings (REQUIRE_OPERATOR_MFA is on).'});
   if(operatorMfaRequired()){
     if(!/^\d{6}$/.test(code))return res.status(401).json({ok:false,code_required:true,error:'Enter the 6-digit code from your authenticator app.'});
     if(!validTotp(String(env.OPERATOR_TOTP_SECRET).trim(),code))return res.status(401).json({ok:false,code_required:true,error:'That code is not right. Check the time on your phone and try the next code.'});
@@ -4531,12 +4547,25 @@ app.get('/api/saas/work-orders/:id/media',requireSaasUser,(req,res)=>{
 app.post('/api/saas/work-orders/:id/media',requireSaasUser,(req,res)=>{
   const job=jobForUser(req,req.params.id);if(!job)return res.status(404).json({ok:false,error:'Job not found.'});
   req.params.id=job.id;
-  jobEvidenceUpload.array('files',10)(req,res,err=>{
+  jobEvidenceUpload.array('files',10)(req,res,async err=>{
     const drop=()=>{for(const f of req.files||[])fs.rmSync(f.path,{force:true})};
     if(err){drop();return res.status(400).json({ok:false,error:err.code==='LIMIT_FILE_SIZE'?'That file is too large.':err.message})}
     const stage=String(req.body.stage||'');
     if(!['before','after'].includes(stage)){drop();return res.status(400).json({ok:false,error:'Choose before or after.'})}
     if(!req.files?.length)return res.status(400).json({ok:false,error:'Choose at least one photo or video.'});
+    // Phase 02: check the real content (not the name or browser type), scan when a scanner is configured, and use private S3 when switched on.
+    if(objectStorage.config.mode==='s3'&&!objectStorage.config.ready){drop();return res.status(503).json({ok:false,error:'File storage is being set up. Please try again later.'})}
+    try{
+      for(const f of req.files){
+        const check=await inspectUpload(fs.readFileSync(f.path),{declaredType:f.mimetype,maxBytes:Number(env.JOB_MEDIA_MAX_MB||100)*1024*1024,env,allowed:Object.keys(JOB_MEDIA_TYPES)});
+        if(!check.ok){drop();saasAudit(req,'job_media.blocked','work_order',job.id,{reason:check.reason,scan:check.scan?.status||null});return res.status(400).json({ok:false,error:check.message})}
+        f.scan=check.scan?.status||'not_scanned';
+      }
+      if(objectStorage.config.ready)for(const f of req.files){
+        const stored=await objectStorage.put({organisationId:req.saas.organisation_id,category:'job-evidence',body:fs.readFileSync(f.path),contentType:f.mimetype,actorId:req.saas.user_id,scan:{status:f.scan}});
+        fs.rmSync(f.path,{force:true});f.filename='s3:'+stored.key;
+      }
+    }catch(e){drop();console.error('[storage] job evidence upload failed:',e.message);return res.status(502).json({ok:false,error:'The file could not be stored. Please try again.'})}
     const now=new Date().toISOString(),ins=db.prepare(`INSERT INTO job_photos (id,organisation_id,work_order_id,stage,kind,original_name,stored_name,mime_type,size_bytes,caption,created_by_user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
     const ids=[],caption=String(req.body.caption||'').slice(0,300)||null;
     db.transaction(()=>{for(const f of req.files){const id=crypto.randomUUID();ids.push(id);ins.run(id,req.saas.organisation_id,job.id,stage,JOB_MEDIA_TYPES[f.mimetype][0],String(f.originalname||'file').replace(/[\u0000-\u001f]/g,'').slice(0,200),f.filename,f.mimetype,f.size,caption,req.saas.user_id,now)}
@@ -4560,6 +4589,12 @@ app.post('/api/saas/work-orders/:id/media-reason',requireSaasUser,(req,res)=>{
 app.get('/api/saas/job-media/:id/file',requireSaasUser,(req,res)=>{
   const m=db.prepare(`SELECT * FROM job_photos WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!m||!jobForUser(req,m.work_order_id))return res.status(404).json({ok:false,error:'Media not found.'});
+  if(String(m.stored_name).startsWith('s3:')){
+    // Private object: a link valid for a couple of minutes, issued only after the organisation and job checks above.
+    return objectStorage.signedUrl({organisationId:req.saas.organisation_id,key:String(m.stored_name).slice(3),filename:m.original_name,contentType:m.mime_type,actorId:req.saas.user_id})
+      .then(({url})=>{res.set('cache-control','no-store');res.redirect(302,url)})
+      .catch(e=>res.status(e.status===404?404:502).json({ok:false,error:e.status===404?'Media not found.':'The file is temporarily unavailable.'}));
+  }
   const file=path.join(uploadRoot,'job-evidence',String(req.saas.organisation_id).replace(/[^a-zA-Z0-9-]/g,''),m.stored_name);
   if(!fs.existsSync(file))return res.status(404).json({ok:false,error:'The stored file is missing.'});
   res.set({'content-type':m.mime_type,'x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; sandbox",'cache-control':'private, max-age=300'});
@@ -4569,7 +4604,7 @@ app.delete('/api/saas/job-media/:id',requireSaasUser,requireSaasRole(...SENIOR_J
   const m=db.prepare(`SELECT * FROM job_photos WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!m)return res.status(404).json({ok:false,error:'Media not found.'});
   db.prepare(`DELETE FROM job_photos WHERE id=? AND organisation_id=?`).run(m.id,req.saas.organisation_id);
-  fs.rmSync(path.join(uploadRoot,'job-evidence',String(req.saas.organisation_id).replace(/[^a-zA-Z0-9-]/g,''),m.stored_name),{force:true});
+  if(!String(m.stored_name).startsWith('s3:'))fs.rmSync(path.join(uploadRoot,'job-evidence',String(req.saas.organisation_id).replace(/[^a-zA-Z0-9-]/g,''),m.stored_name),{force:true});
   saasAudit(req,'job_media.deleted','work_order',m.work_order_id,{stage:m.stage});
   res.json({ok:true});
 });
@@ -5670,6 +5705,16 @@ installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,password
 const platformIdentity=createPlatformIdentity({db,env,validTotp,founderAuthenticate:requireAdmin,onFounderLogout:req=>{const token=String(req.get('x-admin-key')||'');if(token.startsWith('sps.'))db.prepare('INSERT OR IGNORE INTO revoked_operator_sessions VALUES (?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),new Date(Number(token.split('.')[1])).toISOString())}});
 platformIdentity.install(app,{limiter:operatorLoginLimiter});
 installOperatorConsole(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,requireSaasUser,requireSaasRole,saasAudit,entitlements});
+// Phase 02: durable background jobs (retries, idempotency, dead letters) and founder-only operational views.
+const jobQueue=createJobQueue({db});
+jobQueue.register('audit.verify_chain',()=>{const r=verifyAuditChain(db);if(!r.ok)throw new Error('Audit chain did not verify ('+(r.reason||r.brokenAt||'unknown')+').');return {checked:r.checked}},{maxAttempts:3,baseDelayMs:600000,timeoutMs:120000});
+installJobRoutes(app,{platform:platformIdentity,queue:jobQueue,audit:(req,action,id)=>platformIdentity.log(req.platform?.id||'founder',action,'operations',id)});
+installObservabilityRoutes(app,{db,queue:jobQueue,platform:platformIdentity,storage:objectStorage,databasePath,env});
+if(!/^(1|true|yes)$/i.test(String(env.JOBS_DISABLED||''))){
+  jobQueue.start();
+  const dailyAuditCheck=()=>{try{jobQueue.enqueue('audit.verify_chain',{},{idempotencyKey:'audit.verify_chain:'+new Date().toISOString().slice(0,10)})}catch(e){console.warn('[jobs] could not schedule the audit check:',e.message)}};
+  dailyAuditCheck();setInterval(dailyAuditCheck,3600000).unref();
+}
 installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess});
 installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
 

@@ -1,0 +1,19 @@
+{
+  "Rules": [
+    {
+      "ID": "tenant-files-cost-and-history",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "tenants/" },
+      "Transitions": [{ "Days": 90, "StorageClass": "STANDARD_IA" }],
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 90 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+    },
+    {
+      "ID": "healthcheck-objects",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "_healthcheck/" },
+      "Expiration": { "Days": 1 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 1 }
+    }
+  ]
+}

@@ -24,6 +24,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+        env:
+          INSTALL_LITESTREAM: '1' # checksum-verified backup tool, so the restore drill test runs in CI
+      - name: Secret scan
+        run: npm run security:secrets
       # scripts/verify-all.mjs: syntax, migrations, storage fallback, permission matrix, end-to-end pipeline, contract tests, final validation, quality gate
       - name: Verify everything
         run: npm test

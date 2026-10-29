@@ -1,0 +1,303 @@
+# STAGING blueprint (Phase 02). Not used by the production service.
+# Create it in Render with "New → Blueprint" and the path render.staging.yaml. It has its own disk, its own S3 buckets
+# and its own generated secrets, and must only ever hold synthetic test data. Never point it at production buckets.
+services:
+  - type: web
+    name: super-pro-ai-office-manager-staging
+    runtime: node
+    region: singapore
+    # Persistent SQLite requires a paid web-service plan.
+    plan: 0.5c-512mb
+    numInstances: 1
+    # npm test runs scripts/verify-all.mjs: syntax, migrations, RBAC and the end-to-end pipeline. A failure stops the deploy before it goes live.
+    buildCommand: npm ci && npm test
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    disk:
+      name: super-pro-staging-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+      - key: NODE_VERSION
+        value: "22.22.0"
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: OPERATOR_TOTP_SECRET
+        sync: false
+      - key: DATABASE_PATH
+        value: "/var/data/super-pro.sqlite"
+      # Refuse to start on non-durable storage if the disk is missing or unwritable (instead of silently losing customer records).
+      # Permanent storage in your own AWS S3 bucket (database copied every few seconds, uploads every 2 minutes).
+      # Uses BACKUP_S3_BUCKET, or the existing AWS_S3_BUCKET and AWS_REGION below.
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: REQUIRE_PERSISTENT_DISK
+        value: "1"
+      - key: UPLOAD_DIR
+        value: "/var/data/uploads"
+      - key: MAX_FILE_MB
+        value: "25"
+      - key: MAX_FILES
+        value: "10"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SAAS_SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true
+      - key: SESSION_TTL_DAYS
+        value: "30"
+      # Phase 02 rules are switched ON in staging first, then copied to production after review.
+      - key: SESSION_MAX_AGE_DAYS
+        value: "90"
+      - key: REQUIRE_OPERATOR_MFA
+        value: "1"
+      - key: STRICT_PASSWORD_MATCH
+        value: "1"
+      - key: LOG_FORMAT
+        value: "json"
+      - key: OBJECT_STORAGE_MODE
+        value: "s3"
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        value: "ap-southeast-2"
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      - key: OBJECT_STORAGE_KMS_KEY_ID
+        sync: false
+      - key: CLAMAV_HOST
+        sync: false
+      - key: MALWARE_SCAN_REQUIRED
+        value: "0"
+      - key: AI_TOOL_SHARED_SECRET
+        generateValue: true
+      - key: INTEGRATION_ENCRYPTION_KEY
+        generateValue: true
+      - key: SAAS_VERIFICATION_TEST_MODE
+        value: "0"
+      - key: SAAS_VERIFY_FROM
+        sync: false
+      # Australian business number shown in public structured data (leave blank until registered).
+      - key: BUSINESS_ABN
+        sync: false
+      # Shared secrets for signed inbound webhooks. Create each yourself and paste the same value into the provider.
+      - key: INBOUND_EMAIL_WEBHOOK_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: TRIAL_DAYS
+        value: "14"
+      - key: POST_TRIAL_RESTRICT_DAYS
+        value: "30"
+      - key: ARCHIVE_RETENTION_DAYS
+        value: "365"
+      - key: FINAL_RESTORE_WINDOW_DAYS
+        value: "14"
+      - key: ABR_GUID
+        sync: false
+      - key: TELNYX_VERIFY_PROFILE_ID
+        sync: false
+      - key: FREE_AI_MODE
+        value: "1"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-3.5-flash"
+      - key: GEMINI_STT_MODEL
+        value: "gemini-3.5-transcribe"
+      - key: GEMINI_TTS_MODEL
+        value: "gemini-3.1-flash-tts-preview"
+      - key: GEMINI_TTS_AUTO_VOICE
+        value: "Kore"
+      - key: GEMINI_TTS_MALE_VOICE
+        value: "Puck"
+      - key: GEMINI_TTS_FEMALE_VOICE
+        value: "Aoede"
+      - key: AI_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_PROVIDER_API_KEY
+        sync: false
+      - key: AI_PROVIDER_MODEL
+        sync: false
+      - key: AI_PROVIDER_TIMEOUT_MS
+        value: "20000"
+      - key: AI_CHECKER_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_CHECKER_API_KEY
+        sync: false
+      - key: AI_CHECKER_MODEL
+        sync: false
+      - key: AI_TTS_PROVIDER_BASE_URL
+        sync: false
+      - key: AI_TTS_API_KEY
+        sync: false
+      - key: AI_TTS_MODEL
+        sync: false
+      - key: AI_TTS_VOICE
+        sync: false
+      - key: AI_TTS_MALE_VOICE
+        sync: false
+      - key: AI_TTS_FEMALE_VOICE
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: "gpt-5.6-luna"
+      - key: AI_STT_MODEL
+        value: "gpt-4o-mini-transcribe"
+      - key: TELNYX_API_KEY
+        sync: false
+      - key: TELNYX_CONNECTION_ID
+        sync: false
+      - key: TELNYX_PHONE_NUMBER
+        sync: false
+      - key: TELNYX_FROM_NUMBER
+        sync: false
+      - key: TELNYX_TTS_VOICE
+        sync: false
+      - key: TELNYX_AI_ASSISTANT_ID
+        sync: false
+      - key: TELNYX_PUBLIC_KEY
+        sync: false
+      - key: BUSINESS_PRIMARY_NUMBER
+        sync: false
+      - key: BUSINESS_WHATSAPP_NUMBER
+        sync: false
+      - key: OWNER_PRIVATE_TRANSFER_NUMBER
+        sync: false
+      - key: VOICE_ENQUIRY_NOTIFY_TO
+        sync: false
+      - key: VOICE_ENQUIRY_ALERT_PHONE
+        sync: false
+      - key: NOTIFY_TO
+        sync: false
+      - key: SUPPORT_ESCALATION_EMAIL
+        sync: false
+      - key: SUPPORT_ESCALATION_PHONE
+        sync: false
+      - key: SUPPORT_INBOX_EMAIL
+        sync: false
+      - key: SUPPORT_MAX_FILE_MB
+        value: "25"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_REDIRECT_URI
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: FACEBOOK_PAGE_ID
+        sync: false
+      - key: META_GRAPH_VERSION
+        value: "v23.0"
+      - key: INSTAGRAM_ACCESS_TOKEN
+        sync: false
+      - key: INSTAGRAM_USER_ID
+        sync: false
+      - key: SOCIAL_STATS_CACHE_MINUTES
+        value: "30"
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: TIKTOK_ACCESS_TOKEN
+        sync: false
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_REDIRECT_URI
+        sync: false
+      - key: TIKTOK_SCOPES
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: YOUTUBE_CHANNEL_ID
+        sync: false
+      - key: SNAPCHAT_CLIENT_ID
+        sync: false
+      - key: SNAPCHAT_CLIENT_SECRET
+        sync: false
+      - key: SNAPCHAT_REDIRECT_URI
+        sync: false
+      - key: SNAPCHAT_AUTHORIZE_URL
+        sync: false
+      - key: SNAPCHAT_TOKEN_URL
+        sync: false
+      - key: SNAPCHAT_SCOPES
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: X_CLIENT_SECRET
+        sync: false
+      - key: X_REDIRECT_URI
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYMENT_BANK_INSTRUCTIONS
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: KMS_KEY_ID
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_KMS_KEY_ID
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
+      - key: WEBSITE_PUBLIC_URL
+        sync: false
+      - key: WEBSITE_API_BASE_URL
+        sync: false
+      - key: WEBSITE_API_KEY
+        sync: false
+      - key: WEBSITE_WEBHOOK_SECRET
+        sync: false
+      - key: INDEXNOW_KEY
+        sync: false
+      - key: GOOGLE_SITE_VERIFICATION
+        sync: false
+      - key: BING_SITE_VERIFICATION
+        sync: false
+      - key: JOB_MEDIA_MAX_MB
+        value: "100"

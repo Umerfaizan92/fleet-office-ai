@@ -23,6 +23,12 @@ export const ACCESS_FEATURES=[
  ['billing','Business subscription',['owner','admin','super_admin'],['read']]
 ].map(([id,label,roles,actions])=>({id,label,roles,actions}));
 const keys=ACCESS_FEATURES.flatMap(f=>f.actions.map(a=>f.id+'.'+a)),valid=new Set(keys);
+// Field roles (workers and contractors) can never be given business-wide customer, money, hiring, setup or messaging access,
+// even by a custom grant. Job and workforce access stays limited to their own assignments and their own record.
+export const FIELD_ROLES=['worker','contractor'];
+export const FIELD_FEATURES=['dashboard','jobs','workforce','staff_chat','approvals','governance'];
+const fieldAllowed=(role,key)=>!FIELD_ROLES.includes(String(role||'').toLowerCase())||FIELD_FEATURES.includes(String(key).split('.')[0]);
+export function withinRoleCeiling(role,grants){return grants.filter(k=>fieldAllowed(role,k))}
 const utility=new Set(['me','logout','login','account','mfa','legal','my-organisations','business','staff-presence','notifications','notification-preferences','announcements','releases','health','access']);
 const area={'business-hub':'customers','business-archive':'customers','service-requests':'settings','receptionist-profile':'settings',mail:'mail','support-access':'governance',dashboard:'dashboard','command-centre':'dashboard',customers:'customers',stock:'stock','work-orders':'jobs','job-offers':'jobs','job-media':'jobs',workers:'workforce','staff-chat':'staff_chat','staff-availability':'staff_chat',ai:'ai',voice:'ai',content:'content',media:'content','video-renders':'content',growth:'growth',seo:'visibility',comms:'inbox',finance:'finance',payments:'finance',approvals:'approvals',integrations:'integrations','platform-capabilities':'integrations',onboarding:'settings',branding:'settings',address:'settings','industry-registry':'settings',regulatory:'settings',hiring:'hiring',governance:'governance','live-activity':'governance',activity:'governance',billing:'billing',subscription:'billing',plans:'billing',addons:'billing',entitlements:'billing','platform-invoices':'billing','message-delivery':'finance'};
 export function accessRoute(req){
@@ -46,7 +52,7 @@ export function createStaffAccess({db,audit}){
   const current=row&&row.membership_created_at===member.created_at;
   if(member.role==='owner')return {mode:'owner',grants:keys,revision:current?row.revision:0};
   if(!current||row.mode==='role')return {mode:'role',grants:defaults(member.role),revision:current?row.revision:0};
-  try{return {mode:'custom',grants:JSON.parse(row.grants_json).filter(k=>valid.has(k)),revision:row.revision}}catch{return {mode:'custom',grants:[],revision:row.revision}}
+  try{return {mode:'custom',grants:withinRoleCeiling(member.role,JSON.parse(row.grants_json).filter(k=>valid.has(k))),revision:row.revision}}catch{return {mode:'custom',grants:[],revision:row.revision}}
  }
  const snapshot=req=>req.staffAccess||(req.staffAccess=policy(req.saas.organisation_id,req.saas.user_id,req.saas.role));
  const can=(req,feature,action='read')=>req.saas.role==='owner'||snapshot(req).grants.includes(feature+'.'+action);
@@ -68,7 +74,7 @@ export function createStaffAccess({db,audit}){
   app.put('/api/saas/team-accounts/members/:id/permissions',...owner,(req,res)=>{
    const p=z.object({mode:z.enum(['role','custom']),revision:z.number().int().min(0),grants:z.array(z.enum(keys)).max(keys.length)}).strict().safeParse(req.body);if(!p.success)return res.status(400).json({ok:false,error:'Choose valid staff permissions.'});
    const m=db.prepare("SELECT role,created_at FROM memberships WHERE organisation_id=? AND user_id=? AND status='active'").get(req.saas.organisation_id,req.params.id);if(!m)return res.status(404).json({ok:false,error:'Staff membership not found.'});if(m.role==='owner')return res.status(409).json({ok:false,error:'Business-owner authority cannot be changed through staff permissions.'});
-   const grants=[...new Set(p.data.grants)].sort();if(grants.some(k=>!k.endsWith('.read')&&!grants.includes(k.split('.')[0]+'.read')))return res.status(400).json({ok:false,error:'View access is required before granting an action.'});
+   const grants=[...new Set(p.data.grants)].sort();if(withinRoleCeiling(m.role,grants).length!==grants.length)return res.status(400).json({ok:false,code:'ROLE_CEILING',error:'Workers and contractors can only be given jobs, their own worker record, staff chat, approvals and personal activity. Change their role first if they need more.'});if(grants.some(k=>!k.endsWith('.read')&&!grants.includes(k.split('.')[0]+'.read')))return res.status(400).json({ok:false,error:'View access is required before granting an action.'});
    const result=db.transaction(()=>{const before=policy(req.saas.organisation_id,req.params.id,m.role);if(before.revision!==p.data.revision)return null;const at=new Date().toISOString();
     db.prepare('INSERT INTO staff_access_policies(organisation_id,user_id,membership_created_at,mode,grants_json,revision,updated_by,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(organisation_id,user_id) DO UPDATE SET membership_created_at=excluded.membership_created_at,mode=excluded.mode,grants_json=excluded.grants_json,revision=excluded.revision,updated_by=excluded.updated_by,updated_at=excluded.updated_at').run(req.saas.organisation_id,req.params.id,m.created_at,p.data.mode,JSON.stringify(grants),before.revision+1,req.saas.user_id,at);
     audit(req,'team.permissions_changed','user',req.params.id,{before,after:{mode:p.data.mode,grants,revision:before.revision+1}});return policy(req.saas.organisation_id,req.params.id,m.role);

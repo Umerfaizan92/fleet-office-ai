@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TenantObjectsReadWriteNoDelete",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::PRIMARY_BUCKET/tenants/*"
+    },
+    {
+      "Sid": "HealthCheckObject",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::PRIMARY_BUCKET/_healthcheck/*"
+    },
+    {
+      "Sid": "ReadBucketSettingsForVerification",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetLifecycleConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::PRIMARY_BUCKET"
+    },
+    {
+      "Sid": "UseOnlyTheStorageKey",
+      "Effect": "Allow",
+      "Action": ["kms:GenerateDataKey", "kms:Decrypt"],
+      "Resource": "arn:aws:kms:ap-southeast-2:ACCOUNT_ID:key/PRIMARY_KMS_KEY_ID"
+    }
+  ]
+}

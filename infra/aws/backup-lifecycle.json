@@ -1,0 +1,19 @@
+{
+  "Rules": [
+    {
+      "ID": "database-replica-history",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "super-pro/db/" },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 35 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+    },
+    {
+      "ID": "upload-copies-history",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "super-pro/uploads/" },
+      "Transitions": [{ "Days": 30, "StorageClass": "STANDARD_IA" }],
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 90 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 7 }
+    }
+  ]
+}

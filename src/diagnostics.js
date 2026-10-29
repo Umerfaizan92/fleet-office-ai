@@ -1,5 +1,6 @@
 // Startup sanity checks, non-destructive schema self-healing and the diagnostics report.
 // Nothing here drops, rewrites or deletes data. Everything it changes is additive (new columns, indexes, triggers, tables).
+import { securityPosture } from './security-policy.js';
 import fs from 'node:fs';
 import { backupBucket } from './backup-env.js';
 import os from 'node:os';
@@ -180,6 +181,7 @@ export function runDiagnostics({ db, env = process.env, storage, startedAt = Dat
   // Configuration (names only, never values)
   const missingSecrets = REQUIRED_SECRETS.filter((k) => String(env[k] || '').trim().length < 16);
   add('config.secrets', missingSecrets.length ? (production ? 'fail' : 'warn') : 'pass', missingSecrets.length ? `Missing or too short: ${missingSecrets.join(', ')}.` : 'All required secrets are set.');
+  for (const c of securityPosture(env)) add(c.id, c.status, c.detail);
   const has = (...keys) => keys.some((k) => String(env[k] || '').trim() && !/^(your_|changeme|todo)/i.test(String(env[k]).trim()));
   const integrations = {
     ai: has('GEMINI_API_KEY', 'GOOGLE_AI_API_KEY', 'AI_PROVIDER_API_KEY', 'OPENAI_API_KEY'),

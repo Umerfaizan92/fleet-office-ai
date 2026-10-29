@@ -36,17 +36,22 @@
     "manifest:update": "node scripts/update-manifest.mjs",
     "verify:manifest": "node scripts/verify-manifest.mjs",
     "postinstall": "node scripts/install-litestream.mjs",
-    "test:ui": "node scripts/test-ui.mjs"
+    "test:ui": "node scripts/test-ui.mjs",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "storage:verify": "node scripts/verify-storage.mjs",
+    "backup:restore-drill": "node scripts/restore-drill.mjs",
+    "deploy:check": "node scripts/post-deploy-check.mjs"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1156.0",
+    "@aws-sdk/s3-request-presigner": "3.1156.0",
     "better-sqlite3": "12.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "multer": "^2.0.2",
@@ -56,7 +61,7 @@
     "zod": "^4.6.7"
   },
   "overrides": {
-    "qs": "^6.15.4"
+    "qs": "^6.16.1"
   },
   "devDependencies": {
     "playwright": "1.62.1"

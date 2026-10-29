@@ -53,7 +53,15 @@ export async function restoreUploads({ client, bucket, prefix, dir, seen = new M
 }
 
 // Upload anything new or changed since the last pass.
-export async function syncUploads({ client, bucket, prefix, dir, seen, log = console.log }) {
+// Server-side encryption for backup copies: SSE-KMS with BACKUP_S3_KMS_KEY_ID, otherwise AES-256.
+// Skipped for custom S3-compatible endpoints (BACKUP_S3_ENDPOINT), which may not accept the header, and with BACKUP_S3_SSE=none.
+export function backupEncryption(env = process.env) {
+  if (env.BACKUP_S3_ENDPOINT || /^none$/i.test(String(env.BACKUP_S3_SSE || ''))) return {};
+  const kms = String(env.BACKUP_S3_KMS_KEY_ID || '').trim();
+  return kms ? { ServerSideEncryption: 'aws:kms', SSEKMSKeyId: kms } : { ServerSideEncryption: 'AES256' };
+}
+
+export async function syncUploads({ client, bucket, prefix, dir, seen, log = console.log, encryption = {} }) {
   const { PutObjectCommand } = await import('@aws-sdk/client-s3');
   const pre = cleanPrefix(prefix);
   let uploaded = 0, failed = 0;
@@ -62,7 +70,7 @@ export async function syncUploads({ client, bucket, prefix, dir, seen, log = con
     let sig; try { sig = signature(f.full); } catch { continue; }
     if (seen.get(key) === sig) continue;
     try {
-      await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fs.readFileSync(f.full) }));
+      await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: fs.readFileSync(f.full), ...encryption }));
       seen.set(key, sig); uploaded += 1;
     } catch (err) { failed += 1; log(`[backup] could not upload ${f.rel}: ${err.message}`); }
   }
@@ -79,7 +87,7 @@ export function startUploadSync({ env = process.env, uploadRoot, log = console.l
     if (running) return; running = true;
     try {
       const client = await makeClient(env);
-      const r = await syncUploads({ client, bucket, prefix, dir: uploadRoot, seen, log });
+      const r = await syncUploads({ client, bucket, prefix, dir: uploadRoot, seen, log, encryption: backupEncryption(env) });
       if (r.uploaded) log(`[backup] saved ${r.uploaded} uploaded file(s) to S3`);
     } catch (err) { log(`[backup] upload sync failed: ${err.message}`); } finally { running = false; }
   };

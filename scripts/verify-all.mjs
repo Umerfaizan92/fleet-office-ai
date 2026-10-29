@@ -255,7 +255,17 @@ await stage('suites', 'Contract tests, final validation, quality gate', async ()
   testEnv.SUPERPRO_SKIP_DOTENV = '1';
   await check(`${tests.length} contract test files pass`, () => {
     const r = run(process.execPath, ['--test', '--test-concurrency=1', ...tests], { timeout: 600000, env: testEnv });
-    assert.equal(r.status, 0, (r.stdout.match(/^# (?:fail|cancelled).*$/gm) || []).join(', ') + '\n' + (r.stdout + r.stderr).split('\n').filter((l) => /not ok|Error|fail/i.test(l)).slice(0, 8).join('\n'));
+    if (r.status !== 0) {
+      // Preserve the actual failing assertion, stack and test name. The old
+      // summary printed only generic '# fail 1' lines and hid the root cause.
+      const output = (r.stdout || '') + '\n' + (r.stderr || '');
+      const lines = output.split('\n');
+      const failures = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\s*not ok\s+\d+\s+-/.test(lines[i])) failures.push(lines.slice(i, i + 35).join('\n'));
+      }
+      throw new Error('Contract tests failed (exit ' + r.status + '):\n' + (failures.length ? failures.join('\n---\n') : output.slice(-12000)));
+    }
   });
   for (const [label, script] of [['final validation', 'scripts/validate-release.mjs'], ['quality check', 'scripts/quality-check.mjs'], ['quality ratchet', 'scripts/quality-ratchet.mjs']]) {
     await check(label, () => { const r = run(process.execPath, [script], { timeout: 300000 }); assert.equal(r.status, 0, (r.stdout + r.stderr).split('\n').slice(-8).join('\n')); });

@@ -49,7 +49,8 @@ test('an empty server gets its files back; a server that already has files is le
 
 import { backupBucket } from '../src/backup-env.js';
 test('the existing AWS_S3_BUCKET is used on Render, never on a laptop, and backups can be switched off', () => {
-  assert.equal(backupBucket({ BACKUP_S3_BUCKET: 'a', AWS_S3_BUCKET: 'b', RENDER: 'true' }), 'a');
+  assert.equal(backupBucket({ BACKUP_S3_BUCKET: 'a', AWS_S3_BUCKET: 'b', RENDER: 'true' }), 'b');
+  assert.equal(backupBucket({ BACKUP_S3_BUCKET: 'a', RENDER: 'true' }), 'a');
   assert.equal(backupBucket({ AWS_S3_BUCKET: 'b', RENDER: 'true' }), 'b');
   assert.equal(backupBucket({ AWS_S3_BUCKET: 'b' }), '');
   assert.equal(backupBucket({ AWS_S3_BUCKET: 'b', RENDER: 'true', BACKUP_DISABLED: '1' }), '');

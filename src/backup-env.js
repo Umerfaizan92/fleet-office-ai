@@ -1,9 +1,10 @@
 // One place that decides which S3 bucket (if any) the backups use.
-// BACKUP_S3_BUCKET always wins. On Render, an existing AWS_S3_BUCKET is used too, so nothing needs renaming.
+// AWS_S3_BUCKET is the primary bucket on Render; BACKUP_S3_BUCKET is the fallback.
+// BACKUP_DISABLED=1 remains the explicit override to disable all backup replication.
 // BACKUP_DISABLED=1 switches backups off.
 export function backupBucket(env = process.env) {
   if (/^(1|true|yes)$/i.test(String(env.BACKUP_DISABLED || ''))) return '';
-  return env.BACKUP_S3_BUCKET || (env.RENDER ? env.AWS_S3_BUCKET : '') || '';
+  return (env.RENDER ? env.AWS_S3_BUCKET : '') || env.BACKUP_S3_BUCKET || '';
 }
 
 // Finds the AWS keys even when they were saved under a slightly different name, and trims stray spaces or line breaks

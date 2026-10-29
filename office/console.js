@@ -165,7 +165,30 @@
   }
   function jsonCard(value, title) {
     const c = panel(title);
-    c.append(el("pre", "portal-record-text", JSON.stringify(value, null, 2)));
+    const list = el("dl", "portal-facts");
+    const readable = (v) =>
+      v === null
+        ? "Not set"
+        : typeof v === "boolean"
+          ? v
+            ? "Ready"
+            : "Setup required"
+          : Array.isArray(v)
+            ? v.map(readable).join(", ")
+            : String(v);
+    function add(object, prefix = "") {
+      for (const [key, v] of Object.entries(object || {})) {
+        const label = key.replaceAll("_", " "),
+          name = prefix ? prefix + " · " + label : label;
+        if (v && typeof v === "object" && !Array.isArray(v)) {
+          add(v, name);
+          continue;
+        }
+        list.append(el("dt", "", name), el("dd", "", readable(v)));
+      }
+    }
+    add(value);
+    c.append(list);
     return c;
   }
   function navigate(section, which) {
@@ -436,24 +459,51 @@
           "password",
           "password",
         ).minLength = 14;
-        const role = field(f, "Role", "role");
-        role.value = "custom";
-        const grants = field(
-          f,
-          "Grants separated by commas (for example support.read,support.create)",
-          "grants",
-        );
-        grants.required = true;
+        const roleLabel = el("label", "", "Role"),
+          role = el("select");
+        role.name = "role";
+        for (const label of ["custom", ...Object.keys(d.roles)]) {
+          const option = el("option", "", label);
+          option.value = label;
+          role.append(option);
+        }
+        roleLabel.append(role);
+        f.append(roleLabel);
+        const grantGrid = el("div", "portal-grid");
+        for (const section of d.sections.filter((x) => x !== "founder")) {
+          const group = el("fieldset", "portal-card");
+          group.append(el("legend", "", section));
+          for (const action of d.actions) {
+            const label = el("label", "", action),
+              box = el("input");
+            box.type = "checkbox";
+            box.name = "grant";
+            box.value = section + "." + action;
+            label.prepend(box);
+            group.append(label);
+          }
+          grantGrid.append(group);
+        }
+        f.append(grantGrid);
+        role.onchange = () => {
+          for (const box of grantGrid.querySelectorAll("input")) {
+            const [section, action] = box.value.split(".");
+            box.checked =
+              (d.roles[role.value] || []).includes(section) &&
+              (action === "read" ||
+                !["overview", "security"].includes(section));
+          }
+        };
         f.append(
           el("button", "portal-button primary", "Create staff identity"),
         );
         f.onsubmit = async (e) => {
           e.preventDefault();
           const v = Object.fromEntries(new FormData(f));
-          v.grants = v.grants
-            .split(",")
-            .map((x) => x.trim())
-            .filter(Boolean);
+          delete v.grant;
+          v.grants = [...grantGrid.querySelectorAll("input:checked")].map(
+            (e) => e.value,
+          );
           try {
             const result = await api("/api/operator/staff", {
               method: "POST",

@@ -1,3 +1,4 @@
+import {portalMailReceipt,portalMailInbound} from './mail-centre.js';
 import crypto from 'node:crypto';
 import {Resend} from 'resend';
 import {z} from 'zod';
@@ -24,6 +25,7 @@ export function installCommunicationTracking(app,{db,env,requireSaasUser,require
  }
  function receipt(provider,eventId,messageId,state){
   if(!eventId||!messageId||!['sent','delivered','opened','failed'].includes(state))return;
+  portalMailReceipt(messageId,state);
   db.transaction(()=>{
    db.prepare('INSERT OR IGNORE INTO communication_receipt_events(provider,event_id,provider_id,state) VALUES (?,?,?,?)').run(provider,eventId,messageId,state);
    const event=db.prepare('SELECT * FROM communication_receipt_events WHERE provider=? AND event_id=?').get(provider,eventId);if(event.applied)return;
@@ -49,8 +51,10 @@ export function installCommunicationTracking(app,{db,env,requireSaasUser,require
    const emailId=event.data?.email_id;if(!emailId)return res.status(400).json({ok:false,error:'Missing email identifier.'});
    const recipients=(event.data?.to||[]).map(to=>String(to).match(/<([^>]+)>/)?.[1]||String(to));
    const organisations=new Set(recipients.flatMap(to=>db.prepare("SELECT organisation_id FROM comms_channels WHERE channel='email' AND lower(address)=? AND status='active'").all(to.toLowerCase()).map(r=>r.organisation_id)));
-   if(organisations.size!==1)return res.json({ok:true,routed:false});
-   try{const result=await new Resend(env.RESEND_API_KEY).emails.receiving.get(emailId);if(result.error||!result.data)return res.status(503).json({ok:false,error:'Inbound email could not be retrieved. Retry later.'});const mail=result.data,from=String(mail.from||'').match(/<([^>]+)>/)?.[1]||mail.from;receiveEmail({organisation_id:[...organisations][0],channel:'email',contact_address:from,subject:mail.subject||null,body:mail.text||'Email received; open the provider inbox for HTML-only content.',provider:'resend',external_message_id:emailId});return res.json({ok:true,routed:true})}catch{return res.status(503).json({ok:false,error:'Inbound email retrieval is temporarily unavailable.'})}
+   const platformMailbox=String(env.SUPERPRO_SUPPORT_EMAIL||'').trim().toLowerCase(),platformRoute=platformMailbox&&recipients.some(to=>to.toLowerCase()===platformMailbox);
+   if(organisations.size>1||(platformRoute&&organisations.size))return res.json({ok:true,routed:false});
+   if(!platformRoute&&organisations.size!==1)return res.json({ok:true,routed:false});
+   try{const result=await new Resend(env.RESEND_API_KEY).emails.receiving.get(emailId);if(result.error||!result.data)return res.status(503).json({ok:false,error:'Inbound email could not be retrieved. Retry later.'});const mail=result.data,from=String(mail.from||'').match(/<([^>]+)>/)?.[1]||mail.from;if(platformRoute){portalMailInbound({scope:'platform',owner_id:'superpro',provider_id:emailId,from,subject:mail.subject,body:mail.text||'HTML-only email; view through your verified mail provider.'});return res.json({ok:true,routed:true});}receiveEmail({organisation_id:[...organisations][0],channel:'email',contact_address:from,subject:mail.subject||null,body:mail.text||'Email received; open the provider inbox for HTML-only content.',provider:'resend',external_message_id:emailId});return res.json({ok:true,routed:true})}catch{return res.status(503).json({ok:false,error:'Inbound email retrieval is temporarily unavailable.'})}
   }
   const state={'email.sent':'sent','email.delivered':'delivered','email.opened':'opened','email.bounced':'failed','email.failed':'failed','email.complained':'failed','email.suppressed':'failed'}[event.type];
   receipt('resend',req.get('svix-id'),event.data?.email_id,state);res.json({ok:true});

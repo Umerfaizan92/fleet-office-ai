@@ -27,6 +27,10 @@ const args = process.argv.slice(2);
 const FAST = args.includes('--fast');
 const ONLY = args.find((a) => a.startsWith('--only='))?.slice(7) || null;
 const WITH_MANIFEST = args.includes('--manifest');
+// Preview flags belong to the deployed app, never to the verification fixtures.
+// A Render build exposes runtime variables to build commands as well.
+delete process.env.SUPERPRO_ISOLATED_PREVIEW;
+delete process.env.PREVIEW_BUSINESS_PASSWORD;
 process.env.SUPERPRO_SKIP_DOTENV = '1'; // every server and test started below ignores the developer's real .env (no real SMS, email or AI calls)
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'superpro-verify-'));
 

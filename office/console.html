@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Founder Console · Super Pro AI</title>
+    <link rel="stylesheet" href="../saas/app.css?v=20261029.2" />
+    <link rel="stylesheet" href="../saas/brand.css?v=20261025" />
+    <link rel="stylesheet" href="../saas/portal-shell.css?v=20261029.2" />
+    <script defer src="../saas/mail-centre.js?v=20261029.2"></script>
+    <script defer src="console.js?v=20261029.2"></script>
+  </head>
+  <body>
+    <a href="#console-main" class="sr-only">Skip to content</a>
+    <aside
+      class="portal-rail"
+      id="console-rail"
+      aria-label="Founder main sections"
+    >
+      <a class="portal-brand" href="#f01"
+        ><span class="portal-mark">SP</span><span>Super Pro AI</span></a
+      ><button
+        type="button"
+        class="portal-main-button"
+        id="rail-toggle"
+        aria-label="Expand main navigation"
+      >
+        <span class="portal-icon">☰</span><span>Pin navigation</span>
+      </button>
+      <nav id="console-nav"></nav>
+    </aside>
+    <div style="margin-left: var(--portal-rail)">
+      <header class="portal-topbar">
+        <div>
+          <small id="console-role">PLATFORM OPERATIONS</small>
+          <h1 id="console-title">Founder Console</h1>
+        </div>
+        <div class="portal-toolbar">
+          <input
+            class="portal-search"
+            id="console-search"
+            type="search"
+            aria-label="Find a console section"
+            placeholder="Search sections"
+          /><button
+            class="portal-button"
+            id="console-notifications"
+            type="button"
+          >
+            Notifications</button
+          ><button class="portal-button" id="console-live" type="button">
+            Live update</button
+          ><button class="portal-button" id="console-update" type="button">
+            App update</button
+          ><button
+            class="portal-button"
+            id="console-theme"
+            type="button"
+            aria-label="Toggle light or dark theme"
+          >
+            ◐</button
+          ><button class="portal-button" id="console-logout" type="button">
+            Sign out
+          </button>
+        </div>
+      </header>
+      <nav
+        class="portal-subtabs"
+        id="console-tabs"
+        aria-label="Current section tabs"
+      ></nav>
+    </div>
+    <main class="portal-main" id="console-main">
+      <p id="console-notice" role="status" aria-live="polite"></p>
+      <div class="portal-view" id="console-content"></div>
+      <footer class="portal-footer">
+        Super Pro AI · Platform records stay separate from subscriber business
+        records. Preview branch · Manual deployment only.
+      </footer>
+    </main>
+  </body>
+</html>

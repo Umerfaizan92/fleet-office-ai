@@ -113,36 +113,20 @@ try{
     }
     await page.setViewportSize({width:1440,height:900});
   });
-  await check('desktop menus open on hover, close on leave and support keyboard',async()=>{
-    for(const domain of ['today','customers','people','marketing','money','setup']){
-      const group=page.locator('.nav-domain[data-domain="'+domain+'"]');
-      await group.locator('.nav-domain-toggle').hover();
-      assert.equal(await group.getAttribute('data-open'),'true');
-      const bounds=await group.locator('.nav-domain-items').boundingBox();
-      assert.ok(bounds.x>=0&&bounds.x+bounds.width<=1441&&bounds.y+bounds.height<=901,domain);
-      await page.mouse.move(1400,700);await page.waitForTimeout(240);
-      assert.equal(await group.getAttribute('data-open'),'false');
-    }
-    const setup=page.locator('.nav-domain[data-domain="setup"]');
-    await setup.locator('.nav-domain-toggle').focus();await page.keyboard.press('ArrowDown');
-    assert.ok(await setup.locator('.nav-item').first().evaluate(e=>e===document.activeElement));
-    await page.keyboard.press('End');assert.ok(await setup.locator('.nav-item').last().evaluate(e=>e===document.activeElement));
-    await page.keyboard.press('Escape');assert.equal(await setup.getAttribute('data-open'),'false');
+  await check('nine main sections use an expanding icon rail and separate top subtabs',async()=>{
+    const rail=page.locator('#workspace .portal-rail');assert.equal(await rail.locator('nav [data-domain]').count(),9);
+    await rail.locator(':focus').evaluateAll(es=>es.forEach(e=>e.blur()));await page.mouse.move(1400,700);await page.waitForFunction(()=>document.querySelector('#workspace .portal-rail').getBoundingClientRect().width<69);assert.ok((await rail.boundingBox()).width<=69,JSON.stringify(await rail.evaluate(e=>({width:e.getBoundingClientRect().width,hover:e.matches(':hover'),focus:e.matches(':focus-within'),expanded:e.dataset.expanded,active:document.activeElement?.outerHTML?.slice(0,300),computed:getComputedStyle(e).width,variable:getComputedStyle(e).getPropertyValue('--portal-rail')}))));
+    await rail.hover();await page.waitForFunction(()=>document.querySelector('#workspace .portal-rail').getBoundingClientRect().width>=250);assert.ok((await rail.boundingBox()).width>=250);
+    await rail.locator('[data-domain=b03]').click();await page.locator('#workforce-view').waitFor({state:'visible'});
+    assert.ok(await page.locator('.portal-subtabs [data-jump=team]').isVisible());await page.locator('.portal-subtabs [data-jump=team]').click();assert.ok(await page.locator('#team-view').isVisible());
+    await page.keyboard.press('Escape');await page.mouse.move(1400,700);
   });
-  await check('overflowing menus scroll at the edge and stop on pointer leave',async()=>{
-    const group=page.locator('.nav-domain[data-domain="setup"]');await group.locator('.nav-domain-toggle').hover();
-    const menu=group.locator('.nav-domain-items');await menu.evaluate(e=>{e.style.maxHeight='150px';e.scrollTop=0});
-    const r=await menu.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height-5);await page.waitForTimeout(200);
-    assert.ok(await menu.evaluate(e=>e.scrollTop)>0,'edge hover scrolls');
-    await page.mouse.move(1400,700);const stopped=await menu.evaluate(e=>e.scrollTop);await page.waitForTimeout(100);assert.equal(await menu.evaluate(e=>e.scrollTop),stopped);
+  await check('rail preserves keyboard focus and supports touch without hover',async()=>{
+    await page.locator('.portal-rail [aria-label="Expand main navigation"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'false');
+    const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.locator('.portal-rail [data-domain=b08]').tap();await p.locator('.portal-subtabs [data-jump=manual]').tap();await p.locator('#manual-view').waitFor({state:'visible'});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}finally{await touch.close()}
   });
-  await check('touch menus open on tap and keep their options inside the viewport',async()=>{
-    const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});
-    try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});
-      const toggle=p.locator('.nav-domain[data-domain="setup"] .nav-domain-toggle');await toggle.tap();
-      const menu=p.locator('.nav-domain[data-domain="setup"] .nav-domain-items');await menu.waitFor({state:'visible'});const b=await menu.boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y+b.height<=845,JSON.stringify(b));
-      await menu.locator('[data-view="manual"]').tap();assert.ok(await p.locator('#manual-view').isVisible());
-    }finally{await touch.close()}
+  await check('email centre separates folders and keeps drafts behind review',async()=>{
+    await page.evaluate(()=>location.hash='b04/email');await page.locator('#mail-view').waitFor({state:'visible'});await page.mouse.move(1400,700);await page.locator('.portal-rail button:focus').evaluateAll(es=>es.forEach(e=>e.blur()));await page.waitForTimeout(220);await screenshot(page,'email-centre');await page.locator('#mail-view').getByRole('button',{name:'Compose',exact:true}).click();const dialog=page.locator('dialog.portal-modal');await dialog.locator('[name=recipient]').fill('ui-recipient@example.test');await dialog.locator('[name=subject]').fill('Review test');await dialog.locator('[name=body]').fill('An unsent draft for review.');await dialog.getByRole('button',{name:'Save draft for review'}).click();await dialog.waitFor({state:'hidden'});await page.locator('.portal-mail-row').filter({hasText:'Review test'}).click();await page.locator('dialog.portal-modal').getByRole('button',{name:'Approve reviewed version'}).waitFor();assert.equal(await page.locator('dialog.portal-modal').getByRole('button',{name:'Send approved email'}).count(),0);await page.locator('dialog.portal-modal').getByRole('button',{name:'Close',exact:true}).click();
   });
   await check('live motion is automatic, bounded and uses existing colours',async()=>{
     assert.equal(await page.locator('html').evaluate(e=>getComputedStyle(e).getPropertyValue('--sp-accent').trim()),'#e2bd72');
@@ -185,7 +169,7 @@ try{
       await page.setViewportSize({width,height:1200});await page.waitForTimeout(200);const {actions,picker,box,input}=await card.evaluate(card=>{const rect=selector=>{const e=selector?card.querySelector(selector):card;return e?JSON.parse(JSON.stringify(e.getBoundingClientRect())):null};return {actions:rect('.integration-manager-actions'),picker:rect('.integration-resource-picker'),box:rect(),input:rect('[data-im-resource]')}});assert.ok(actions&&picker&&box&&input,JSON.stringify({width,actions,picker,box,input}));assert.ok(picker.y>=actions.y+actions.height-1,JSON.stringify({width,actions,picker}));assert.ok(input.width>0&&input.width<=20&&input.height<=20,JSON.stringify(input));assert.ok(picker.x>=box.x&&picker.x+picker.width<=box.x+box.width+1);await screenshot(page,'connected-tiktok-'+width);
     }
     await card.locator('[data-im-resource]').uncheck();await card.getByRole('button',{name:'Save selection'}).click();await page.waitForFunction(()=>!document.querySelector('[data-provider-card="tiktok"] [data-im-save]')?.disabled);assert.deepEqual(saved,[]);
-    await page.unroute('**/api/saas/integrations/self-service',fixture);await page.unroute('**/api/saas/integrations/self-service/tiktok/resources');
+    await page.unrouteAll({behavior:'wait'});
   });
   await check('Import help opens on mobile and supported files reach the dry-run review',async()=>{
     await page.setViewportSize({width:390,height:900});await page.evaluate(()=>location.hash='setup/import');await page.locator('#migration-view').waitFor({state:'visible'});
@@ -297,18 +281,16 @@ try{
   await page.emulateMedia({reducedMotion:'reduce'});await check('reduced motion disables decorative animation',async()=>assert.equal(await page.locator('.sp-logo').first().evaluate(e=>getComputedStyle(e).animationName),'none'));
   await page.setViewportSize({width:390,height:900});
   page.on('response',r=>{if(r.url().startsWith(base+'/api/admin/')&&r.status()>=400)failedFounderRequests.push(r.status()+' '+new URL(r.url()).pathname)});
-  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-link-label').waitFor({state:'visible'});await page.locator('input[name=link_workspace]').check();await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#app').waitFor({state:'visible'});
-  await check('founder mobile menu opens, filters, navigates and restores focus on Escape',async()=>{
-    const menu=page.locator('.sp-office-menu');await menu.click();assert.equal(await menu.getAttribute('aria-expanded'),'true');await page.locator('.sp-nav-filter').fill('customer');await page.locator('aside .nav[data-view=customers]').waitFor({state:'visible'});assert.equal(await page.locator('aside .nav:visible').count(),1);await page.keyboard.press('Escape');assert.equal(await menu.getAttribute('aria-expanded'),'false');assert.ok(await menu.evaluate(e=>document.activeElement===e));
-    await menu.click();await page.locator('.sp-nav-filter').fill('');await page.locator('aside .nav[data-view=customers]').click();assert.ok(await page.locator('#customers-view').isVisible());assert.equal(await menu.getAttribute('aria-expanded'),'false');
+  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-link-label').waitFor({state:'visible'});await page.locator('input[name=link_workspace]').check();await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#console-nav [data-section]').first().waitFor();
+  await check('founder uses nine isolated sections and their top tabs',async()=>{
+    assert.equal(await page.locator('#console-nav [data-section]').count(),9);
+    for(const section of ['f01','f02','f03','f04','f05','f06','f07','f08','f09']){await page.evaluate(h=>location.hash=h,section);await page.waitForTimeout(120);assert.ok(await page.locator('#console-tabs button').count()>0);assert.equal(await page.locator('#console-content').getByText('Action unavailable',{exact:true}).count(),0,section)}
+    await page.evaluate(()=>location.hash='f01');await screenshot(page,'founder-mobile');await page.setViewportSize({width:1440,height:1000});await screenshot(page,'founder-desktop');
   });
-  await screenshot(page,'founder-mobile');await page.setViewportSize({width:1440,height:1000});
-  await check('founder navigation opens all 23 sections with one visible view',async()=>{const views=await page.locator('aside .nav').evaluateAll(nodes=>nodes.map(n=>n.dataset.view));for(const view of views){await page.locator(`aside .nav[data-view="${view}"]`).click();await page.locator(`#${view}-view`).waitFor({state:"visible"});assert.equal(await page.locator('#app .view:visible').count(),1,view);assert.ok(await page.locator(`#${view}-view`).isVisible(),view)}console.log('Founder sections checked:',views.length)});
-  await page.locator('aside .nav[data-view=dashboard]').click();await page.locator('aside .sp-logo').waitFor({state:'visible'});await screenshot(page,'founder-desktop');
-  await page.waitForTimeout(500);await check('founder API requests succeed across all sections',async()=>assert.deepEqual(failedFounderRequests,[]));
+  await check('founder API requests succeed across all sections',async()=>assert.deepEqual(failedFounderRequests,[]));
   await check('only the independently verified founder sees the workspace operator shortcut',async()=>{
     const me=await (await context.request.get(base+'/api/saas/me')).json();assert.equal(me.user.platform_owner,true);
-    const account=await context.newPage();try{await account.goto(base+'/saas/workspace.html');await account.locator('#workspace').waitFor({state:'visible'});assert.ok(await account.locator('#workspace-operator-link').isVisible());assert.equal(await account.locator('#workspace-operator-link').getAttribute('href'),'operator-sign-in.html')}finally{await account.close()}
+    const account=await context.newPage();try{await account.goto(base+'/saas/workspace.html');await account.locator('#workspace').waitFor({state:'visible'});await account.locator('.portal-rail').hover();await account.waitForTimeout(220);assert.ok(await account.locator('#workspace-operator-link').isVisible());assert.equal(await account.locator('#workspace-operator-link').getAttribute('href'),'operator-sign-in.html')}finally{await account.close()}
   });
   await check('no browser JavaScript exceptions',async()=>assert.deepEqual(errors,[]));
   console.log(`UI CHECKS PASSED: ${results.length}`);

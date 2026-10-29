@@ -5,7 +5,7 @@ import { renderEmail, platformBrand } from './email-templates.js';
 
 function configured(env) {
   return Boolean(
-    env.RESEND_API_KEY &&
+    env.RESEND_API_KEY && env.NOTIFY_FROM &&
     env.NOTIFY_TO
   );
 }
@@ -31,7 +31,7 @@ export async function sendEnquiryNotification(env, enquiry, files = []) {
       .toUpperCase()}`;
 
   const text = [
-    'NEW FLEET PARLOUR QUOTE ENQUIRY',
+    'NEW BUSINESS ENQUIRY',
     '================================',
     '',
     `Reference Number: ${referenceCode}`,
@@ -70,7 +70,7 @@ export async function sendEnquiryNotification(env, enquiry, files = []) {
     enquiry.job_details || '-',
     '',
     '================================',
-    `Fleet Parlour Enquiry Reference: ${referenceCode}`,
+    `Business enquiry reference: ${referenceCode}`,
     '',
     `Internal ID: ${enquiry.id}`
   ].join('\n');
@@ -86,7 +86,7 @@ export async function sendEnquiryNotification(env, enquiry, files = []) {
   const { data, error } = await resend.emails.send({
     from:
       env.NOTIFY_FROM ||
-      'Fleet Parlour Website <quotes@fleetparlour.com.au>',
+      env.SAAS_VERIFY_FROM,
 
     to: [env.NOTIFY_TO],
 
@@ -146,10 +146,10 @@ export async function sendSaasVerificationEmail(env, { to, code, businessName })
   const resend = new Resend(env.RESEND_API_KEY);
   const candidates = [
     normaliseSender(env.SAAS_VERIFY_FROM),
-    normaliseSender(env.NOTIFY_FROM),
-    'Super Pro AI Office Manager Security <security@fleetparlour.com.au>'
+    normaliseSender(env.NOTIFY_FROM)
   ].filter(Boolean).filter((value, index, all) => all.indexOf(value) === index);
 
+  if(!candidates.length)return {sent:false,reason:'sender_not_configured'};
   const payload = {
     to: [to],
     subject: 'Super Pro AI Office Manager security verification code',
@@ -183,7 +183,7 @@ export async function sendWorkerOnboardingInviteEmail(env,{to,workerName,busines
     normaliseSender(env.WORKFORCE_FROM,'Super Pro AI Office Manager Workforce')||
     normaliseSender(env.SAAS_VERIFY_FROM,'Super Pro AI Office Manager Workforce')||
     normaliseSender(env.NOTIFY_FROM,'Super Pro AI Office Manager Workforce')||
-    'Super Pro AI Office Manager Workforce <security@fleetparlour.com.au>';
+    env.SAAS_VERIFY_FROM;
   const {data,error}=await resend.emails.send({
     from,to:[to],
     subject:`${businessName} — secure workforce onboarding`,
@@ -202,9 +202,9 @@ export async function sendWorkerOnboardingInviteEmail(env,{to,workerName,busines
 }
 
 export async function sendSupportEscalationEmail(env, { to, supportCase }) {
-  if (!env.RESEND_API_KEY || !to) return { sent: false, reason: 'support_email_not_configured' };
+  if (!env.RESEND_API_KEY || !(env.NOTIFY_FROM||env.SAAS_VERIFY_FROM||env.SUPPORT_FROM) || !to) return { sent: false, reason: 'support_email_not_configured' };
   const resend = new Resend(env.RESEND_API_KEY);
-  const from = env.SUPPORT_FROM || env.NOTIFY_FROM || 'Super Pro AI Office Manager Support <support@fleetparlour.com.au>';
+  const from = env.SUPPORT_FROM || env.NOTIFY_FROM || env.SAAS_VERIFY_FROM;
   const { data, error } = await resend.emails.send({
     from,
     to: [to],
@@ -240,12 +240,12 @@ export async function sendVoiceEnquiryNotification(env, { to, enquiry }) {
   const target = to || env.VOICE_ENQUIRY_NOTIFY_TO || env.NOTIFY_TO || env.SUPPORT_ESCALATION_EMAIL;
   if (!env.RESEND_API_KEY || !target) return { sent: false, reason: 'voice_email_not_configured' };
   const resend = new Resend(env.RESEND_API_KEY);
-  const from = env.VOICE_ENQUIRY_FROM || env.NOTIFY_FROM || 'Fleet Parlour AI Receptionist <enquiries@fleetparlour.com.au>';
+  const from = env.VOICE_ENQUIRY_FROM || env.NOTIFY_FROM || env.SAAS_VERIFY_FROM;
   const subjectName = enquiry.customer_name || 'Business caller';
   const { data, error } = await resend.emails.send({
     from,
     to: [target],
-    subject: `[AI Receptionist] ${enquiry.urgent ? 'URGENT · ' : ''}${subjectName} · Fleet Parlour enquiry`,
+    subject: `[AI Receptionist] ${enquiry.urgent ? 'URGENT · ' : ''}${subjectName} · business enquiry`,
     ...renderEmail(platformBrand(env),{heading:'New receptionist enquiry',paragraphs:([
       'FLEET PARLOUR — AI RECEPTIONIST BUSINESS ENQUIRY',
       '',
@@ -263,7 +263,7 @@ export async function sendVoiceEnquiryNotification(env, { to, enquiry }) {
       '',
       `Message: ${enquiry.message || enquiry.transcript_summary || enquiry.notes || '-'}`,
       '',
-      'Service mode: Fleet Parlour currently provides mobile/on-site service only. No customer drop-off workshop is offered.',
+      'Service mode must be confirmed against the business profile.',
       'This notification was generated only after the enquiry record was saved by the AI receptionist tool.'
     ].join('\n')).split('\n\n')})
   });

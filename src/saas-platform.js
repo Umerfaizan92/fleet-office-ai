@@ -138,6 +138,11 @@ export function installSaasPlatform(app, deps) {
 
   // ===== Data portability (owner only) =====
   const EXPORTS = {
+    portal_mail:o=>db.prepare('SELECT id,direction,recipient,subject,body,category,status,revision,scheduled_at,created_at,updated_at FROM portal_mail WHERE scope=\'business\' AND owner_id=?').all(o),
+    mail_activity:o=>db.prepare('SELECT mail_id,actor,action,revision,created_at FROM portal_mail_events WHERE scope=\'business\' AND owner_id=? ORDER BY id').all(o),
+    business_documents:o=>db.prepare('SELECT * FROM tenant_documents WHERE organisation_id=?').all(o),
+    service_requests:o=>db.prepare('SELECT * FROM tenant_service_requests WHERE organisation_id=?').all(o),
+
     organisation: (o) => db.prepare(`SELECT id,name,display_name,slug,status,timezone,abn,legal_name,state,postcode,brand_theme,brand_primary_color,brand_secondary_color,created_at,updated_at FROM organisations WHERE id=?`).all(o),
     members: (o) => db.prepare(`SELECT u.id user_id,u.email,u.phone,u.full_name,m.role,m.status,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.organisation_id=?`).all(o),
     onboarding_profile: (o) => db.prepare(`SELECT * FROM onboarding_profiles WHERE organisation_id=?`).all(o),

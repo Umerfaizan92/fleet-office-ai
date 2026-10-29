@@ -20,17 +20,18 @@ const GATES = [
 ];
 const monthStart = () => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString(); };
 
-export function createEntitlements({ db, getNotify = () => null, getExtras = () => ({}) }) {
+export function createEntitlements({ db, getNotify = () => null, getExtras = () => ({}), policy = null }) {
   db.exec(`CREATE TABLE IF NOT EXISTS usage_events (id TEXT PRIMARY KEY, organisation_id TEXT NOT NULL, kind TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_usage_events_org ON usage_events(organisation_id, kind, created_at);`);
 
   function planOf(org) {
     const s = db.prepare(`SELECT s.plan_id,s.status,s.payment_status,s.trial_ends_at,p.name FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(org);
-    const id = PLAN_ALIAS[s?.plan_id] || s?.plan_id;
+    const grant=policy?.active(org);
+    const id = grant?.feature_profile || PLAN_ALIAS[s?.plan_id] || s?.plan_id;
     const rules = RULES[id] || RULES.starter;
     const paid = s && (s.payment_status === 'paid' || s.status === 'active');
     const trialEnd = s?.trial_ends_at ? Date.parse(s.trial_ends_at) : 0;
-    return { plan_id: RULES[id] ? id : 'starter', plan_name: s?.name || 'Starter', rules, locked: Boolean(s && !paid && trialEnd && Date.now() > trialEnd), trial_ends_at: s?.trial_ends_at || null };
+    return { plan_id: RULES[id] ? id : 'starter', plan_name: grant?'Complimentary':s?.name || 'Starter', complimentary:Boolean(grant), rules, locked: Boolean(!grant && s && !paid && trialEnd && Date.now() > trialEnd), trial_ends_at: s?.trial_ends_at || null };
   }
   const rules = (org) => planOf(org).rules;
 
@@ -112,7 +113,7 @@ export function createEntitlements({ db, getNotify = () => null, getExtras = () 
   function install(app, { requireSaasUser, requireSaasRole }) {
     app.get('/api/saas/entitlements', requireSaasUser, requireSaasRole('owner', 'admin', 'manager', 'super_admin', 'director'), (req, res) => {
       const org = req.saas.organisation_id, p = planOf(org);
-      res.json({ ok: true, plan: { id: p.plan_id, name: p.plan_name }, locked: p.locked, usage: usage(org), features: { growth_days: p.rules.growth_days, growth_posts_per_day: p.rules.growth_posts_per_day, growth_auto_publish: p.rules.growth_auto_publish } });
+      res.json({ ok: true, plan: { id: p.plan_id, name: p.plan_name }, locked: p.locked, complimentary:p.complimentary, usage: usage(org), features: { growth_days: p.rules.growth_days, growth_posts_per_day: p.rules.growth_posts_per_day, growth_auto_publish: p.rules.growth_auto_publish } });
     });
   }
   return { planOf, rules, check, usage, gate, watch, install, used };

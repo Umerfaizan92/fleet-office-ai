@@ -1,3 +1,9 @@
+import {seedIsolatedPreview} from './preview-seed.js';
+import {installBusinessHub} from './business-hub.js';
+import {createSubscriptionPolicy} from './subscription-policy.js';
+import {createPlatformIdentity} from './platform-identity.js';
+import {installOperatorConsole} from './operator-console.js';
+import {installMailCentre} from './mail-centre.js';
 import {createFounderIdentity} from './founder-identity.js';
 import {createStaffAccess} from './staff-access.js';
 import {installStaffPresence} from './staff-presence.js';
@@ -248,13 +254,13 @@ async function initiateSupportVoiceAlert(to,supportCase){
   return {sent:true,call_id:data?.data?.call_control_id||data?.data?.call_leg_id||data?.data?.call_session_id||null};
 }
 
-const METAL_POLISHING_AI_INSTRUCTIONS = `
-You are the business-only AI receptionist for Fleet Parlour, operating inside Super Pro AI Office Manager.
+const BUSINESS_RECEPTIONIST_AI_INSTRUCTIONS = `
+You are the business-only AI receptionist for this business, operating inside Super Pro AI Office Manager.
 
 BUSINESS LINE ONLY
-- This line is for Fleet Parlour business communications only.
+- This line is for this business business communications only.
 - Do not create, classify, store or route a personal/family/friend workflow.
-- Never ask whether a call is personal. If a caller says the matter is personal, politely explain that this is the Fleet Parlour business line and ask them to contact the owner through their private personal channel. Do not request or store private details from that call.
+- Never ask whether a call is personal. If a caller says the matter is personal, politely explain that this is the dedicated business line and ask them to contact the owner through their private personal channel. Do not request or store private details from that call.
 - Never reveal an owner's private phone number, private email, home address, location, calendar, family information or private transfer destination.
 
 BUSINESS WORKFLOW
@@ -268,14 +274,14 @@ DIRECT OWNER REQUEST
 If a genuine business caller specifically asks to speak with the owner:
 - establish the business reason and obtain/confirm callback details;
 - set transfer_requested=true and owner_notification_required=true;
-- use the protected owner-transfer tool only when configured and authorised, and only after the caller explicitly asks for Faiz/Faz/Faizan/the owner or a critical active-business event requires immediate owner escalation;
+- use the protected owner-transfer tool only when configured and authorised, and only after the caller explicitly asks for the business owner or a critical active-business event requires immediate owner escalation;
 - never disclose the private transfer number;
 - if transfer is unavailable, create a priority callback record and explain that the owner/team will receive the business request.
 
 CUSTOMER ENQUIRIES
-- Fleet Parlour currently provides MOBILE / ON-SITE service only at the customer's business/job location in Perth and surrounding areas.
-- Do not offer a workshop, workshop drop-off, workshop appointment or workshop address. If asked for a workshop, explain that there is currently no customer drop-off workshop and ask for the job suburb/address and photos so the mobile service can be assessed.
-- Collect only information relevant to the job: customer name, callback number, email when offered, Perth suburb/job address, vehicle or asset, parts/quantities, material, condition, requested finish, photos, timing and fleet/recurring needs.
+- Use only the verified business profile for services, service area, opening hours and operating mode.
+- Never invent an office, workshop, service location or site visit. Ask for clarification when the verified business profile does not answer the question.
+- Collect only information relevant to the job: customer name, callback number, email when offered, service location, service required, quantity, relevant documents or photos, timing and recurring needs.
 - Confirm important details before saving. Do not invent missing information.
 - Save/forward every genuine business enquiry through the enquiry tool. Never tell the caller that an enquiry was forwarded, a notification was sent or the owner was alerted unless the corresponding tool confirms success.
 - For urgent/critical business matters, request owner notification by configured email/SMS and protected transfer where policy allows.
@@ -310,10 +316,10 @@ async function startTelnyxAiAssistant(
         },
 
         greeting:
-          'Thank you for calling Fleet Parlour. You are speaking with our AI business assistant. How can I help with your Fleet Parlour enquiry today?',
+          'Thank you for calling. You are speaking with our AI business assistant. How can I help with your business enquiry today?',
 
         instructions:
-          METAL_POLISHING_AI_INSTRUCTIONS,
+          BUSINESS_RECEPTIONIST_AI_INSTRUCTIONS,
 
         interruption_settings: {
           enable: true
@@ -404,7 +410,7 @@ async function handleTelnyxCallAnswered(
 
     await speakTelnyxCall(
       callControlId,
-      'Thank you for calling Fleet Parlour. Our automated receptionist is being configured. Please leave your enquiry through our website or contact Fleet Parlour directly and we will be happy to assist you.',
+      'Thank you for calling. Our automated receptionist is being configured. Please leave your enquiry through our website or contact the business directly and we will be happy to assist you.',
       eventId,
       'fallback-greeting'
     );
@@ -417,7 +423,7 @@ async function handleTelnyxCallAnswered(
     try {
       await speakTelnyxCall(
         callControlId,
-        'Thank you for calling Fleet Parlour. We are unable to start our automated receptionist right now. Please contact Fleet Parlour directly and we will be happy to assist you.',
+        'Thank you for calling. We are unable to start our automated receptionist right now. Please contact the business directly and we will be happy to assist you.',
         eventId,
         'error-greeting'
       );
@@ -439,6 +445,8 @@ const databasePath = storagePlan.databasePath;
 const db = createDb(databasePath);
 const staffAccess=createStaffAccess({db,audit:(...args)=>saasAudit(...args)});
 const founderIdentity=createFounderIdentity({db,audit:(...args)=>saasAudit(...args)});
+seedIsolatedPreview(db,env);
+const subscriptionPolicy=createSubscriptionPolicy({db,audit:(org,action,metadata)=>appendAuditLog(db,{organisation_id:org,user_id:null,user_name:'Founder',user_role:'operator',action,module:'subscription',entity_type:'organisation',entity_id:org,metadata})});
 const startedAtMs = Date.now();
 runStartupDiagnostics({ db, env, storage: storagePlan });
 const socialStats = createSocialStatsService(env, backendRoot);
@@ -811,6 +819,13 @@ async function ensureTikTokAccessToken() {
 */
 
 const app = express();
+app.use((req,res,next)=>{
+  if(env.SUPERPRO_ISOLATED_PREVIEW==='1'&&!['GET','HEAD','OPTIONS'].includes(req.method)){
+    const publicCapture=!req.path.startsWith('/api/saas/')&&!req.path.startsWith('/api/operator/');
+    if(publicCapture||/^\/api\/saas\/(registration|register)(\/|$)/.test(req.path))return res.status(403).json({ok:false,error:'Synthetic test preview only. Public registration, external webhooks and customer intake are disabled.'});
+  }
+  next();
+});
 app.disable('x-powered-by');
 
 app.set('trust proxy', 1);
@@ -977,7 +992,7 @@ app.use(
 */
 
 // Fleet Office AI is the primary product on the SaaS host.
-// Keep the public Fleet Parlour pages available by their explicit file routes.
+// Keep the public the business pages available by their explicit file routes.
 app.get('/', (req, res) => res.redirect(302, '/saas/'));
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'fleet-office-ai', time: new Date().toISOString() }));
 
@@ -1005,6 +1020,9 @@ function serveSeoPublicHtml(fileName){return (req,res)=>{const base=(env.PUBLIC_
 app.get(['/saas','/saas/','/saas/index.html'],serveSeoPublicHtml('index.html'));
 app.get('/saas/answers.html',serveSeoPublicHtml('answers.html'));
 app.use('/saas', express.static(path.join(siteRoot, 'saas'), { extensions: ['html'] }));
+app.get('/api/public/preview-status',(req,res)=>res.json({ok:true,isolated_preview:env.SUPERPRO_ISOLATED_PREVIEW==='1',storage:env.SUPERPRO_ISOLATED_PREVIEW==='1'?'temporary_test_data_only':'normal',version:'20.0.0-preview'}));
+app.get(['/office/','/office/index.html'],(req,res)=>res.sendFile(path.join(siteRoot,'office','console.html')));
+app.get('/office/sign-in',(req,res)=>res.redirect(302,'/saas/operator-sign-in.html'));
 app.use('/office', express.static(path.join(siteRoot, 'office'), { extensions: ['html'] }));
 
 /*
@@ -1489,7 +1507,7 @@ content="width=device-width,initial-scale=1"
 >
 
 <title>
-TikTok Connected - Fleet Parlour
+TikTok Connected - the business
 </title>
 
 <style>
@@ -1535,7 +1553,7 @@ TikTok connected successfully
 </h1>
 
 <p>
-Fleet Parlour has authorized TikTok Login Kit.
+the business has authorized TikTok Login Kit.
 </p>
 
 <p>
@@ -1994,7 +2012,7 @@ app.post(
               ok: false,
 
               error:
-                'Unable to save your enquiry right now. Please call or WhatsApp Fleet Parlour.'
+                'Unable to save your enquiry right now. Please call or WhatsApp the business.'
             });
         }
       }
@@ -2011,10 +2029,11 @@ app.post(
 // Operator access. The long admin key proves who the operator is. When OPERATOR_TOTP_SECRET is set, the key alone is no longer
 // accepted by the API: the operator signs in once on the shared sign-in page with the key plus a 6-digit authenticator code and
 // receives a 12-hour session token, which the console sends in the same header. Without that setting nothing changes.
+db.exec('CREATE TABLE IF NOT EXISTS revoked_operator_sessions(token_hash TEXT PRIMARY KEY,expires_at TEXT NOT NULL)');
 const OPERATOR_SESSION_MS=12*60*60*1000;
 const operatorSessionKey=()=>crypto.createHash('sha256').update('operator-session:'+String(env.ADMIN_API_KEY||'')+':'+String(env.ADMIN_SESSION_SECRET||env.SESSION_SECRET||'')).digest();
 function operatorSessionIssue(){const exp=Date.now()+OPERATOR_SESSION_MS,mac=crypto.createHmac('sha256',operatorSessionKey()).update(String(exp)).digest('hex');return `sps.${exp}.${mac}`}
-function operatorSessionValid(token){const m=/^sps\.(\d{10,15})\.([0-9a-f]{64})$/.exec(String(token||''));if(!m||Number(m[1])<Date.now())return false;const mac=crypto.createHmac('sha256',operatorSessionKey()).update(m[1]).digest('hex');return crypto.timingSafeEqual(Buffer.from(mac),Buffer.from(m[2]))}
+function operatorSessionValid(token){const m=/^sps\.(\d{10,15})\.([0-9a-f]{64})$/.exec(String(token||''));if(!m||Number(m[1])<Date.now()||db.prepare('SELECT 1 FROM revoked_operator_sessions WHERE token_hash=?').get(crypto.createHash('sha256').update(String(token)).digest('hex')))return false;const mac=crypto.createHmac('sha256',operatorSessionKey()).update(m[1]).digest('hex');return crypto.timingSafeEqual(Buffer.from(mac),Buffer.from(m[2]))}
 const operatorMfaRequired=()=>Boolean(String(env.OPERATOR_TOTP_SECRET||'').trim());
 function requireAdmin(req,res,next){
   const expected=env.ADMIN_API_KEY,provided=req.get('x-admin-key');
@@ -2063,8 +2082,8 @@ function subscriptionLifecycle(subscription,nowMs=Date.now()){
 }
 function syncSubscriptionLifecycle(organisationId){
   const sub=db.prepare(`SELECT * FROM organisation_subscriptions WHERE organisation_id=?`).get(organisationId);if(!sub)return {subscription:null,lifecycle:{state:'unknown',access:'restricted'}};
-  const life=subscriptionLifecycle(sub),now=new Date().toISOString();
-  const fields={status:life.state==='trialing'?'trialing':life.state==='active'?'active':life.state,payment_status:sub.payment_status||'unpaid',restricted_at:life.state==='preserved'?(sub.restricted_at||now):sub.restricted_at,archive_started_at:null,retention_ends_at:null,restore_window_ends_at:null,deletion_due_at:null,updated_at:now};
+  const life=subscriptionPolicy.active(organisationId)?{state:'complimentary',access:'full',preserved:true,automatic_deletion:false}:subscriptionLifecycle(sub),now=new Date().toISOString();
+  const fields={status:life.state==='complimentary'?sub.status:life.state==='trialing'?'trialing':life.state==='active'?'active':life.state,payment_status:sub.payment_status||'unpaid',restricted_at:life.state==='preserved'?(sub.restricted_at||now):sub.restricted_at,archive_started_at:null,retention_ends_at:null,restore_window_ends_at:null,deletion_due_at:null,updated_at:now};
   db.prepare(`UPDATE organisation_subscriptions SET status=@status,payment_status=@payment_status,restricted_at=@restricted_at,archive_started_at=@archive_started_at,retention_ends_at=@retention_ends_at,restore_window_ends_at=@restore_window_ends_at,deletion_due_at=@deletion_due_at,updated_at=@updated_at WHERE organisation_id=@organisation_id`).run({...fields,organisation_id:organisationId});
   return {subscription:{...sub,...fields},lifecycle:life};
 }
@@ -2091,7 +2110,7 @@ function requireSaasUser(req,res,next){
   next();
 }
 const addons=createAddons({db});
-const entitlements=createEntitlements({db,getNotify:()=>notifications,getExtras:addons.extras});
+const entitlements=createEntitlements({db,getNotify:()=>notifications,getExtras:addons.extras,policy:subscriptionPolicy});
 app.use('/api/saas',entitlements.gate(requireSaasUser));
 const base32Alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Encode(buffer){let bits=0,value=0,out='';for(const byte of buffer){value=(value<<8)|byte;bits+=8;while(bits>=5){out+=base32Alphabet[(value>>>(bits-5))&31];bits-=5}}if(bits>0)out+=base32Alphabet[(value<<(5-bits))&31];return out}
@@ -2110,7 +2129,7 @@ app.post('/api/operator/login',operatorLoginLimiter,(req,res)=>{
     if(!validTotp(String(env.OPERATOR_TOTP_SECRET).trim(),code))return res.status(401).json({ok:false,code_required:true,error:'That code is not right. Check the time on your phone and try the next code.'});
     return res.json({ok:true,mfa:true,token:operatorSessionIssue(),expires_in:OPERATOR_SESSION_MS/1000});
   }
-  res.json({ok:true,mfa:false,token:key,note:'Add OPERATOR_TOTP_SECRET to require an authenticator code for the operator console.'});
+  res.json({ok:true,mfa:false,token:operatorSessionIssue(),note:'Add OPERATOR_TOTP_SECRET to require an authenticator code for the operator console.'});
 });
 function configuredValue(value){
   const v=String(value||'').trim();
@@ -2888,7 +2907,7 @@ app.get('/api/saas/my-organisations',requireSaasUser,(req,res)=>{
 });
 
 app.get('/api/saas/plans',(req,res)=>{const plans=db.prepare(`SELECT id,name,monthly_fee_cents,currency,limits_json FROM subscription_plans WHERE active=1 AND id IN ('starter','operations','scale') ORDER BY monthly_fee_cents`).all().map(p=>({...p,limits:JSON.parse(p.limits_json)}));res.json({ok:true,trial_days:14,prices_exclude_gst:true,billing_enabled:false,plans});});
-app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const life=subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
+app.get('/api/saas/subscription',requireSaasUser,(req,res)=>{const subscription=db.prepare(`SELECT s.*,p.name plan_name,p.setup_fee_cents,p.monthly_fee_cents,p.currency,p.limits_json FROM organisation_subscriptions s JOIN subscription_plans p ON p.id=s.plan_id WHERE s.organisation_id=?`).get(req.saas.organisation_id);if(!subscription)return res.status(404).json({ok:false,error:'Subscription record not found.'});const complimentary=Boolean(subscriptionPolicy.active(req.saas.organisation_id)),life=complimentary?{state:'complimentary',access:'full',preserved:true,automatic_deletion:false}:subscriptionLifecycle(subscription),trialEnd=subscription.trial_ends_at?new Date(subscription.trial_ends_at).getTime():0;res.json({ok:true,subscription:{...subscription,...(complimentary?{plan_name:'Complimentary',complimentary:true,monthly_fee_cents:0}:{}),limits:JSON.parse(subscription.limits_json),trial_remaining_days:trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/DAY_MS)):0},lifecycle:life,billing_enabled:Boolean(env.STRIPE_SECRET_KEY||env.PAYPAL_CLIENT_ID||env.PAYMENT_BANK_INSTRUCTIONS),trial_days:TRIAL_DAYS,policy:{post_trial_restrict_days:POST_TRIAL_RESTRICT_DAYS,archive_retention_days:null,final_restore_window_days:null,automatic_deletion:false,account_preservation:'indefinite'},note:'Customer accounts and workspace data are preserved indefinitely unless the customer explicitly completes the verified deletion process or deletion is required by law. Billing status does not automatically delete the account or data.'})});
 app.get('/api/saas/billing/providers',requireSaasUser,requireSaasRole('owner','admin','super_admin'),(req,res)=>res.json({ok:true,providers:[{id:'stripe',name:'Stripe',ready:Boolean(env.STRIPE_SECRET_KEY)},{id:'paypal',name:'PayPal',ready:Boolean(env.PAYPAL_CLIENT_ID&&env.PAYPAL_CLIENT_SECRET)},{id:'bank',name:'Direct bank',ready:Boolean(env.PAYMENT_BANK_INSTRUCTIONS)}],customer_secret_entry:false}));
 app.get('/api/saas/mfa',requireSaasUser,(req,res)=>res.json({ok:true,mfa_enabled:Boolean(req.saas.mfa_enabled)}));
 app.post('/api/saas/mfa/setup',requireSaasUser,async(req,res)=>{
@@ -4239,7 +4258,7 @@ function findOrCreateCustomer({ full_name, phone = '', email = '', channel = 'ma
 
 function suggestedReply(name, channel) {
   const first = String(name || 'there').trim().split(/\s+/)[0];
-  return `Hi ${first}, thank you for contacting Fleet Parlour. I have received your enquiry. Before I confirm the quotation and booking, could you please send clear photos of the parts, the truck make/model, your Perth suburb or job address, and your preferred date? Kind regards, Faizan — Fleet Parlour`;
+  return `Hi ${first}, thank you for contacting the business. I have received your enquiry. Before I confirm the quotation and booking, could you please send clear photos of the parts, the truck make/model, your service location, and your preferred date? Kind regards, the business team`;
 }
 
 function createApproval({ approvalType, entityId, conversationId = null, customerId = null, draftPayload }) {
@@ -4335,7 +4354,7 @@ app.post('/api/admin/conversations/import', requireAdmin, (req,res)=>{
     db.prepare(`INSERT INTO conversations (id,customer_id,channel,subject,status,record_class,import_source,created_at,updated_at) VALUES (?,?,?,?, 'open','current','manual',?,?)`).run(conversationId,customerId,parsed.data.channel,parsed.data.subject||`${parsed.data.channel} enquiry`,now,now);
     db.prepare(`INSERT INTO messages (id,conversation_id,direction,sender_name,sender_address,body,occurred_at,status) VALUES (?,?,'inbound',?,?,?,?, 'imported')`).run(messageId,conversationId,parsed.data.full_name,parsed.data.phone||parsed.data.email||'',parsed.data.transcript,parsed.data.occurred_at||now);
     const draftId=crypto.randomUUID();
-    db.prepare(`INSERT INTO messages (id,conversation_id,direction,sender_name,sender_address,body,occurred_at,status,requires_approval) VALUES (?,?,'outbound','Fleet Parlour','',?,?,'draft',1)`).run(draftId,conversationId,suggestedReply(parsed.data.full_name,parsed.data.channel),now);
+    db.prepare(`INSERT INTO messages (id,conversation_id,direction,sender_name,sender_address,body,occurred_at,status,requires_approval) VALUES (?,?,'outbound','the business','',?,?,'draft',1)`).run(draftId,conversationId,suggestedReply(parsed.data.full_name,parsed.data.channel),now);
     createApproval({approvalType:'reply',entityId:draftId,conversationId,customerId,draftPayload:{body:suggestedReply(parsed.data.full_name,parsed.data.channel),channel:parsed.data.channel}});
   })();
   res.status(201).json({ok:true,conversation_id:conversationId,customer_id:customerId,approval_created:true});
@@ -4344,7 +4363,7 @@ app.post('/api/admin/conversations/import', requireAdmin, (req,res)=>{
 app.post('/api/admin/conversations/:id/draft-reply', requireAdmin, (req,res)=>{
   const parsed=z.object({body:z.string().trim().min(1).max(10000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Reply text is required.'});
   const conversation=db.prepare(`SELECT * FROM conversations WHERE id=?`).get(req.params.id);if(!conversation)return res.status(404).json({ok:false,error:'Conversation not found'});
-  const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO messages (id,conversation_id,direction,sender_name,body,occurred_at,status,requires_approval) VALUES (?,?,'outbound','Fleet Parlour',?,?,'draft',1)`).run(id,conversation.id,parsed.data.body,now);
+  const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare(`INSERT INTO messages (id,conversation_id,direction,sender_name,body,occurred_at,status,requires_approval) VALUES (?,?,'outbound','the business',?,?,'draft',1)`).run(id,conversation.id,parsed.data.body,now);
   createApproval({approvalType:'reply',entityId:id,conversationId:conversation.id,customerId:conversation.customer_id,draftPayload:{body:parsed.data.body,channel:conversation.channel}});res.status(201).json({ok:true,message_id:id});
 });
 
@@ -4565,9 +4584,9 @@ app.post('/api/admin/invoices/:id/mark-sent', requireAdmin, (req,res)=>{const in
 
 app.post('/api/admin/invoices/:id/payments', requireAdmin, (req,res)=>{const parsed=z.object({amount:z.coerce.number().positive().max(1000000),payment_method:z.enum(['bank_transfer','card','cash','other']),reference:z.string().max(200).optional(),evidence:z.string().trim().min(3).max(5000),received_at:z.string().min(10).max(50)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Valid payment amount, method, date and evidence are required.'});const invoice=db.prepare(`SELECT * FROM invoices WHERE id=? AND status IN ('sent','part_paid')`).get(req.params.id);if(!invoice)return res.status(409).json({ok:false,error:'The invoice must be sent before recording payment.'});const amount=Math.round(parsed.data.amount*100),remaining=invoice.total_cents-invoice.amount_paid_cents;if(amount>remaining)return res.status(409).json({ok:false,error:'Payment exceeds the invoice balance.'});const now=new Date().toISOString(),paymentId=crypto.randomUUID(),newPaid=invoice.amount_paid_cents+amount,paid=newPaid===invoice.total_cents;db.transaction(()=>{db.prepare(`INSERT INTO payments (id,invoice_id,amount_cents,payment_method,reference,evidence,received_at,created_at) VALUES (?,?,?,?,?,?,?,?)`).run(paymentId,invoice.id,amount,parsed.data.payment_method,parsed.data.reference||null,parsed.data.evidence,parsed.data.received_at,now);db.prepare(`UPDATE invoices SET amount_paid_cents=?,status=?,paid_at=?,updated_at=? WHERE id=?`).run(newPaid,paid?'paid':'part_paid',paid?parsed.data.received_at:null,now,invoice.id);if(paid){db.prepare(`UPDATE bookings SET status='paid',updated_at=? WHERE id=?`).run(now,invoice.booking_id);const taskId=crypto.randomUUID(),payload={text:`Payment received. Receipt for ${invoice.invoice_number}`,invoice_number:invoice.invoice_number,amount_cents:newPaid};db.prepare(`INSERT INTO automation_tasks (id,task_type,customer_id,booking_id,due_at,status,payload,created_at) VALUES (?,'receipt',?,?,?,'pending_approval',?,?)`).run(taskId,invoice.customer_id,invoice.booking_id,now,JSON.stringify(payload),now);createApproval({approvalType:'receipt',entityId:taskId,customerId:invoice.customer_id,draftPayload:payload})}})();res.status(201).json({ok:true,fully_paid:paid,receipt_approval_created:paid})});
 
-app.post('/api/admin/jobs/:id/request-review', requireAdmin, (req,res)=>{const booking=db.prepare(`SELECT * FROM bookings WHERE id=? AND status='paid'`).get(req.params.id);if(!booking)return res.status(409).json({ok:false,error:'Full payment must be recorded before requesting a review.'});const consent=db.prepare(`SELECT id FROM job_consents WHERE booking_id=? AND consent_type='review_request' AND granted=1`).get(booking.id);if(!consent)return res.status(409).json({ok:false,error:'Record permission to send a review request first.'});const taskId=crypto.randomUUID(),now=new Date().toISOString(),payload={text:'Thank you for choosing Fleet Parlour. If you are happy with the result, we would appreciate your Google review.',review_url:'https://www.google.com/search?q=Fleet+Parlour+Perth'};db.prepare(`INSERT INTO automation_tasks (id,task_type,customer_id,booking_id,due_at,status,payload,created_at) VALUES (?,'review_request',?,?,?,'pending_approval',?,?)`).run(taskId,booking.customer_id,booking.id,now,JSON.stringify(payload),now);createApproval({approvalType:'review_request',entityId:taskId,customerId:booking.customer_id,draftPayload:payload});res.status(201).json({ok:true,approval_required:true})});
+app.post('/api/admin/jobs/:id/request-review', requireAdmin, (req,res)=>{const booking=db.prepare(`SELECT * FROM bookings WHERE id=? AND status='paid'`).get(req.params.id);if(!booking)return res.status(409).json({ok:false,error:'Full payment must be recorded before requesting a review.'});const consent=db.prepare(`SELECT id FROM job_consents WHERE booking_id=? AND consent_type='review_request' AND granted=1`).get(booking.id);if(!consent)return res.status(409).json({ok:false,error:'Record permission to send a review request first.'});const taskId=crypto.randomUUID(),now=new Date().toISOString(),payload={text:'Thank you for choosing the business. If you are happy with the result, we would appreciate your Google review.',review_url:''};db.prepare(`INSERT INTO automation_tasks (id,task_type,customer_id,booking_id,due_at,status,payload,created_at) VALUES (?,'review_request',?,?,?,'pending_approval',?,?)`).run(taskId,booking.customer_id,booking.id,now,JSON.stringify(payload),now);createApproval({approvalType:'review_request',entityId:taskId,customerId:booking.customer_id,draftPayload:payload});res.status(201).json({ok:true,approval_required:true})});
 
-app.post('/api/admin/jobs/:id/review-received', requireAdmin, (req,res)=>{const parsed=z.object({platform:z.enum(['google','facebook','other']),rating:z.coerce.number().int().min(1).max(5).optional(),review_text:z.string().max(10000).optional(),evidence:z.string().trim().min(3).max(5000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Review platform and evidence are required.'});const booking=db.prepare(`SELECT * FROM bookings WHERE id=? AND status='paid'`).get(req.params.id);if(!booking)return res.status(409).json({ok:false,error:'Paid job not found.'});const now=new Date().toISOString(),reviewId=crypto.randomUUID(),taskId=crypto.randomUUID(),payload={text:'Thank you for your review and for choosing Fleet Parlour. We appreciate your business.'};db.transaction(()=>{db.prepare(`INSERT INTO customer_reviews (id,booking_id,customer_id,platform,rating,review_text,evidence,received_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(reviewId,booking.id,booking.customer_id,parsed.data.platform,parsed.data.rating||null,parsed.data.review_text||null,parsed.data.evidence,now,now);db.prepare(`UPDATE bookings SET status='completed',updated_at=? WHERE id=?`).run(now,booking.id);db.prepare(`INSERT INTO automation_tasks (id,task_type,customer_id,booking_id,due_at,status,payload,created_at) VALUES (?,'thank_you',?,?,?,'pending_approval',?,?)`).run(taskId,booking.customer_id,booking.id,now,JSON.stringify(payload),now);createApproval({approvalType:'thank_you',entityId:taskId,customerId:booking.customer_id,draftPayload:payload})})();res.status(201).json({ok:true,job_completed:true,thank_you_approval_created:true})});
+app.post('/api/admin/jobs/:id/review-received', requireAdmin, (req,res)=>{const parsed=z.object({platform:z.enum(['google','facebook','other']),rating:z.coerce.number().int().min(1).max(5).optional(),review_text:z.string().max(10000).optional(),evidence:z.string().trim().min(3).max(5000)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({ok:false,error:'Review platform and evidence are required.'});const booking=db.prepare(`SELECT * FROM bookings WHERE id=? AND status='paid'`).get(req.params.id);if(!booking)return res.status(409).json({ok:false,error:'Paid job not found.'});const now=new Date().toISOString(),reviewId=crypto.randomUUID(),taskId=crypto.randomUUID(),payload={text:'Thank you for your review and for choosing the business. We appreciate your business.'};db.transaction(()=>{db.prepare(`INSERT INTO customer_reviews (id,booking_id,customer_id,platform,rating,review_text,evidence,received_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(reviewId,booking.id,booking.customer_id,parsed.data.platform,parsed.data.rating||null,parsed.data.review_text||null,parsed.data.evidence,now,now);db.prepare(`UPDATE bookings SET status='completed',updated_at=? WHERE id=?`).run(now,booking.id);db.prepare(`INSERT INTO automation_tasks (id,task_type,customer_id,booking_id,due_at,status,payload,created_at) VALUES (?,'thank_you',?,?,?,'pending_approval',?,?)`).run(taskId,booking.customer_id,booking.id,now,JSON.stringify(payload),now);createApproval({approvalType:'thank_you',entityId:taskId,customerId:booking.customer_id,draftPayload:payload})})();res.status(201).json({ok:true,job_completed:true,thank_you_approval_created:true})});
 
 app.get('/api/admin/channel-connections', requireAdmin, (req,res)=>res.json({ok:true,connections:db.prepare(`SELECT * FROM channel_connections ORDER BY channel`).all().map(c=>({...c,capabilities:JSON.parse(c.capabilities)}))}));
 
@@ -4583,9 +4602,9 @@ app.get('/api/admin/integration-readiness', requireAdmin, (req,res)=>{
 
 app.get('/api/admin/content-templates', requireAdmin, (req,res)=>res.json({ok:true,templates:[
   {name:'Before & after reveal',format:'short_video',aspect_ratio:'9:16',duration:20,hook:'Watch this oxidised metal return to a mirror finish',cta:'Request your Perth polishing quote'},
-  {name:'Process close-up',format:'short_video',aspect_ratio:'9:16',duration:30,hook:'The polishing step most people skip',cta:'Save this and contact Fleet Parlour'},
-  {name:'Fleet transformation',format:'youtube_video',aspect_ratio:'16:9',duration:90,hook:'Complete truck metal restoration in Perth',cta:'Book Fleet Parlour for your truck or fleet'},
-  {name:'Photo carousel',format:'carousel',aspect_ratio:'4:5',duration:null,hook:'Swipe to see the transformation',cta:'Send photos for a quotation'}],live_trends:false,note:'These are durable Fleet Parlour formats, not a claim of live platform trends.'}));
+  {name:'Process close-up',format:'short_video',aspect_ratio:'9:16',duration:30,hook:'The polishing step most people skip',cta:'Save this and contact the business'},
+  {name:'Fleet transformation',format:'youtube_video',aspect_ratio:'16:9',duration:90,hook:'Complete truck metal restoration in Perth',cta:'Book the business for your truck or fleet'},
+  {name:'Photo carousel',format:'carousel',aspect_ratio:'4:5',duration:null,hook:'Swipe to see the transformation',cta:'Send photos for a quotation'}],live_trends:false,note:'These are durable the business formats, not a claim of live platform trends.'}));
 
 app.get('/api/admin/content-projects', requireAdmin, (req,res)=>{const projects=db.prepare(`SELECT p.*,b.title booking_title FROM content_projects p LEFT JOIN bookings b ON b.id=p.booking_id ORDER BY p.updated_at DESC`).all().map(p=>({...p,media_ids:JSON.parse(p.media_ids),platforms:JSON.parse(p.platforms)}));res.json({ok:true,projects})});
 
@@ -4693,7 +4712,7 @@ app.get('/api/admin/records-summary', requireAdmin, (req,res)=>{
 });
 
 app.get('/api/admin/website-status', requireAdmin, async (req,res)=>{
-  const url='https://www.fleetparlour.com.au/';const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),4500);
+  const url=String(env.SUPERPRO_WEBSITE_URL||'').trim();if(!url)return res.json({ok:true,url:null,reachable:false,status:null,note:'No platform website configured. the business is excluded.'});if(!/^https:\/\//i.test(url)||/fleetparlour/i.test(url))return res.status(409).json({ok:false,error:'Set a verified Super Pro website URL. The separate the business website is excluded.'});const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),4500);
   try{const r=await fetch(url,{method:'HEAD',redirect:'follow',signal:controller.signal});clearTimeout(timer);res.json({ok:true,url,reachable:r.ok,status:r.status,embeddable:false,note:'The live website can block iframe embedding with browser security headers. Use Open live website for the authoritative view.'})}
   catch(err){clearTimeout(timer);res.json({ok:true,url,reachable:false,status:null,embeddable:false,note:'The local app could not confirm the public website from this network. The Open live website button remains available.'})}
 });
@@ -4735,7 +4754,7 @@ async function sendVoiceEnquirySms(to,enquiry){
   const from=env.TELNYX_FROM_NUMBER||env.BUSINESS_PRIMARY_NUMBER||env.TELNYX_PHONE_NUMBER;
   if(!env.TELNYX_API_KEY||!from||!to)return {sent:false,reason:'voice_sms_not_configured'};
   const normalized=normalizeAuMobile(to);if(!normalized)return {sent:false,reason:'invalid_alert_mobile'};
-  const text=`Fleet Parlour ${enquiry.urgent?'URGENT ':''}AI receptionist enquiry: ${enquiry.customer_name||'caller'} · ${enquiry.callback_number||'no callback'} · priority ${enquiry.priority||3}. Open Super Pro Office Manager for details.`;
+  const text=`the business ${enquiry.urgent?'URGENT ':''}AI receptionist enquiry: ${enquiry.customer_name||'caller'} · ${enquiry.callback_number||'no callback'} · priority ${enquiry.priority||3}. Open Super Pro Office Manager for details.`;
   const response=await fetch('https://api.telnyx.com/v2/messages',{method:'POST',headers:{authorization:`Bearer ${env.TELNYX_API_KEY}`,'content-type':'application/json'},body:JSON.stringify({from,to:normalized,text:text.slice(0,1500)})});
   const data=await response.json().catch(()=>({}));if(!response.ok)return {sent:false,reason:data?.errors?.[0]?.detail||`HTTP ${response.status}`};return {sent:true,message_id:data?.data?.id||null};
 }
@@ -4808,7 +4827,7 @@ app.post(
       row.callback_number_confirmed =
         body.callback_number_confirmed === true;
       const suppliedType=String(body.call_type||row.call_type||'business_enquiry');
-      if(['personal_friend_family','private_other'].includes(suppliedType)||body.personal_call===true){return res.json({ok:true,excluded:true,stored:false,message:'Personal/private contacts are not processed on the dedicated Fleet Parlour business workflow.'});}
+      if(['personal_friend_family','private_other'].includes(suppliedType)||body.personal_call===true){return res.json({ok:true,excluded:true,stored:false,message:'Personal/private contacts are not processed on the dedicated dedicated business workflow.'});}
       row.personal_call=false;const requestedPriority=Number(body.priority);
       if(Number.isFinite(requestedPriority))row.priority=Math.max(1,Math.min(4,requestedPriority));else if(body.urgent===true||body.transfer_requested===true)row.priority=String(suppliedType)==='business_admin'?2:1;else if(['supplier_vendor','business_admin','government_department'].includes(suppliedType))row.priority=4;else row.priority=3;
       row.urgent = body.urgent === true;
@@ -5614,12 +5633,12 @@ const notifications=installNotifications(app,{db,env,requireSaasUser});
 const communicationTracking=installCommunicationTracking(app,{db,env,requireSaasUser,requireSaasRole,notify:notifications,verifyTelnyx:verifyTelnyxWebhook,receiveEmail:data=>recordInbound(db,data),timers:process.env.NODE_ENV!=='test',sendFollowUp:(row,payload)=>sendBrandedEmail(env,{to:row.recipient,subject:payload.subject,rendered:renderEmail(payload.brand||platformBrand(env),payload.frame),replyTo:payload.replyTo,delivery:{organisationId:row.organisation_id,userId:row.user_id,category:'follow_up',subject:payload.subject}})});
 const saasPlatform=installSaasPlatform(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,createWorkspaceApproval,generateAiText,aiProviderStatus,recomputeWorkerEligibility,createWorkerWithCompliance,workforceSeniorRoles,financeRoles,uploadRoot,canAccess:staffAccess.can});
 
-const lifecycle=createLifecycle({db,env,notify:notifications});
+const lifecycle=createLifecycle({db,env,notify:notifications,policy:subscriptionPolicy});
 installSubscribers(app,{db,requireAdmin,lifecycle});
 const visibility=installVisibility(app,{db,env,requireAdmin,siteRoot,generateAiText});
 let platformPay=null;
-const billingOps=createBillingOps({db,env,lifecycle,entitlements,extraAttention:visibility.attentionItems,payUrl:inv=>platformPay?platformPay.payUrl(inv):null});
-platformPay=createPlatformPay({db,env,runtime:integrationRuntime,settle:billingOps.settle});
+const billingOps=createBillingOps({db,env,lifecycle,entitlements,policy:subscriptionPolicy,extraAttention:visibility.attentionItems,payUrl:inv=>platformPay?platformPay.payUrl(inv):null});
+platformPay=createPlatformPay({db,env,runtime:integrationRuntime,policy:subscriptionPolicy,settle:billingOps.settle});
 platformPay.install(app,{requireAdmin,requireSaasUser,requireSaasRole});
 billingOps.install(app,{requireAdmin});
 installFollowups(app,{db,env,requireAdmin,generateAiText,profile:billingOps.profile});
@@ -5647,6 +5666,12 @@ installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,password
 | Start server
 |--------------------------------------------------------------------------
 */
+
+const platformIdentity=createPlatformIdentity({db,env,validTotp,founderAuthenticate:requireAdmin,onFounderLogout:req=>{const token=String(req.get('x-admin-key')||'');if(token.startsWith('sps.'))db.prepare('INSERT OR IGNORE INTO revoked_operator_sessions VALUES (?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),new Date(Number(token.split('.')[1])).toISOString())}});
+platformIdentity.install(app,{limiter:operatorLoginLimiter});
+installOperatorConsole(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,requireSaasUser,requireSaasRole,saasAudit,entitlements});
+installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess});
+installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
 
 app.listen(
   port,

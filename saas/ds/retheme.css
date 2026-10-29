@@ -1,0 +1,78 @@
+/* Bridge from the existing Business OS, Founder Console, sign-in and /saas/ pages to the Phase 03 tokens.
+   Loaded last on those pages. It only re-points colour, depth and focus variables and adds glass to shared surfaces;
+   it changes no sizes, spacing or layout, so every existing control keeps its place and behaviour. */
+
+:root,html:not([data-theme="light"]){
+  /* unified-ui.css */
+  --sp-canvas:var(--sp-midnight);--sp-surface:var(--sp-graphite-1);--sp-elevated:var(--sp-graphite-2);--sp-border:var(--sp-line);
+  --sp-text:var(--sp-fg);--sp-muted:var(--sp-fg-muted);--sp-accent:var(--sp-gold);--sp-on-accent:var(--sp-on-gold);
+  /* brand.css palette */
+  --black:var(--sp-midnight);--black-2:#0A0F1B;--gold:var(--sp-gold);--gold-hi:var(--sp-gold-hover);--gold-lo:var(--sp-gold-press);
+  --gold-grad:linear-gradient(135deg,var(--sp-gold-hover) 0%,var(--sp-gold) 55%,var(--sp-gold-press) 100%);
+  --gold-line:color-mix(in srgb,var(--sp-gold) 28%,transparent);--gold-line-hi:color-mix(in srgb,var(--sp-gold) 60%,transparent);--gold-wash:var(--sp-gold-soft);
+  --depth-1:var(--sp-shadow-1);--depth-2:var(--sp-shadow-2);
+  --glow-gold:0 0 0 1px color-mix(in srgb,var(--sp-gold) 40%,transparent),var(--sp-shadow-gold);
+  --sp-gold2:var(--sp-gold-press);--sp-panel:var(--sp-graphite-1);
+  /* app.css / brand.css working set */
+  --bg:var(--sp-midnight);--bg-soft:#0A0F1B;--sidebar:#090E19;--panel:var(--sp-graphite-1);--panel-2:var(--sp-graphite-2);--panel-3:var(--sp-graphite-3);--panel2:var(--sp-graphite-2);
+  --line:var(--sp-line);--line-soft:#1B2438;--text:var(--sp-fg);--text-2:var(--sp-fg-2);--muted:var(--sp-fg-muted);--muted-2:#7A869C;
+  --brand:var(--sp-gold);--brand-2:var(--sp-gold-hover);--brand-soft:var(--sp-gold-soft);--brand-line:color-mix(in srgb,var(--sp-gold) 30%,transparent);
+  --green:var(--sp-good);--green-soft:color-mix(in srgb,var(--sp-good) 12%,transparent);--amber:var(--sp-warn);--amber-soft:color-mix(in srgb,var(--sp-warn) 12%,transparent);
+  --red:var(--sp-bad);--blue:var(--sp-cyan);
+  --shadow:var(--sp-shadow-2);--shadow-sm:var(--sp-shadow-1);
+  /* workspace-theme.css and experience.css */
+  --office:var(--sp-graphite-1);--glass:var(--sp-glass-strong);--sp13-gold:var(--sp-gold);--sp13-line:color-mix(in srgb,var(--sp-gold) 28%,transparent);
+  --portal-gold:var(--sp-gold);
+}
+html[data-theme="light"]{
+  --sp-canvas:var(--sp-midnight);--sp-surface:var(--sp-graphite-1);--sp-elevated:var(--sp-graphite-2);--sp-border:var(--sp-line);
+  --sp-text:var(--sp-fg);--sp-muted:var(--sp-fg-muted);--sp-accent:var(--sp-gold);--sp-on-accent:var(--sp-on-gold);--sp-focus:var(--sp-gold);
+  --bg:var(--sp-midnight);--bg-soft:#EDF0F7;--sidebar:#FFFFFF;--panel:#FFFFFF;--panel-2:#F7F8FC;--panel-3:var(--sp-graphite-2);--panel2:#F7F8FC;
+  --line:var(--sp-line);--line-soft:#E4E9F2;--text:var(--sp-fg);--text-2:var(--sp-fg-2);--muted:var(--sp-fg-muted);--muted-2:#5E6A80;
+  --brand:var(--sp-gold);--brand-2:var(--sp-gold-hover);--brand-soft:var(--sp-gold-soft);--brand-line:color-mix(in srgb,var(--sp-gold) 26%,transparent);
+  --green:var(--sp-good);--amber:var(--sp-warn);--red:var(--sp-bad);--blue:var(--sp-cyan);
+  --shadow:var(--sp-shadow-2);--shadow-sm:var(--sp-shadow-1);
+}
+
+/* Midnight canvas with two quiet light sources: cyan (live work) top right, gold (decisions) bottom left. */
+html:not([data-theme="light"]) body{background:radial-gradient(1100px 620px at 100% -8%,color-mix(in srgb,var(--sp-cyan) 7%,transparent),transparent 62%),radial-gradient(900px 600px at -10% 110%,color-mix(in srgb,var(--sp-gold) 6%,transparent),transparent 60%),var(--sp-midnight) fixed}
+
+/* Glass and depth on shared surfaces (colour and shadow only). */
+html:not([data-theme="light"]) :is(.panel,.metric-card,.row-card,.sp-surface-card,.feature-card,.pricing-card,.onboard-shell,.guide-card,.auth-card,.portal-card,.console-card){
+  background-color:color-mix(in srgb,var(--sp-graphite-1) 88%,transparent);
+  border-color:var(--sp-line);
+  box-shadow:var(--sp-shadow-1);
+  backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+}
+html:not([data-theme="light"]) :is(.site-header,.portal-topbar,.workspace-topbar,.console-topbar,.topbar){
+  background-color:color-mix(in srgb,var(--sp-midnight) 78%,transparent);
+  backdrop-filter:blur(var(--sp-blur)) saturate(1.3);-webkit-backdrop-filter:blur(var(--sp-blur)) saturate(1.3);
+}
+html:not([data-theme="light"]) :is(.portal-rail,.sidebar){background-color:color-mix(in srgb,#090E19 92%,transparent)}
+
+/* Live and AI states are cyan everywhere. */
+:is(.live-dot,.pulse-dot,.manual-live-dot,.sp-live-dot,.status-dot.live,.ai-status-dot,[data-live-indicator]){background:var(--sp-cyan)!important;box-shadow:0 0 0 0 transparent}
+:is(.ai-chip,.ai-badge,.spai-status)[data-state="working"],.ai-live-chip,.preview-status.live{color:var(--sp-cyan)}
+
+/* One focus style. */
+:focus-visible{outline:3px solid var(--sp-focus);outline-offset:2px}
+
+/* Entrance used on route changes by app-motion.js (respects reduced motion through motion.js). */
+.sp-view-enter{animation:sp-view-in 380ms var(--sp-ease-out) both}
+@keyframes sp-view-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sp-view-enter{animation:none}}
+
+/* One ripple on a live indicator when its figures change (class set by app-motion.js). */
+.sp-live{position:relative}
+.sp-live.is-updated::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--sp-cyan);animation:sp-ripple 1.1s var(--sp-ease-out) 1}
+@keyframes sp-ripple{from{transform:scale(1);opacity:.7}to{transform:scale(3.4);opacity:0}}
+.gx-live i{background:var(--sp-cyan)!important}
+@media (prefers-reduced-motion:reduce){.sp-live.is-updated::after{animation:none}}
+
+/* Business OS surfaces that hard-code warm gradients: re-point to graphite, keep sizes and the pointer light. */
+html:not([data-theme="light"]) .sp-askbar{background:radial-gradient(600px 220px at 0 0,var(--sp-cyan-soft),transparent 70%),linear-gradient(180deg,var(--sp-graphite-2),var(--sp-graphite-1));border-color:color-mix(in srgb,var(--sp-cyan) 26%,var(--sp-line))}
+html[data-theme="light"] .sp-askbar{background:linear-gradient(180deg,#F4FAFC,#FFFFFF);border-color:color-mix(in srgb,var(--sp-cyan) 30%,var(--sp-line))}
+html:not([data-theme="light"]) .gx-tile{background:radial-gradient(240px 160px at var(--mx,50%) var(--my,0%),var(--sp-gold-soft),transparent 70%),color-mix(in srgb,var(--sp-graphite-1) 90%,transparent);border-color:var(--sp-line)}
+html[data-theme="light"] .gx-tile{background:radial-gradient(240px 160px at var(--mx,50%) var(--my,0%),var(--sp-gold-soft),transparent 70%),#FFFFFF;border-color:var(--sp-line)}
+html:not([data-theme="light"]) :is(.gx-shortcut,.gx-workspace-links){background:linear-gradient(140deg,color-mix(in srgb,var(--sp-gold) 4%,transparent),transparent 60%),var(--sp-graphite-1);border-color:var(--sp-line)}
+html[data-theme="light"] :is(.gx-shortcut,.gx-workspace-links){background:linear-gradient(140deg,var(--sp-gold-soft),transparent 60%),#FFFFFF;border-color:var(--sp-line)}

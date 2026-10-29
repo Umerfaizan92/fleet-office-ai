@@ -53,6 +53,7 @@ import { installTeamAccounts } from './team-accounts.js';
 import { inspectUpload } from './file-safety.js';
 import { createJobQueue, installJobRoutes } from './job-queue.js';
 import { requestContext, installObservabilityRoutes } from './observability.js';
+import { installPublicSite, publicSitemapEntries } from './public-site.js';
 import { createObjectStorage } from './object-storage.js';
 import { operatorMfaEnforced, passwordCandidates as policyPasswordCandidates, strictPasswordMatch, sessionTooOld } from './security-policy.js';
 
@@ -1007,24 +1008,25 @@ app.use(
 
 // Fleet Office AI is the primary product on the SaaS host.
 // Keep the public the business pages available by their explicit file routes.
-app.get('/', (req, res) => res.redirect(302, '/saas/'));
+// Phase 03: the public website (/, /features, /for/*, /pricing, /receptionist, /stories, /help, /contact, /start).
+installPublicSite(app, { env, siteRoot });
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'fleet-office-ai', time: new Date().toISOString() }));
 
 app.get('/robots.txt', (req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  res.type('text/plain').send(`User-agent: *\nAllow: /saas/\nDisallow: /saas/workspace.html\nDisallow: /saas/sign-in.html\nDisallow: /saas/create-account.html\nDisallow: /saas/verify-account.html\nDisallow: /office/\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`);
+  res.type('text/plain').send(`User-agent: *\nAllow: /saas/\nDisallow: /saas/workspace.html\nDisallow: /saas/site/\nDisallow: /saas/sign-in.html\nDisallow: /saas/create-account.html\nDisallow: /saas/verify-account.html\nDisallow: /office/\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`);
 });
 app.get('/sitemap.xml',(req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  const pages=['/saas/','/saas/answers.html'];
+  const pages=[...publicSitemapEntries(),...['/saas/','/saas/answers.html','/saas/trust-center.html','/saas/privacy.html','/saas/terms.html'].map(route=>({route,priority:0.5}))];
   const now=new Date().toISOString().slice(0,10);
-  const urls=pages.map(x=>`<url><loc>${base}${x}</loc><lastmod>${now}</lastmod></url>`).join('');
+  const urls=pages.map(x=>`<url><loc>${base}${x.route}</loc><lastmod>${now}</lastmod><priority>${x.priority.toFixed(1)}</priority></url>`).join('');
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
 });
 app.get('/indexnow-key.txt',(req,res)=>{if(!env.INDEXNOW_KEY)return res.status(404).type('text/plain').send('Not configured');res.type('text/plain').send(env.INDEXNOW_KEY)});
 app.get('/llms.txt',(req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  res.type('text/plain').send(`# Super Pro AI Office Manager\n\n> AI-assisted operating system for service businesses with CRM, jobs, workforce, communications, content, governance, expenses/profit intelligence and human-approved automation.\n\n## Canonical public pages\n- ${base}/saas/\n- ${base}/saas/answers.html\n- ${base}/saas/trust-center.html\n- ${base}/saas/privacy.html\n- ${base}/saas/terms.html\n\n## Notes\n- Public marketing pages may be indexed.\n- Authenticated workspaces, private customer records and APIs are not public sources.\n- Product capabilities should be treated as connected only when the relevant provider is authorised and reports ready.\n`);
+  res.type('text/plain').send(`# Super Pro AI Office Manager\n\n> AI-assisted operating system for service businesses with CRM, jobs, workforce, communications, content, governance, expenses/profit intelligence and human-approved automation.\n\n## Canonical public pages\n- ${base}/\n- ${base}/features\n- ${base}/for\n- ${base}/pricing\n- ${base}/receptionist\n- ${base}/help\n- ${base}/contact\n- ${base}/saas/\n- ${base}/saas/answers.html\n- ${base}/saas/trust-center.html\n- ${base}/saas/privacy.html\n- ${base}/saas/terms.html\n\n## Notes\n- Public marketing pages may be indexed.\n- Authenticated workspaces, private customer records and APIs are not public sources.\n- Product capabilities should be treated as connected only when the relevant provider is authorised and reports ready.\n`);
 });
 
 

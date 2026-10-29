@@ -21,7 +21,7 @@ export const PROVIDERS = {
 };
 const DEFAULT_ORDER = ['stripe', 'zeller', 'paypal', 'square', 'bank'];
 
-export function createPlatformPay({ db, env, runtime, settle, fetchImpl = globalThis.fetch }) {
+export function createPlatformPay({ db, env, runtime, settle, policy = null, fetchImpl = globalThis.fetch }) {
   try { db.exec(`ALTER TABLE platform_invoices ADD COLUMN pay_token TEXT`); } catch { /* already there */ }
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_platform_invoice_pay_token ON platform_invoices(pay_token) WHERE pay_token IS NOT NULL;
     CREATE TABLE IF NOT EXISTS platform_pay_providers (provider TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0, config_enc TEXT, hint TEXT, position INTEGER NOT NULL DEFAULT 99, updated_at TEXT NOT NULL);
@@ -106,7 +106,7 @@ export function createPlatformPay({ db, env, runtime, settle, fetchImpl = global
     });
     app.post('/api/pay/:token/start', limiter, async (req, res) => {
       const inv = invoiceFor(req.params.token), p = z.object({ method: z.string().max(20).optional() }).safeParse(req.body || {});
-      if (!inv || !p.success || !['sent', 'approved'].includes(inv.status)) return res.status(409).json({ ok: false, error: 'This invoice cannot be paid online right now.' });
+      if (!inv || policy?.active(inv.organisation_id) || !p.success || !['sent', 'approved'].includes(inv.status)) return res.status(409).json({ ok: false, error: 'This invoice cannot be paid online right now.' });
       const r = await start(inv, req.params.token, p.data.method);
       if (r.ok) return res.json({ ok: true, url: r.url, provider: r.provider, switched: r.tried.length > 0 });
       res.status(502).json({ ok: false, error: 'We could not open an online payment page just now. You can pay by bank transfer below, or try again in a few minutes.', bank: r.bank });

@@ -15,7 +15,7 @@ const gstOf = (subtotal) => Math.round(subtotal * 0.1);
 const monthStart = (y, m) => new Date(Date.UTC(y, m, 1, 0, 0, 0)); // 1st of the month, UTC
 const TIMELINE = ['account.', 'subscription.', 'billing.', 'team.invitation_created', 'integration.connected', 'integration.disconnected'];
 
-export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e) => appendAuditLog(db, e), timers = true, extraAttention = () => [], payUrl = () => null }) {
+export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e) => appendAuditLog(db, e), timers = true, policy = null, extraAttention = () => [], payUrl = () => null }) {
   db.exec(`CREATE TABLE IF NOT EXISTS platform_invoices (
       id TEXT PRIMARY KEY, organisation_id TEXT NOT NULL, number TEXT NOT NULL UNIQUE, period_start TEXT NOT NULL, period_end TEXT NOT NULL,
       lines_json TEXT NOT NULL, subtotal_cents INTEGER NOT NULL, gst_cents INTEGER NOT NULL, total_cents INTEGER NOT NULL, note TEXT,
@@ -38,6 +38,7 @@ export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e)
     return lines;
   }
   function createDraft(org, periodStart, { note = '' } = {}) {
+    if(policy?.active(org))return null;
     const start = new Date(periodStart), end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1) - 1000);
     if (db.prepare(`SELECT 1 FROM platform_invoices WHERE organisation_id=? AND period_start=?`).get(org, iso(start))) return null;
     const lines = linesFor(org), subtotal = lines.reduce((n, l) => n + l.cents, 0);
@@ -84,6 +85,7 @@ export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e)
   async function sendDue(now = new Date()) {
     let n = 0;
     for (const inv of db.prepare(`SELECT * FROM platform_invoices WHERE status='approved' AND send_at<=? ORDER BY send_at LIMIT 50`).all(iso(now))) {
+      if(policy?.active(inv.organisation_id))continue;
       const r = await sendInvoiceEmail(inv);
       if (r.sent || r.reason === 'already_sent') { db.prepare(`UPDATE platform_invoices SET status='sent',sent_at=?,last_error=NULL WHERE id=?`).run(iso(), inv.id); auditFor(inv.organisation_id, 'billing.invoice_sent', { kind: inv.number }); n++; }
       else db.prepare(`UPDATE platform_invoices SET last_error=? WHERE id=?`).run(String(r.reason || 'email not sent').slice(0, 200), inv.id);
@@ -94,6 +96,7 @@ export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e)
   async function remindOverdue(now = new Date()) {
     let n = 0;
     for (const inv of db.prepare(`SELECT * FROM platform_invoices WHERE status='sent' AND due_at<?`).all(iso(now))) {
+      if(policy?.active(inv.organisation_id))continue;
       const late = Math.floor((now.getTime() - Date.parse(inv.due_at)) / DAY), step = late >= 7 ? 7 : late >= 3 ? 3 : 0;
       if (!step) continue;
       const r = await sendInvoiceEmail({ ...inv }, { reminder: step });

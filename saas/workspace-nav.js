@@ -6,7 +6,7 @@
   const FINANCE_ROLES=['owner','admin','super_admin']; // must match financeRoles in src/server.js
   const SENIOR_ROLES=['owner','admin','manager','super_admin','director']; // must match workforceSeniorRoles in src/server.js
   // `path` is the canonical hash route (#domain/section). Old single-word hashes such as #finance still resolve.
-  const DOMAINS=[
+  let DOMAINS=[
     {id:'today',label:'Today',kicker:'TODAY',icon:'i-grid',items:[
       {view:'dashboard',path:'today/home',alias:['operations/command'],label:'Home & AI Command',icon:'i-grid'},
       {view:'assistant',path:'today/assistant',alias:['operations/receptionist'],label:'AI Assistant & Receptionist',icon:'i-spark',roles:SENIOR_ROLES},
@@ -42,8 +42,24 @@
       {view:'manual',path:'setup/manual',alias:['governance/manual'],label:'User Manual',icon:'i-doc'}
     ]}
   ];
+  const oldItems=DOMAINS.flatMap(d=>d.items);
+  const take=(view,path,label)=>{const i=oldItems.find(i=>i.view===view);return {...i,path,alias:[i.path,...(i.alias||[])],...(label?{label}:{})}};
+  const extra=(view,path,label,icon='i-doc',roles=SENIOR_ROLES)=>({view,path,label,icon,roles});
+  DOMAINS=[
+   {id:'b01',label:'Today',kicker:'B01 · TODAY',icon:'i-grid',items:[take('dashboard','b01/home'),take('assistant','b01/assistant','AI Assistant'),take('approvals','b01/approvals')]},
+   {id:'b02',label:'Customers & Work',kicker:'B02 · CUSTOMERS & WORK',icon:'i-briefcase',items:[extra('enquiries','b02/enquiries','Enquiries'),take('customers','b02/customers'),extra('quotes','b02/quotes','Quotes'),extra('bookings','b02/bookings','Bookings'),take('jobs','b02/jobs'),take('stock','b02/stock'),extra('archive','b02/archive','Records & Archive')]},
+   {id:'b03',label:'People',kicker:'B03 · PEOPLE',icon:'i-users',items:[take('workforce','b03/workers'),take('team','b03/staff'),take('hiring','b03/hiring')]},
+   {id:'b04',label:'Communications',kicker:'B04 · COMMUNICATIONS',icon:'i-bell',items:[take('comms','b04/inbox'),extra('mail','b04/email','Email Centre'),extra('phone','b04/numbers','Phone Numbers'),extra('calls','b04/calls','Calls & SMS'),extra('receptionist','b04/receptionist','AI Receptionist'),extra('meetings','b04/meetings','Video Meetings'),extra('teamchat','b04/team-chat','Team Chat','i-users',null)]},
+   {id:'b05',label:'Content & Growth',kicker:'B05 · CONTENT & GROWTH',icon:'i-video',items:[take('video','b05/studio'),take('growth','b05/growth'),extra('businesscampaigns','b05/campaigns','Campaigns')]},
+   {id:'b06',label:'Website & Visibility',kicker:'B06 · WEBSITE & VISIBILITY',icon:'i-link',items:[extra('website','b06/website','Website & Domain'),take('visibility','b06/search'),extra('searchconsole','b06/search-console','Search Console'),extra('backlinks','b06/backlinks','Backlink Suggestions')]},
+   {id:'b07',label:'Money',kicker:'B07 · MONEY',icon:'i-briefcase',items:[take('finance','b07/ledger'),extra('businessinvoices','b07/invoices','Invoices','i-doc',FINANCE_ROLES)]},
+   {id:'b08',label:'Setup & Trust',kicker:'B08 · SETUP & TRUST',icon:'i-shield',items:[take('onboarding','b08/settings'),take('integrations','b08/connections'),take('migration','b08/import'),take('exports','b08/print'),take('governance','b08/trust'),take('support','b08/help'),extra('supportaccess','b08/support-access','Support Access','i-shield',['owner']),take('manual','b08/manual')]},
+   {id:'b09',label:'Plans & Usage',kicker:'B09 · PLANS & USAGE',icon:'i-doc',items:[take('billing','b09/usage','Plans, Billing & Add-ons')]}
+  ];
+  // Bare legacy group links remain valid after re-grouping.
+  for(const [old,view] of Object.entries({today:'dashboard',customers:'customers',people:'workforce',marketing:'video',money:'finance',setup:'onboarding'})){oldItems.find(i=>i.view===view);const item=DOMAINS.flatMap(d=>d.items).find(i=>i.view===view);item.alias.push(old)}
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const featureFor={dashboard:'dashboard',assistant:'ai',approvals:'approvals',customers:'customers',stock:'stock',comms:'inbox',jobs:'jobs',workforce:'workforce',hiring:'hiring',video:'content',growth:'growth',visibility:'visibility',integrations:'integrations',finance:'finance',billing:'billing',onboarding:'settings',governance:'governance'};
+  const featureFor={mail:'mail',enquiries:'customers',quotes:'customers',bookings:'jobs',archive:'customers',phone:'settings',calls:'inbox',receptionist:'settings',meetings:'inbox',teamchat:'staff_chat',businesscampaigns:'growth',website:'settings',searchconsole:'visibility',backlinks:'visibility',businessinvoices:'finance',supportaccess:'governance',dashboard:'dashboard',assistant:'ai',approvals:'approvals',customers:'customers',stock:'stock',comms:'inbox',jobs:'jobs',workforce:'workforce',hiring:'hiring',video:'content',growth:'growth',visibility:'visibility',integrations:'integrations',finance:'finance',billing:'billing',onboarding:'settings',governance:'governance'};
   const allowed=(item,role)=>{const access=window.GDS_SESSION?.access;if(access?.mode==='custom'&&featureFor[item.view])return access.grants.includes(featureFor[item.view]+'.read');return !item.roles||item.roles.includes(role)};
   window.SuperProCan=(feature,action='read')=>{const a=window.GDS_SESSION?.access;return a?.mode==='owner'||a?.grants?.includes(feature+'.'+action)||false};
   const icon=name=>`<svg aria-hidden="true"><use href="#${name}"></use></svg>`;

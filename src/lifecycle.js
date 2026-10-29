@@ -11,7 +11,7 @@ const dateLong = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'nume
 const AI = { core: 'AI assistant for everyday office work', operations: 'AI tools for running operations', higher_limits: 'Higher AI usage limits', metered: 'Metered AI usage' };
 const LEVEL = { basic: 'Basic', full: 'Full', standard: 'Standard storage', expanded: 'Expanded storage', high: 'High-capacity storage' };
 
-export function createLifecycle({ db, env, notify }) {
+export function createLifecycle({ db, env, notify, policy = null }) {
   const base = () => String(env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
   const plans = () => db.prepare(`SELECT * FROM subscription_plans WHERE active=1 AND monthly_fee_cents>0 ORDER BY monthly_fee_cents`).all();
   const owner = (org) => db.prepare(`SELECT u.id,u.email,u.full_name FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.organisation_id=? AND m.role='owner' ORDER BY m.rowid LIMIT 1`).get(org);
@@ -27,6 +27,7 @@ export function createLifecycle({ db, env, notify }) {
 
   // Sends once per (business, dedupe key). A failed send is recorded, not retried silently forever.
   async function send(org, kind, dedupe, compose) {
+    if(policy?.active(org)&&['trial_ending','trial_ended','invoice','subscription_payment_failed'].includes(kind))return {sent:false,reason:'complimentary_waiver'};
     let id = crypto.randomUUID();
     const o = owner(org), row = orgRow(org);
     if (!o || !row) return { sent: false, reason: 'no_owner' };
@@ -72,7 +73,7 @@ export function createLifecycle({ db, env, notify }) {
   const sendAddonActive = (org, a) => send(org, 'addon_active', `addon:${a.id}`, ({ row, first }) => ({
     subject: `${a.name} added to your plan`,
     frame: { heading: `${first}, your add-on is active`, paragraphs: [`${a.name} is now on ${row.name}. Your new limits apply straight away.`], facts: [['Business', row.name], ['Add-on', `${a.quantity} × ${a.unit}`], ['Extra cost', `${money(a.monthly_cents)} a month + GST`]], button: signIn, notes: ['You can remove an add-on at any time under Plans & Billing. Anything you already saved stays.', helpNote] }
-  })).then(async (r) => { await notify?.notifyRoles(org, ['owner'], { kind: 'billing', title: `${a.name} is active`, body: `${a.quantity} × ${a.unit} added.`, link: '#billing', dedupe: `addon-live:${a.id}` }); return r; });
+  })).then(async (r) => { if(r.reason==='complimentary_waiver')return r; await notify?.notifyRoles(org, ['owner'], { kind: 'billing', title: `${a.name} is active`, body: `${a.quantity} × ${a.unit} added.`, link: '#billing', dedupe: `addon-live:${a.id}` }); return r; });
   const sendInvoice = (org, i) => send(org, 'invoice', `invoice:${i.id}:${i.reminder || 0}`, ({ row, first }) => ({
     subject: i.reminder ? `Reminder: invoice ${i.number} is overdue` : `Invoice ${i.number} from ${PLATFORM_NAME}`,
     frame: { heading: i.reminder ? `${first}, a friendly reminder` : `${first}, your invoice is ready`, paragraphs: [i.reminder ? `Invoice ${i.number} for ${row.name} was due on ${dateLong(i.due_at)} and we have not received payment yet. If you have already paid, thank you, and please ignore this.` : `Here is your invoice for ${row.name} for ${new Date(i.period_start).toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'Australia/Perth' })}.`, i.lines.map((l) => `• ${l.description}: ${money(l.cents)}`).join('\n')], facts: [['Invoice', i.number], ['Subtotal', money(i.subtotal_cents)], ['GST (10%)', money(i.gst_cents)], ['Total due', money(i.total_cents)], ['Due', dateLong(i.due_at)], i.abn ? ['ABN', i.abn] : null].filter(Boolean), button: i.pay_url ? { label: `Pay ${money(i.total_cents)} now`, url: i.pay_url } : signIn, notes: [i.pay_url ? 'Pay by card or bank transfer on the secure payment page. Please do not forward this email: the link is private to your account.' : '', i.abn ? `${i.legal}, ABN ${i.abn}. This is a tax invoice.` : '', 'Your data is always safe. Questions? Open Support inside the app.'].filter(Boolean) }
@@ -84,7 +85,7 @@ export function createLifecycle({ db, env, notify }) {
   const sendPaymentFailed = (org, { reason, reference }) => send(org, 'subscription_payment_failed', `failed:${reference}`, ({ row, first }) => ({
     subject: 'Your subscription payment was refused',
     frame: { heading: `${first}, your payment was refused`, paragraphs: [`We could not take your subscription payment for ${row.name}.${reason ? ' Reason given: ' + reason + '.' : ''}`, 'Your data is kept safe. Please update your payment method so your plan continues without interruption.'], facts: [['Plan', row.plan_name], ['Reference', reference]], button: signIn, notes: [helpNote] }
-  })).then(async (r) => { await notify?.notifyRoles(org, ['owner'], { kind: 'billing', title: 'Your subscription payment was refused', body: 'Update your payment method to keep your plan.', link: '#billing', urgent: true, dedupe: `failed:${reference}` }); return r; });
+  })).then(async (r) => { if(r.reason==='complimentary_waiver')return r; await notify?.notifyRoles(org, ['owner'], { kind: 'billing', title: 'Your subscription payment was refused', body: 'Update your payment method to keep your plan.', link: '#billing', urgent: true, dedupe: `failed:${reference}` }); return r; });
 
   async function runDaily(now = Date.now()) {
     let n = 0;

@@ -1151,30 +1151,22 @@ export function createDb(databasePath = resolveDatabasePath()) {
       escalation_rules, updated_at
     ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    'Fleet Parlour',
-    "Thank you for calling Fleet Parlour, Perth's mobile truck and metal polishing specialist. How can I help you today?",
+    'Your business',
+    "Thank you for calling. How can we help you today?",
     '',
     'Perth and surrounding areas, Western Australia',
     'Monday to Friday, 8:00 am to 5:00 pm',
-    'Do not transfer routine enquiries. Transfer to the protected owner destination only when a genuine business caller explicitly requests Faiz/Faz/Faizan/the owner, or for a critical active-job safety/security issue that needs immediate owner attention. Otherwise save the enquiry and request a callback.',
+    'Do not transfer routine enquiries. Transfer to the protected owner destination only when a genuine business caller explicitly requests the business owner, or for a critical active-job safety/security issue that needs immediate owner attention. Otherwise save the enquiry and request a callback.',
     new Date().toISOString()
   );
 
-  const services = [
-    ['Truck polishing', 'Mobile truck and fleet metal polishing'],
-    ['Bull bar polishing', 'Bull bar sanding, restoration and mirror polishing'],
-    ['Fuel tank polishing', 'Aluminium fuel tank restoration and polishing'],
-    ['Truck rim polishing', 'Truck wheel and alloy rim polishing'],
-    ['Aluminium polishing', 'Aluminium component sanding and polishing'],
-    ['Stainless steel polishing', 'Stainless steel restoration and polishing'],
-    ['Metal polishing', 'Other metal components assessed individually']
-  ];
+  const services = [['General service','Configure your own services in Business Setup']];
   const insertService = db.prepare(`INSERT OR IGNORE INTO service_catalog (name, description) VALUES (?, ?)`);
   for (const service of services) insertService.run(...service);
 
   const now = new Date().toISOString();
   const channelSeed = [
-    ['website','Fleet Parlour Website'],['whatsapp','WhatsApp Business'],['facebook','Facebook Page'],
+    ['website','Business website'],['whatsapp','WhatsApp Business'],['facebook','Facebook Page'],
     ['instagram','Instagram'],['tiktok','TikTok'],['youtube','YouTube'],['google','Google / Business Profile'],['snapchat','Snapchat'],['x','X / Twitter'],['email','Email'],['sms','SMS']
   ];
   const insertChannel = db.prepare(`INSERT OR IGNORE INTO channel_connections (channel,display_name,status,capabilities,updated_at) VALUES (?,?,'not_connected','{}',?)`);
@@ -1217,8 +1209,8 @@ export function createDb(databasePath = resolveDatabasePath()) {
   `).run(
     'Customer name; callback number; email; Perth suburb or job address; truck make and model; polishing service; parts and quantities; current condition; preferred date; whether it is one vehicle or a fleet; request job photos.',
     'Legacy personal-call routing is disabled. The receptionist handles business calls only. Requests to speak directly with the owner may use the protected owner-transfer rule without revealing a private number.',
-    'After the caller confirms the call is for Fleet Parlour: This business call may be recorded and transcribed to manage your enquiry. Would you like to continue?',
-    'Fleet Parlour is currently mobile/on-site only and has no customer drop-off workshop. Never offer a workshop address. If a genuine business caller explicitly requests Faiz, Faz, Faizan or the owner, confirm the business reason and callback details, then use the protected owner transfer destination if configured. Critical active-job safety/security matters may also escalate immediately. Never disclose the owner private number. Routine enquiries must be saved and forwarded for follow-up rather than transferred.'
+    'After the caller confirms this is a business enquiry: This business call may be recorded and transcribed to manage your enquiry. Would you like to continue?',
+    'Use only verified business locations and service modes. If a genuine business caller explicitly requests the business owner, confirm the business reason and callback details, then use the protected owner transfer destination if configured. Critical active-job safety/security matters may also escalate immediately. Never disclose the owner private number. Routine enquiries must be saved and forwarded for follow-up rather than transferred.'
   );
 
   // Give existing enquiries a stable, customer-friendly reference without changing their internal UUID.

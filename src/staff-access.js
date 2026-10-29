@@ -9,6 +9,7 @@ export const ACCESS_FEATURES=[
  ['staff_chat','Internal staff chat & own availability',ALL,['read','create','edit']],
  ['ai','Business AI operations (personal history)',SENIOR,['read','create','edit','delete']],
  ['stock','Stock & supplies',SENIOR,['read','create','edit','delete']],
+ ['mail','Email centre (separate approval and send permissions)',SENIOR,['read','create','edit','approve','send','delete','export']],
  ['inbox','Business communications inbox',SENIOR,['read','create','edit','approve','delete']],
  ['content','Content studio',SENIOR,['read','create','edit','approve','delete']],
  ['growth','Growth Engine',SENIOR,['read','create','edit','approve','delete']],
@@ -23,17 +24,18 @@ export const ACCESS_FEATURES=[
 ].map(([id,label,roles,actions])=>({id,label,roles,actions}));
 const keys=ACCESS_FEATURES.flatMap(f=>f.actions.map(a=>f.id+'.'+a)),valid=new Set(keys);
 const utility=new Set(['me','logout','login','account','mfa','legal','my-organisations','business','staff-presence','notifications','notification-preferences','announcements','releases','health','access']);
-const area={dashboard:'dashboard','command-centre':'dashboard',customers:'customers',stock:'stock','work-orders':'jobs','job-offers':'jobs','job-media':'jobs',workers:'workforce','staff-chat':'staff_chat','staff-availability':'staff_chat',ai:'ai',voice:'ai',content:'content',media:'content','video-renders':'content',growth:'growth',seo:'visibility',comms:'inbox',finance:'finance',payments:'finance',approvals:'approvals',integrations:'integrations','platform-capabilities':'integrations',onboarding:'settings',branding:'settings',address:'settings','industry-registry':'settings',regulatory:'settings',hiring:'hiring',governance:'governance','live-activity':'governance',activity:'governance',billing:'billing',subscription:'billing',plans:'billing',addons:'billing',entitlements:'billing','platform-invoices':'billing','message-delivery':'finance'};
+const area={'business-hub':'customers','business-archive':'customers','service-requests':'settings','receptionist-profile':'settings',mail:'mail','support-access':'governance',dashboard:'dashboard','command-centre':'dashboard',customers:'customers',stock:'stock','work-orders':'jobs','job-offers':'jobs','job-media':'jobs',workers:'workforce','staff-chat':'staff_chat','staff-availability':'staff_chat',ai:'ai',voice:'ai',content:'content',media:'content','video-renders':'content',growth:'growth',seo:'visibility',comms:'inbox',finance:'finance',payments:'finance',approvals:'approvals',integrations:'integrations','platform-capabilities':'integrations',onboarding:'settings',branding:'settings',address:'settings','industry-registry':'settings',regulatory:'settings',hiring:'hiring',governance:'governance','live-activity':'governance',activity:'governance',billing:'billing',subscription:'billing',plans:'billing',addons:'billing',entitlements:'billing','platform-invoices':'billing','message-delivery':'finance'};
 export function accessRoute(req){
  const path=String(req.originalUrl||req.path||'').split('?')[0];if(!path.startsWith('/api/saas/'))return null;
  const tail=path.slice(10),parts=tail.split('/'),first=parts[0];
  if(utility.has(first))return null;
  let feature=area[first]||'restricted';
+ if(first==='business-hub')feature=({enquiry:'customers',quote:'customers',booking:'jobs',invoice:'finance',campaign:'growth'})[parts[1]]||'restricted';
  if(first==='ai'&&parts[1]==='auto-draft')feature='inbox';
- const action=req.method==='GET'||req.method==='HEAD'?'read':req.method==='DELETE'?'delete':/\/(approve|decision|decide|reject|capture|charge|record|send|publish|execute|run-cycle|offer)(\/|$)/.test(path)?'approve':['PUT','PATCH'].includes(req.method)?'edit':'create';
+ const action=first==='mail'&&/\/send$/.test(path)?'send':req.method==='GET'||req.method==='HEAD'?'read':req.method==='DELETE'?'delete':/\/(approve|decision|decide|reject|capture|charge|record|send|publish|execute|run-cycle|offer)(\/|$)/.test(path)?'approve':['PUT','PATCH'].includes(req.method)?'edit':'create';
  return {feature,action,path};
 }
-function ownerOnlyPath(path){return /^\/api\/saas\/(team-accounts|data-export|migration|privacy|referrals|message-delivery|activity)(\/|$)/.test(path)||/\/(approvals\/policy|payments\/settings|billing\/setup|integrations\/self-service\/[^/]+\/authorise)(\/|$)/.test(path)}
+function ownerOnlyPath(path){return /^\/api\/saas\/(support-access|team-accounts|data-export|migration|privacy|referrals|message-delivery|activity)(\/|$)/.test(path)||/\/(approvals\/policy|payments\/settings|billing\/setup|integrations\/self-service\/[^/]+\/authorise)(\/|$)/.test(path)}
 export function createStaffAccess({db,audit}){
  db.exec(`CREATE TABLE IF NOT EXISTS staff_access_policies(organisation_id TEXT NOT NULL,user_id TEXT NOT NULL,membership_created_at TEXT NOT NULL,mode TEXT NOT NULL,grants_json TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,updated_by TEXT NOT NULL,updated_at TEXT NOT NULL,PRIMARY KEY(organisation_id,user_id));`);
  const recent=new Map();

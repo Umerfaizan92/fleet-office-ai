@@ -246,8 +246,15 @@ await stage('storage', 'Database migrations, self-healing and persistent-storage
 await stage('suites', 'Contract tests, final validation, quality gate', async () => {
   if (FAST) { console.log('  (skipped with --fast)'); return; }
   const tests = fs.readdirSync('scripts').filter((f) => f.endsWith('.test.mjs')).map((f) => `scripts/${f}`);
+  // Render exposes production environment variables during builds. Never pass live
+  // provider credentials, bucket names, or database paths into contract tests.
+  const testEnv = { ...process.env };
+  for (const key of Object.keys(testEnv)) {
+    if (/^(AWS_|BACKUP_|S3_|STRIPE_|TELNYX_|TWILIO_|SENDGRID_|SMTP_|OPENAI_|ANTHROPIC_|DATABASE_PATH$|UPLOAD_DIR$|REQUIRE_PERSISTENT_DISK$|SUPERPRO_ISOLATED_PREVIEW$)/i.test(key)) delete testEnv[key];
+  }
+  testEnv.SUPERPRO_SKIP_DOTENV = '1';
   await check(`${tests.length} contract test files pass`, () => {
-    const r = run(process.execPath, ['--test', '--test-concurrency=1', ...tests], { timeout: 600000 });
+    const r = run(process.execPath, ['--test', '--test-concurrency=1', ...tests], { timeout: 600000, env: testEnv });
     assert.equal(r.status, 0, (r.stdout.match(/^# (?:fail|cancelled).*$/gm) || []).join(', ') + '\n' + (r.stdout + r.stderr).split('\n').filter((l) => /not ok|Error|fail/i.test(l)).slice(0, 8).join('\n'));
   });
   for (const [label, script] of [['final validation', 'scripts/validate-release.mjs'], ['quality check', 'scripts/quality-check.mjs'], ['quality ratchet', 'scripts/quality-ratchet.mjs']]) {

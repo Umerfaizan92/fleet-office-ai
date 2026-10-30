@@ -36,6 +36,7 @@
         ["invoices", "Subscription invoices"],
         ["legacy:subpay", "Payment providers"],
         ["legacy:subscribers", "Plans & add-ons"],
+        ["platform/finance", "Plan prices, renewals & revenue"],
       ],
     ],
     [

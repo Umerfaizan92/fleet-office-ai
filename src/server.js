@@ -39,6 +39,9 @@ import { installSaasPlatform, responseEnvelope, recordInbound, recordTelnyxComms
 import { createCommsService } from './comms/service.js';
 import { createVoice } from './comms/voice.js';
 import { installCommsRoutes } from './comms/routes.js';
+import { createFinance } from './finance/service.js';
+import { createPlatformFinance } from './finance/platform.js';
+import { installFinanceRoutes } from './finance/routes.js';
 import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail, sendBrandedEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
@@ -5744,7 +5747,10 @@ const lifecycle=createLifecycle({db,env,notify:notifications,policy:subscription
 installSubscribers(app,{db,requireAdmin,lifecycle});
 const visibility=installVisibility(app,{db,env,requireAdmin,siteRoot,generateAiText});
 let platformPay=null;
-const billingOps=createBillingOps({db,env,lifecycle,entitlements,policy:subscriptionPolicy,extraAttention:visibility.attentionItems,payUrl:inv=>platformPay?platformPay.payUrl(inv):null});
+// Phase 08: platform finance (plan price versions, plan changes, dunning, revenue). Its engine is attached below.
+const financeEngineRef={current:null};
+const platformFinance=createPlatformFinance({db,engineRef:financeEngineRef,notify:notifications,lifecycle});
+const billingOps=createBillingOps({db,env,lifecycle,entitlements,policy:subscriptionPolicy,extraAttention:visibility.attentionItems,payUrl:inv=>platformPay?platformPay.payUrl(inv):null,prorations:{lines:org=>platformFinance.prorationLines(org),invoiced:(ids,id)=>platformFinance.markProrationInvoiced(ids,id)}});
 platformPay=createPlatformPay({db,env,runtime:integrationRuntime,policy:subscriptionPolicy,settle:billingOps.settle});
 platformPay.install(app,{requireAdmin,requireSaasUser,requireSaasRole});
 billingOps.install(app,{requireAdmin});
@@ -5764,7 +5770,7 @@ installHiring(app,{db,env,uploadRoot,requireSaasUser,requireSaasRole,saasAudit,g
 const billingSetup=createBillingSetup({db});billingSetup.install(app,{requireSaasUser,requireSaasRole,saasAudit});
 // Phase 05: business events reach the automation engine through this object once the engine is created below.
 const automationEvents={emit(){return []}};
-installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised,events:automationEvents});
+const paymentsApi=installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised,events:automationEvents});
 
 // Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
 staffAccess.install(app,{requireSaasUser,requireSaasRole});
@@ -5803,6 +5809,7 @@ const mailCentre=installMailCentre(app,{db,env,uploadRoot,platform:platformIdent
 // Phase 05: the automation engine (workflows, policy levels, approvals, execution through the job queue, audit).
 // Phase 06: SEO, Google and website platform (technical audits, keyword clusters, content studio, Google data, local SEO, website builder).
 // Phase 07: unified inbox, conversation intelligence, voice call flow, consent and campaigns.
+const subscriberFinance=createFinance({db,env,payments:paymentsApi,pipeline:businessHubHooks,syncJobFinance:saasPlatform.syncJobFinance,notify:notifications,engineRef:financeEngineRef});
 const commsEngineRef={current:null};
 const commsService=createCommsService({db,env,dispatch:saasPlatform.dispatch,pipeline:businessHubHooks,profileOf:seoCluster.profileOf,
   notify:(org,opts)=>notifications.notifyRoles(org,['owner','admin'],opts).catch(()=>{}),emit:(...a)=>automationEvents.emit(...a),
@@ -5824,6 +5831,8 @@ const seoService=createSeoService({db,env,resolveHost:seoPublicHost,profileOf:se
 const automationEngine=createAutomationEngine({db,queue:jobQueue,generateAiText,aiStatus:aiProviderStatus,timers:env.NODE_ENV!=='test',deps:{
   seo:seoService,
   comms:commsService,
+  finance:subscriberFinance,
+  platformFinance,
   appendAuditLog,
   notifyRoles:(org,roles,opts)=>notifications.notifyRoles(org,roles,opts).catch(()=>{}),
   mail:mailCentre,
@@ -5841,6 +5850,9 @@ const automationEngine=createAutomationEngine({db,queue:jobQueue,generateAiText,
 automationEvents.emit=(org,type,payload,opts)=>{try{return automationEngine.emit(org,type,payload,opts)}catch(e){console.warn('[automation] event not processed:',e.message);return []}};
 seoEngineRef.current=automationEngine;
 commsEngineRef.current=automationEngine;
+financeEngineRef.current=automationEngine;
+installFinanceRoutes(app,{db,finance:subscriberFinance,platformFinance,requireSaasUser,requireSaasRole,platform:platformIdentity});
+if(process.env.NODE_ENV!=='test'){const runFinanceDaily=()=>platformFinance.daily().catch(e=>console.warn('[finance] daily run failed:',e.message));setTimeout(runFinanceDaily,60000).unref?.();setInterval(runFinanceDaily,6*3600000).unref?.();}
 installCommsRoutes(app,{db,comms:commsService,voice:voiceFlow,engine:automationEngine,requireSaasUser,requireSaasRole,platform:platformIdentity,saasAudit,createApproval:createWorkspaceApproval});
 installSeoRoutes(app,{db,service:seoService,engine:automationEngine,requireSaasUser,requireSaasRole,platform:platformIdentity,saasAudit});
 if(env.NODE_ENV!=='test')setInterval(()=>{try{seoService.publishDue()}catch(e){console.warn('[seo] scheduled publishing:',e.message)}},60000).unref();

@@ -157,3 +157,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: build saas/workspace-pipeline.js replacing the generic enquiry/quote/booking/invoice views
+
+## CP-012 2026-10-30T13:16:36+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: pipeline screens committed (e221942)
+- Incomplete steps: dashboard pipeline card; inbox/receptionist to enquiry; jobs view shows linked booking; module-by-module verification (subscriber 32, founder 15, unified 9); false-success audit across frontend; verification report
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: pipeline.test.mjs; test-pipeline-ui.mjs; test:ui; npm test
+- Test results: 2/2; 12/12; 34/34; 73/73
+- Git branch: phase-04-business-os
+- Commit: e221942 (Phase 04: connected pipeline screens for Enquiries, Quotes, Bookings and Invoices); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: write the module verification harness (scripts/verify-modules.mjs) driving every workspace and console route

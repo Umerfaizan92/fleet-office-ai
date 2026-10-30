@@ -493,3 +493,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: refs/recovery/phase-07-communications/20261030T104708Z (503e889)
 - Known errors: none
 - Next exact action: Check suite summary in scratchpad/suite/summary.txt, rerun npm test + test:unit after late edits, then commit and PR
+
+## CP-036 2026-10-30T19:20:34+08:00 T-054 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (COMPLETED)
+- Completed steps: Phase 07 complete, commit 4af3df6
+- Incomplete steps: Owner: merge #33-#36 then Phase 07 PR; T-055 live provider check
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: npm test, test:unit, comms.test, test:comms-ui, all UI suites, visual, a11y-perf, secrets
+- Test results: all pass
+- Git branch: phase-07-communications
+- Commit: 4af3df6 (Phase 07: unified communications, call handling and campaign automation); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner's next phase prompt

@@ -107,6 +107,39 @@
     } catch (e) { body.replaceChildren(el('p', { class: 'portal-note', 'data-tone': 'bad', text: e.message })); }
   }
 
+  // ---------- record results in the workspace search box ----------
+  const VIEW_ID = { 'b02/enquiries': 'enquiries', 'b02/quotes': 'quotes', 'b02/bookings': 'bookings', 'b07/invoices': 'businessinvoices' };
+  const TYPE_LABEL = { customer: 'Customer', enquiry: 'Enquiry', quote: 'Quote', booking: 'Booking', invoice: 'Invoice', job: 'Job', worker: 'Team member' };
+  let searchSeq = 0, searchTimer = 0;
+  function attachSearch() {
+    const results = document.getElementById('page-results'), dialog = results?.closest('dialog'), input = dialog?.querySelector('input');
+    if (!results || !input || results.dataset.records) return Boolean(results);
+    results.dataset.records = '1';
+    const run = () => {
+      const term = input.value.trim(), seq = ++searchSeq;
+      if (term.length < 2 || results.querySelector(`.finder-records[data-term="${CSS.escape(term)}"]`)) return;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(async () => {
+        let list = [];
+        try { list = (await api('/api/saas/search?q=' + encodeURIComponent(term))).results; } catch { return; }
+        if (seq !== searchSeq || input.value.trim() !== term) return;
+        results.querySelector('.finder-records')?.remove();
+        const box = el('section', { class: 'finder-records', 'data-term': term, 'aria-label': 'Matching records' }, el('h3', { text: list.length ? 'Records' : 'No matching records' }));
+        for (const r of list) box.append(el('button', { type: 'button', class: 'finder-result', 'data-record': r.type, onclick: () => {
+          dialog.close();
+          if (VIEW_ID[r.view]) window.SuperProPipeline?.prefill(VIEW_ID[r.view], r.title);
+          location.hash = r.view;
+        } }, el('span', { text: TYPE_LABEL[r.type] || r.type }), el('div', {}, el('b', { text: r.title }), el('small', { text: r.detail || '' }))));
+        const answer = results.querySelector('.finder-answer');
+        if (answer) results.insertBefore(box, answer); else results.append(box);
+      }, 180);
+    };
+    new MutationObserver(run).observe(results, { childList: true });
+    input.addEventListener('input', run);
+    return true;
+  }
+  if (!attachSearch()) { const t = setInterval(() => { if (attachSearch()) clearInterval(t); }, 500); setTimeout(() => clearInterval(t), 20000); }
+
   for (const id of Object.keys(VIEWS)) ensure(id);
   window.addEventListener('gds:viewchange', (e) => { if (e.detail?.view === 'offshore') offshore(); if (e.detail?.view === 'automation') automation(); });
 })();

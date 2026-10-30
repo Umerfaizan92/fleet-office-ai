@@ -48,6 +48,27 @@ export function installBusinessOps(app, { db, env, requireSaasUser, requireSaasR
     res.json({ ok: true, data_ack_at: now });
   });
 
+  // ---------- record search (workspace search box) ----------
+  // Finds this business's records by name, contact or title. Each group is included only if the person may read it.
+  app.get('/api/saas/search', requireSaasUser, (req, res) => {
+    const term = String(req.query.q || '').trim().slice(0, 80);
+    if (term.length < 2) return res.json({ ok: true, results: [] });
+    const org = req.saas.organisation_id, like = '%' + term.replace(/[%_\\]/g, (c) => '\\' + c) + '%', out = [];
+    const add = (feature, rows) => { if (staffAccess.can(req, feature, 'read')) out.push(...rows()); };
+    add('customers', () => db.prepare(`SELECT id,name,phone,email FROM tenant_customers WHERE organisation_id=? AND (name LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\') ORDER BY name LIMIT 5`).all(org, like, like, like, like)
+      .map((c) => ({ type: 'customer', id: c.id, title: c.name, detail: [c.phone, c.email].filter(Boolean).join(' \u00b7 '), view: 'b02/customers' })));
+    const kinds = { enquiry: ['customers', 'b02/enquiries', 'Enquiry'], quote: ['customers', 'b02/quotes', 'Quote'], booking: ['jobs', 'b02/bookings', 'Booking'], invoice: ['finance', 'b07/invoices', 'Invoice'] };
+    for (const [kind, [feature, viewPath, label]] of Object.entries(kinds)) add(feature, () => db.prepare(`SELECT d.id,d.title,d.status,c.name customer FROM tenant_documents d LEFT JOIN tenant_customers c ON c.id=d.customer_id AND c.organisation_id=d.organisation_id WHERE d.organisation_id=? AND d.kind=? AND (d.title LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\') ORDER BY d.created_at DESC LIMIT 4`).all(org, kind, like, like)
+      .map((d) => ({ type: kind, id: d.id, title: d.title, detail: [label, d.customer, d.status.replace(/_/g, ' ')].filter(Boolean).join(' \u00b7 '), view: viewPath })));
+    if (!['worker', 'contractor'].includes(String(req.saas.role || '').toLowerCase())) {
+      add('jobs', () => db.prepare(`SELECT id,title,address,start_at FROM work_orders WHERE organisation_id=? AND (title LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\') ORDER BY start_at DESC LIMIT 4`).all(org, like, like)
+        .map((j) => ({ type: 'job', id: j.id, title: j.title, detail: ['Job', j.address, j.start_at ? new Date(j.start_at).toLocaleDateString('en-AU') : null].filter(Boolean).join(' \u00b7 '), view: 'b02/jobs' })));
+      add('workforce', () => db.prepare(`SELECT id,full_name,role_title,work_location FROM workers WHERE organisation_id=? AND (full_name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\') ORDER BY full_name LIMIT 4`).all(org, like, like)
+        .map((w) => ({ type: 'worker', id: w.id, title: w.full_name, detail: [w.work_location === 'offshore' ? 'Offshore team' : 'Worker', w.role_title].filter(Boolean).join(' \u00b7 '), view: w.work_location === 'offshore' ? 'b03/offshore' : 'b03/workers' })));
+    }
+    res.json({ ok: true, results: out.slice(0, 20) });
+  });
+
   // ---------- automation overview ----------
   // Every automatic behaviour in one place, read from where it is actually configured.
   app.get('/api/saas/automation', requireSaasUser, requireSaasRole(...ADMINS), can('settings', 'read'), (req, res) => {

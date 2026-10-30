@@ -72,3 +72,30 @@ test('automation overview shows real settings and only owners toggle reminders',
   assert.equal((await s.call('PUT', '/api/saas/automation/reminders', { cookie: mgr, body: { key: 'owner_reminders', on: false } })).status, 403);
   assert.equal((await s.call('GET', '/api/saas/automation')).status, 401);
 });
+
+test('record search: finds this business’s records, respects permissions, treats wildcards literally', async (t) => {
+  const s = await startServer();
+  t.after(() => s.stop());
+  const owner = await seedOwner(s), other = await seedOwner(s, { business: 'Other Co', email: 'other2@other.example.test' });
+  const O = (m, u, b) => s.call(m, u, { cookie: owner.cookie, body: b });
+  let r = await O('POST', '/api/saas/pipeline/enquiries', { title: 'Hot water 50% discount query', customer: { name: 'Riley Quinn', phone: '0499 999 999' } });
+  assert.equal(r.status, 201, r.text);
+  await O('POST', `/api/saas/pipeline/enquiries/${r.json.id}/quote`, { amount: 300 });
+  await s.call('POST', '/api/saas/pipeline/enquiries', { cookie: other.cookie, body: { title: 'Riley at the other business', customer: { name: 'Riley Other' } } });
+
+  r = await O('GET', '/api/saas/search?q=riley');
+  assert.equal(r.status, 200, r.text);
+  const types = r.json.results.map((x) => x.type);
+  for (const t2 of ['customer', 'enquiry', 'quote']) assert.ok(types.includes(t2), `finds ${t2}`);
+  assert.ok(!JSON.stringify(r.json).includes('Riley Other'), 'never another business’s records');
+  assert.equal((await O('GET', '/api/saas/search?q=0499')).json.results[0].title, 'Riley Quinn', 'finds by phone');
+  assert.equal((await O('GET', '/api/saas/search?q=r')).json.results.length, 0, 'needs two characters');
+  assert.equal((await O('GET', '/api/saas/search?q=%25%25')).json.results.length, 0, '%% is literal, not "match everything"');
+  assert.ok((await O('GET', '/api/saas/search?q=50%25')).json.results.some((x) => x.type === 'enquiry'), 'a real percent sign still matches');
+
+  const worker = member(s, owner.org, 'worker');
+  r = await s.call('GET', '/api/saas/search?q=riley', { cookie: worker });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.results.length, 0, 'a worker cannot find customers, quotes or invoices');
+  assert.equal((await s.call('GET', '/api/saas/search?q=riley')).status, 401);
+});

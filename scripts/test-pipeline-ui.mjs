@@ -159,6 +159,20 @@ try {
     await phone.close();
   });
 
+  await check('workspace search finds a record and opens it filtered', async () => {
+    await page.evaluate(() => { location.hash = 'b01/home'; });
+    await page.locator('.search-button').first().click();
+    const dlg = page.locator('dialog[open]', { has: page.locator('#page-results') });
+    await dlg.locator('input').first().fill('Jordan');
+    const rec = dlg.locator('.finder-records button[data-record=quote]');
+    await rec.waitFor({ timeout: 8000 });
+    assert.match(await rec.textContent(), /Blocked kitchen drain/);
+    await rec.click();
+    await page.locator('#quotes-view .pl-card').first().waitFor();
+    assert.equal(await page.locator('#quotes-view .pl-toolbar input[type=search]').inputValue(), 'Blocked kitchen drain');
+    assert.equal(await page.locator('#quotes-view .pl-card').count(), 1);
+  });
+
   await check('offshore staff: add a team member and record the data acknowledgement', async () => {
     await page.evaluate(() => { location.hash = 'b03/offshore'; });
     const v = page.locator('#offshore-view');

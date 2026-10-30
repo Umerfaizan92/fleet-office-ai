@@ -296,5 +296,7 @@
 
   for (const id of Object.keys(VIEWS)) ensureView(id);
   window.addEventListener('gds:viewchange', (e) => { if (VIEWS[e.detail?.view]) refresh(e.detail.view); });
-  window.SuperProPipeline = { refresh };
+  // Opens a pipeline view already filtered to one record (used by workspace search).
+  const prefill = (id, text) => { if (!VIEWS[id]) return; filters[id] = { q: text, status: '' }; };
+  window.SuperProPipeline = { refresh, prefill };
 })();

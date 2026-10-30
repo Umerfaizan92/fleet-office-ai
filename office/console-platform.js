@@ -96,6 +96,11 @@
       if (!window.SuperProSeo) { host.append(note('The SEO module did not load. Reload the page.')); return; }
       await window.SuperProSeo.mount(host, '/api/operator/seo', api).render('seocentre');
     },
+    // Phase 08: plan price versions (approval needed), renewals and trials, payment problems, and revenue.
+    async 'platform/finance'(host, api) {
+      if (!window.SuperProFinance) { host.append(note('The billing module did not load. Reload the page.')); return; }
+      await window.SuperProFinance.mountFounder(host, api).render('founder');
+    },
     // Phase 07: Super Pro newsletter campaigns (platform subscribers only) and a counts-only communications overview.
     async 'platform/campaigns'(host, api) {
       if (!window.SuperProComms) { host.append(note('The campaigns module did not load. Reload the page.')); return; }

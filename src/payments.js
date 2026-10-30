@@ -63,7 +63,7 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
     return data;
   }
   const form = (obj) => { const p = new URLSearchParams(); const walk = (o, pre) => { for (const [k, v] of Object.entries(o)) { const key = pre ? `${pre}[${k}]` : k; if (v && typeof v === 'object') walk(v, key); else if (v !== undefined && v !== null && v !== '') p.append(key, String(v)); } }; walk(obj, ''); return p; };
-  const stripeCall = (s, method, path, body, idem) => providerJson(`https://api.stripe.com/v1/${path}`, { method, headers: { authorization: `Bearer ${unsealed(s.stripe_secret_enc)}`, ...(body ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...(idem ? { 'idempotency-key': idem } : {}) }, body: body ? form(body).toString() : undefined }, 'Stripe');
+  const stripeCall = (s, method, path, body, idem) => providerJson(`${String(env.STRIPE_API_BASE_URL || "https://api.stripe.com").replace(/\/$/, "")}/v1/${path}`, { method, headers: { authorization: `Bearer ${unsealed(s.stripe_secret_enc)}`, ...(body ? { 'content-type': 'application/x-www-form-urlencoded' } : {}), ...(idem ? { 'idempotency-key': idem } : {}) }, body: body ? form(body).toString() : undefined }, 'Stripe');
   const paypalBase = (s) => (s.paypal_live ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com');
   async function paypalToken(s) {
     const basic = Buffer.from(`${s.paypal_client_id}:${unsealed(s.paypal_secret_enc)}`).toString('base64');
@@ -543,10 +543,16 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
         const p = findPayment(org, 'stripe', obj.id); if (p && p.status === 'pending') { db.prepare(`UPDATE job_payments SET status='expired',updated_at=? WHERE id=?`).run(iso(), p.id); outcome = 'expired'; }
       } else if (ev.type === 'charge.refunded' && obj.payment_intent) {
         const p = db.prepare(`SELECT * FROM job_payments WHERE organisation_id=? AND provider='stripe' AND reference=?`).get(org, obj.payment_intent);
-        if (p && p.status === 'paid') {
-          const refunded = Math.min(p.amount_cents, Number(obj.amount_refunded) || 0), full = refunded >= p.amount_cents, at = iso();
-          db.transaction(() => { db.prepare(`UPDATE job_payments SET status=?,note=?,updated_at=? WHERE id=?`).run(full ? 'refunded' : 'paid', full ? 'Refunded in Stripe' : `${money(refunded)} refunded in Stripe`, at, p.id); db.prepare(`UPDATE work_orders SET paid_cents=MAX(0,paid_cents-?),updated_at=? WHERE id=?`).run(refunded, at, p.work_order_id); })();
-          syncJobFinance(org, p.work_order_id, null); audit(org, 'payment.refunded', p.id, { refunded_cents: refunded, full }); await flag(org, p, `${money(refunded)} was refunded in Stripe. The job balance has been updated.`); outcome = 'refunded';
+        // Stripe reports the running total refunded on the charge. Only the increase since the last message is applied, so
+        // several partial refunds, repeats and refunds Super Pro already applied are each counted once (Phase 08 fix).
+        if (p && ['paid', 'refunded'].includes(p.status)) {
+          const total = Math.min(p.amount_cents, Number(obj.amount_refunded) || 0), delta = total - (p.refunded_cents || 0), full = total >= p.amount_cents, at = iso();
+          if (delta > 0) {
+            db.transaction(() => { db.prepare(`UPDATE job_payments SET status=?,refunded_cents=?,note=?,updated_at=? WHERE id=?`).run(full ? 'refunded' : 'paid', total, full ? 'Refunded in Stripe' : `${money(total)} refunded in Stripe`, at, p.id); db.prepare(`UPDATE work_orders SET paid_cents=MAX(0,paid_cents-?),updated_at=? WHERE id=?`).run(delta, at, p.work_order_id); })();
+            syncJobFinance(org, p.work_order_id, null); audit(org, 'payment.refunded', p.id, { refunded_cents: delta, refunded_total_cents: total, full }); await flag(org, p, `${money(delta)} was refunded in Stripe. The job balance has been updated.`);
+          }
+          try { db.prepare("UPDATE fin_refunds SET status='completed',updated_at=? WHERE payment_id=? AND status='submitted'").run(at, p.id); } catch { /* finance module not installed */ }
+          outcome = delta > 0 ? 'refunded' : 'refund_already_applied';
         }
       }
     } catch (err) { db.prepare(`DELETE FROM payment_events WHERE provider='stripe' AND event_id=?`).run(String(ev.id)); console.error('[payments] stripe webhook failed:', err.message); return res.status(500).json({ ok: false }); }
@@ -595,5 +601,13 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
     res.redirect(302, `/saas/payment-thanks.html?status=${status}`);
   });
 
-  return { runCycle, markPaid };
+  // Phase 08: refunds go back through the business's own Stripe account (never a platform account). Idempotent by key.
+  async function refundStripe(org, payment, amountCents, idempotencyKey) {
+    const raw = settingsRow(org);
+    if (!raw?.stripe_secret_enc) throw Object.assign(new Error('Connect Stripe in payment settings first.'), { status: 409, permanent: true });
+    if (!payment?.reference) throw Object.assign(new Error('This payment has no Stripe payment reference, so it cannot be refunded automatically. Refund it in Stripe and record it.'), { status: 409, permanent: true });
+    const r = await stripeCall(raw, 'POST', 'refunds', { payment_intent: payment.reference, amount: amountCents, reason: 'requested_by_customer', metadata: { payment_id: payment.id, organisation_id: org } }, idempotencyKey);
+    return { id: r.id, status: r.status, amount: r.amount };
+  }
+  return { runCycle, markPaid, createRequest, refundStripe };
 }

@@ -44,7 +44,9 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
   function refreshInvoice(org, inv) {
     if (inv.kind !== 'invoice' || !inv.work_order_id || !['issued', 'part_paid', 'paid'].includes(inv.status)) return inv;
     const j = job(org, inv.work_order_id); if (!j) return inv;
-    const due = total(inv), paid = j.paid_cents || 0;
+    // Phase 08: issued adjustment notes reduce what this invoice asks for.
+    let credited = 0; try { credited = db.prepare("SELECT COALESCE(SUM(amount_cents+gst_cents),0) n FROM tenant_documents WHERE organisation_id=? AND kind='credit_note' AND parent_id=? AND status='issued'").get(org, inv.id).n; } catch { /* no credit notes yet */ }
+    const due = total(inv) - credited, paid = j.paid_cents || 0;
     const status = paid >= due && due > 0 ? 'paid' : paid > 0 ? 'part_paid' : 'issued';
     if (status !== inv.status) {
       db.prepare('UPDATE tenant_documents SET status=?,paid_at=?,updated_at=? WHERE id=? AND organisation_id=?').run(status, status === 'paid' ? (j.paid_at || iso()) : null, iso(), inv.id, org);

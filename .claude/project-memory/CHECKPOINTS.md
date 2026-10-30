@@ -507,3 +507,45 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Wait for the owner's next phase prompt
+
+## CP-037 2026-10-30T21:29:35+08:00 T-056 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-056 (IN_PROGRESS)
+- Completed steps: rules.js (versioned AU rules, ABN, GST, checks, BAS), service.js (documents, deposits, credit notes, refunds L3, receipts, reconciliation, reports, flags, compliance, audit), platform.js (price versions L3, plan changes+proration, dunning, revenue), routes, catalogue actions, payments refund+partial-refund fix, finance.test 6/6
+- Incomplete steps: UI (workspace money views + founder tab), browser test, architecture/compliance docs, full suites, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/billing-ops.js; src/payments.js; src/pipeline.js; src/server.js; docs/phase-08/PROMPT.md; scripts/finance.test.mjs; src/finance/platform.js; src/finance/routes.js; src/finance/rules.js; src/finance/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-08-finance
+- Commit: ed9de92 (Phase 07: progress and handover); branch not on remote
+- Recovery snapshot: refs/recovery/phase-08-finance/20261030T132935Z (eda4837)
+- Known errors: none
+- Next exact action: Build saas/workspace-finance-platform.js views
+
+## CP-038 2026-10-30T21:38:30+08:00 T-056 TESTING
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-056 (TESTING)
+- Completed steps: Backend + UI + docs; finance.test 6/6; test:finance-ui 11/11
+- Incomplete steps: Full suites, manifest, commit, push, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.js; office/console.html; office/console.js; package.json; saas/workspace-nav.js; saas/workspace.html; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/billing-ops.js; src/payments.js; src/pipeline.js; src/server.js; docs/phase-08/COMPLIANCE_REVIEW.md; docs/phase-08/PAYMENT_ARCHITECTURE.md; docs/phase-08/PROMPT.md; docs/phase-08/REPORT.md; saas/workspace-finance-platform.css; saas/workspace-finance-platform.js; scripts/finance.test.mjs; scripts/test-finance-ui.mjs; src/finance/platform.js; src/finance/routes.js; src/finance/rules.js; src/finance/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-08-finance
+- Commit: ed9de92 (Phase 07: progress and handover); branch not on remote
+- Recovery snapshot: refs/recovery/phase-08-finance/20261030T133830Z (50bbb5b)
+- Known errors: none
+- Next exact action: Check scratchpad/suite8/summary.txt, then commit and open PR on phase-07-communications
+
+## CP-039 2026-10-30T21:55:41+08:00 T-056 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-056 (COMPLETED)
+- Completed steps: Phase 08 complete, commit 93c9e43
+- Incomplete steps: Owner: merge #33-#37 then Phase 08 PR; T-055, T-057; compliance review items
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: npm test, test:unit, finance.test, test:finance-ui, all UI suites, visual, a11y-perf, secrets
+- Test results: all pass
+- Git branch: phase-08-finance
+- Commit: 93c9e43 (Phase 08: finance, payments and compliance automation); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner's next phase prompt

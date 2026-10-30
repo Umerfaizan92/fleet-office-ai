@@ -100,14 +100,13 @@ try {
   await check('Consent & Unsubscribes records consent and suppressions and lists the website opt-in', async () => {
     const v = await go('b05/consent', 'consent');
     assert.match(await v.textContent(), /sam@lee\.example\.test/);
-    const [f1, f2] = [v.locator('form').nth(0), v.locator('form').nth(1)];
+    const f1 = v.locator('form').nth(0);
     await f1.getByLabel('Email or mobile').fill('alex@example.test'); await f1.getByLabel('How you know').fill('Signed the paper booking form on 2 October');
     await f1.getByRole('button', { name: 'Record consent' }).click(); await statusIs('consent', /Consent recorded/);
     await v.getByText('alex@example.test').first().waitFor();
     const g = v.locator('form').nth(1);
     await g.getByLabel('Email or mobile').fill('alex@example.test'); await g.getByLabel('Reason').fill('Asked by phone not to be contacted');
     await g.getByRole('button', { name: 'Add to do-not-contact list' }).click(); await statusIs('consent', /do-not-contact/);
-    assert.equal(await f2.count(), 1);
     assert.deepEqual(await axe(page, '#consent-view'), [], 'consent view is accessible');
   });
 

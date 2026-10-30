@@ -51,15 +51,15 @@ Budgets: LCP ≤ 2500 ms, CLS ≤ 0.1, total blocking time ≤ 200 ms.
 
 | Page | Mode | LCP ms | CLS | TBT ms | FCP ms | Transfer KB | JS KB | Requests | 3D loaded |
 |---|---|---|---|---|---|---|---|---|---|
-| home | mobile-throttled | 1168 | 0 | 185 | 904 | 163 | 50 | 13 | no |
-| features | mobile-throttled | 1668 | 0.001 | 89 | 840 | 96 | 6 | 11 | no |
-| feature-money | mobile-throttled | 860 | 0 | 129 | 860 | 94 | 6 | 11 | no |
-| industries | mobile-throttled | 776 | 0 | 50 | 776 | 92 | 6 | 11 | no |
-| industry-clinics | mobile-throttled | 844 | 0 | 82 | 844 | 95 | 6 | 11 | no |
-| pricing | mobile-throttled | 1116 | 0 | 116 | 836 | 97 | 6 | 11 | no |
-| receptionist | mobile-throttled | 896 | 0 | 90 | 896 | 97 | 6 | 11 | no |
-| stories | mobile-throttled | 1664 | 0 | 88 | 820 | 93 | 6 | 12 | no |
-| help | mobile-throttled | 820 | 0 | 95 | 820 | 98 | 6 | 11 | no |
-| contact | mobile-throttled | 800 | 0 | 61 | 800 | 92 | 6 | 11 | no |
-| legacy-landing | mobile-throttled | 2976 | 0 | 619 | 2360 | 360 | 143 | 30 | no |
-| home (desktop, 3D on) | desktop-unthrottled | 268 | 0 | 694 | 268 | 277 | 164 | 14 | yes |
+| home | mobile-throttled | 1060 | 0 | 180 | 924 | 163 | 50 | 13 | no |
+| features | mobile-throttled | 1640 | 0.001 | 95 | 848 | 96 | 6 | 11 | no |
+| feature-money | mobile-throttled | 900 | 0.043 | 132 | 900 | 94 | 6 | 11 | no |
+| industries | mobile-throttled | 772 | 0.044 | 62 | 772 | 92 | 6 | 11 | no |
+| industry-clinics | mobile-throttled | 896 | 0 | 128 | 896 | 95 | 6 | 11 | no |
+| pricing | mobile-throttled | 1128 | 0.001 | 130 | 872 | 97 | 6 | 11 | no |
+| receptionist | mobile-throttled | 896 | 0 | 105 | 896 | 97 | 6 | 11 | no |
+| stories | mobile-throttled | 1704 | 0 | 77 | 836 | 93 | 6 | 12 | no |
+| help | mobile-throttled | 828 | 0 | 93 | 828 | 98 | 6 | 11 | no |
+| contact | mobile-throttled | 824 | 0 | 62 | 824 | 92 | 6 | 11 | no |
+| legacy-landing | mobile-throttled | 2820 | 0 | 655 | 2300 | 360 | 143 | 30 | no |
+| home (desktop, 3D on) | desktop-unthrottled | 264 | 0 | 789 | 264 | 277 | 164 | 14 | yes |

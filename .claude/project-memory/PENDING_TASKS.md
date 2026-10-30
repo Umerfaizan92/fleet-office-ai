@@ -101,6 +101,13 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: src/comms/voice.js, src/comms/service.js
 - Acceptance: Live call and email evidence recorded in docs/phase-07/REPORT.md
 
+## T-057 Live Stripe test-mode check for Phase 08
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: With a business's Stripe test keys: create a payment link, pay it, request and approve a partial and a full refund; confirm webhooks and job balances
+- Files: src/payments.js, src/finance/service.js
+- Acceptance: Evidence recorded in docs/phase-08/REPORT.md
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

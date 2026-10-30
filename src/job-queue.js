@@ -117,7 +117,7 @@ export function createJobQueue({ db, log = console, workerId = 'w-' + crypto.ran
       : db.prepare('SELECT id,type,organisation_id,status,attempts,max_attempts,run_at,last_error,created_at,finished_at FROM background_jobs ORDER BY updated_at DESC LIMIT ?').all(limit);
     return rows;
   }
-  return { register, enqueue, claim, runOnce, drain, start, stop, retry, cancel, stats, list };
+  return { register, enqueue, claim, runOnce, drain, start, stop, retry, cancel, stats, list, types: () => [...handlers.keys()] };
 }
 
 // Founder Console routes, behind the platform "operations" permission.

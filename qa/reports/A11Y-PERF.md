@@ -51,15 +51,15 @@ Budgets: LCP ≤ 2500 ms, CLS ≤ 0.1, total blocking time ≤ 200 ms.
 
 | Page | Mode | LCP ms | CLS | TBT ms | FCP ms | Transfer KB | JS KB | Requests | 3D loaded |
 |---|---|---|---|---|---|---|---|---|---|
-| home | mobile-throttled | 1060 | 0 | 180 | 924 | 163 | 50 | 13 | no |
-| features | mobile-throttled | 1640 | 0.001 | 95 | 848 | 96 | 6 | 11 | no |
-| feature-money | mobile-throttled | 900 | 0.043 | 132 | 900 | 94 | 6 | 11 | no |
-| industries | mobile-throttled | 772 | 0.044 | 62 | 772 | 92 | 6 | 11 | no |
-| industry-clinics | mobile-throttled | 896 | 0 | 128 | 896 | 95 | 6 | 11 | no |
-| pricing | mobile-throttled | 1128 | 0.001 | 130 | 872 | 97 | 6 | 11 | no |
-| receptionist | mobile-throttled | 896 | 0 | 105 | 896 | 97 | 6 | 11 | no |
-| stories | mobile-throttled | 1704 | 0 | 77 | 836 | 93 | 6 | 12 | no |
-| help | mobile-throttled | 828 | 0 | 93 | 828 | 98 | 6 | 11 | no |
-| contact | mobile-throttled | 824 | 0 | 62 | 824 | 92 | 6 | 11 | no |
-| legacy-landing | mobile-throttled | 2820 | 0 | 655 | 2300 | 360 | 143 | 30 | no |
-| home (desktop, 3D on) | desktop-unthrottled | 264 | 0 | 789 | 264 | 277 | 164 | 14 | yes |
+| home | mobile-throttled | 864 | 0 | 169 | 864 | 163 | 50 | 13 | no |
+| features | mobile-throttled | 1528 | 0 | 64 | 796 | 96 | 6 | 11 | no |
+| feature-money | mobile-throttled | 820 | 0 | 90 | 820 | 94 | 6 | 11 | no |
+| industries | mobile-throttled | 796 | 0 | 77 | 796 | 92 | 6 | 11 | no |
+| industry-clinics | mobile-throttled | 872 | 0 | 122 | 872 | 95 | 6 | 11 | no |
+| pricing | mobile-throttled | 1148 | 0 | 129 | 872 | 97 | 6 | 11 | no |
+| receptionist | mobile-throttled | 912 | 0 | 142 | 912 | 97 | 6 | 11 | no |
+| stories | mobile-throttled | 1668 | 0 | 83 | 836 | 93 | 6 | 12 | no |
+| help | mobile-throttled | 860 | 0 | 113 | 860 | 98 | 6 | 11 | no |
+| contact | mobile-throttled | 840 | 0 | 76 | 840 | 92 | 6 | 11 | no |
+| legacy-landing | mobile-throttled | 1952 | 0 | 618 | 1952 | 360 | 143 | 30 | no |
+| home (desktop, 3D on) | desktop-unthrottled | 276 | 0 | 819 | 276 | 277 | 164 | 14 | yes |

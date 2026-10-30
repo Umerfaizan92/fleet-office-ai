@@ -44,6 +44,8 @@ if (!bucket && !fileDir) {
   }
   const r = spawnSync(bin, ['restore', '-config', cfg, '-if-db-not-exists', '-if-replica-exists', plan.databasePath], { stdio: 'inherit' });
   if (r.status !== 0) { console.error('[backup] Could not restore the database from the backup. Not starting, so nothing is overwritten.'); process.exit(r.status || 1); }
+  // Phase 09: tells the reliability monitor that continuous replication wraps this server process.
+  env.SUPER_PRO_LITESTREAM = '1';
   const child = spawn(bin, ['replicate', '-config', cfg, '-exec', `${process.execPath} src/server.js`], { stdio: 'inherit', env });
   for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => child.kill(sig));
   child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

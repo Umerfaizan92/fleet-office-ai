@@ -288,7 +288,14 @@ function answerLooksComplete(text){
   return /[.!?؟۔…。！？]["'”’)}\]]*$/.test(t);
 }
 
-export async function generateAiText({ messages=[], system='', conversation_id=null, remember_conversation=true, thinking_level='medium', max_output_tokens=900, ensure_complete=false }={}) {
+// Phase 09: the reliability monitor counts AI successes and failures through this hook (no prompt or answer text).
+export const aiOutcomeHooks = new Set();
+export async function generateAiText(args = {}) {
+  const t0 = Date.now();
+  try { const r = await generateAiTextInner(args); for (const h of aiOutcomeHooks) { try { h({ ok: true, ms: Date.now() - t0, provider: r?.provider }); } catch { /* ignore */ } } return r; }
+  catch (e) { for (const h of aiOutcomeHooks) { try { h({ ok: false, ms: Date.now() - t0, error: String(e?.message || e).slice(0, 120) }); } catch { /* ignore */ } } throw e; }
+}
+async function generateAiTextInner({ messages=[], system='', conversation_id=null, remember_conversation=true, thinking_level='medium', max_output_tokens=900, ensure_complete=false }={}) {
   const primary = resolveAiProviderConfig();
   if (!primary) throw new Error('AI provider is not configured. Add a Gemini API key for free-first mode, or configure another AI provider.');
   const prepared = system ? [{role:'system',content:String(system)}, ...messages] : messages;

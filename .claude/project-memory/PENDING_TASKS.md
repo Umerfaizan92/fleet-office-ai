@@ -108,6 +108,20 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: src/payments.js, src/finance/service.js
 - Acceptance: Evidence recorded in docs/phase-08/REPORT.md
 
+## T-059 Monthly snapshot copies for long-term retention
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Copy the first daily snapshot of each month to super-pro/monthly/ (S3 Batch Operations or a put-only scheduled copy)
+- Files: src/reliability/backup.js, docs/phase-09/BACKUP_AND_RECOVERY.md
+- Acceptance: Monthly copies present and covered by the 400-day lifecycle rule
+
+## T-060 Live reliability check after deploy (Phase 09)
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: On production: Check the backup bucket, Back up now, Test a restore, run npm run backup:restore-drill, set OPERATOR_ALERT_EMAIL, record results
+- Files: docs/phase-09/REPORT.md
+- Acceptance: Results recorded; all bucket checks OK
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

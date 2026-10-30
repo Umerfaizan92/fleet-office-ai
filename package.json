@@ -40,6 +40,7 @@
     "security:secrets": "node scripts/secret-scan.mjs",
     "storage:verify": "node scripts/verify-storage.mjs",
     "backup:restore-drill": "node scripts/restore-drill.mjs",
+    "backup:restore": "node scripts/restore-database.mjs",
     "deploy:check": "node scripts/post-deploy-check.mjs",
     "build:ds": "node scripts/build-ds.mjs",
     "build:site": "node scripts/build-site.mjs",
@@ -60,7 +61,8 @@
     "test:automations-ui": "node scripts/test-automations-ui.mjs",
     "test:seo-ui": "node scripts/test-seo-ui.mjs",
     "test:comms-ui": "node scripts/test-comms-ui.mjs",
-    "test:finance-ui": "node scripts/test-finance-ui.mjs"
+    "test:finance-ui": "node scripts/test-finance-ui.mjs",
+    "test:reliability-ui": "node scripts/test-reliability-ui.mjs"
   },
   "engines": {
     "node": "22.x"

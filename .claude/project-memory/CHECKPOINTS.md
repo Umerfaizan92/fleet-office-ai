@@ -549,3 +549,45 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Wait for the owner's next phase prompt
+
+## CP-040 2026-10-30T22:20:53+08:00 T-058 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-058 (IN_PROGRESS)
+- Completed steps: backup.js, monitor.js, heal.js, index.js routes+scheduler, restore-database script, catalogue approval-only actions, AI hook, upload sync status, reliability.test 4/4
+- Incomplete steps: Founder Reliability tab, browser test, docs (audit, RPO/RTO, runbooks), full suites, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; package.json; scripts/start.mjs; src/ai-provider-shim.js; src/automation/catalogue.js; src/job-queue.js; src/s3-files.js; src/server.js; docs/phase-09/PROMPT.md; scripts/reliability.test.mjs; scripts/restore-database.mjs; src/reliability/backup.js; src/reliability/heal.js; src/reliability/index.js; src/reliability/monitor.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-09-reliability
+- Commit: e5c8c8c (Phase 08: finance, payments and compliance automation); branch not on remote
+- Recovery snapshot: refs/recovery/phase-09-reliability/20261030T142053Z (7ef1861)
+- Known errors: none
+- Next exact action: Build office console 'platform/reliability' tab
+
+## CP-041 2026-10-30T22:24:45+08:00 T-058 TESTING
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-058 (TESTING)
+- Completed steps: Reliability engine, dashboard, restore script, docs (audit, backup and recovery with RPO/RTO, runbooks, report); reliability.test 4/4, test:reliability-ui 7/7
+- Incomplete steps: Full suites (scratchpad/suite9), manifest, commit, push, PR on phase-08-finance
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.css; office/console-platform.js; office/console.html; office/console.js; package.json; scripts/start.mjs; src/ai-provider-shim.js; src/automation/catalogue.js; src/job-queue.js; src/s3-files.js; src/server.js; docs/phase-09/AUDIT.md; docs/phase-09/BACKUP_AND_RECOVERY.md; docs/phase-09/PROMPT.md; docs/phase-09/REPORT.md; docs/phase-09/RUNBOOKS.md; office/console-reliability.js; scripts/reliability.test.mjs; scripts/restore-database.mjs; scripts/test-reliability-ui.mjs; src/reliability/backup.js; src/reliability/heal.js; src/reliability/index.js; src/reliability/monitor.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-09-reliability
+- Commit: e5c8c8c (Phase 08: finance, payments and compliance automation); branch not on remote
+- Recovery snapshot: refs/recovery/phase-09-reliability/20261030T142445Z (65ef189)
+- Known errors: none
+- Next exact action: Read scratchpad/suite9/summary.txt; fix any failure; commit and open PR
+
+## CP-042 2026-10-30T22:41:09+08:00 T-058 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-058 (COMPLETED)
+- Completed steps: Phase 09 complete
+- Incomplete steps: Owner: merge #33-#38 then Phase 09 PR; AUDIT.md owner items; T-055, T-057, T-059, T-060
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.css; office/console-platform.js; office/console.html; office/console.js; package.json; qa/reports/A11Y-PERF.md; qa/reports/performance.json; scripts/start.mjs; src/ai-provider-shim.js; src/automation/catalogue.js; src/job-queue.js; src/s3-files.js; src/server.js; docs/phase-09/AUDIT.md; docs/phase-09/BACKUP_AND_RECOVERY.md; docs/phase-09/PROMPT.md; docs/phase-09/REPORT.md; docs/phase-09/RUNBOOKS.md; office/console-reliability.js; scripts/reliability.test.mjs; scripts/restore-database.mjs; scripts/test-reliability-ui.mjs; src/reliability/backup.js; src/reliability/heal.js; src/reliability/index.js; src/reliability/monitor.js
+- Tests executed: npm test, test:unit, reliability.test, test:reliability-ui, all UI suites, visual, a11y-perf, secrets
+- Test results: all pass
+- Git branch: phase-09-reliability
+- Commit: e5c8c8c (Phase 08: finance, payments and compliance automation); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner's next phase prompt

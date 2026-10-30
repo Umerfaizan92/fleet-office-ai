@@ -42,6 +42,9 @@ import { installCommsRoutes } from './comms/routes.js';
 import { createFinance } from './finance/service.js';
 import { createPlatformFinance } from './finance/platform.js';
 import { installFinanceRoutes } from './finance/routes.js';
+import { createReliability } from './reliability/index.js';
+import { ACTIONS as AUTOMATION_ACTIONS } from './automation/catalogue.js';
+import { aiOutcomeHooks } from './ai-provider-shim.js';
 import { sendEnquiryNotification, sendSaasVerificationEmail, sendSupportEscalationEmail, sendVoiceEnquiryNotification, sendPlatformAnnouncementEmail, sendWorkerOnboardingInviteEmail, sendBrandedEmail } from './mailer.js';
 import { createSocialStatsService } from './social-stats.js';
 import { INDUSTRY_REGISTRY, GENERAL_REGULATORY_SOURCES, industryByCode, industrySources } from './industry-registry.js';
@@ -857,6 +860,9 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 // Phase 02: every response carries an X-Request-Id; LOG_FORMAT=json writes one structured line per API request.
 app.use(requestContext({ env }));
+// Phase 09: request counts per route group for the reliability monitor (installed once the monitor exists).
+let reliabilityMiddleware=null;
+app.use((req,res,next)=>reliabilityMiddleware?reliabilityMiddleware(req,res,next):next());
 
 app.use(
   helmet({
@@ -5851,6 +5857,15 @@ automationEvents.emit=(org,type,payload,opts)=>{try{return automationEngine.emit
 seoEngineRef.current=automationEngine;
 commsEngineRef.current=automationEngine;
 financeEngineRef.current=automationEngine;
+// Phase 09: backups, monitoring, alerting, bounded self-healing and the daily health summary (Founder Console > Reliability).
+const reliability=createReliability({db,env,queue:jobQueue,storage:objectStorage,databasePath,uploadRoot,engineRef:{get current(){return automationEngine}},
+  mail:async({to,subject,heading,paragraphs})=>sendBrandedEmail(env,{to,subject,rendered:renderEmail(platformBrand(env),{heading,paragraphs}),kind:'platform'}),
+  isSafeAutomationRun:(runId)=>{const r=runId&&db.prepare('SELECT action FROM automation_runs WHERE id=?').get(runId);const a=r&&AUTOMATION_ACTIONS[r.action];return Boolean(a&&a.level===1&&a.effect==='output')},
+  cacheFiles:[{file:path.join(backendRoot,'data','social-stats-cache.json'),maxAgeMs:24*3600000}]});
+reliabilityMiddleware=reliability.monitor.middleware();
+aiOutcomeHooks.add(o=>reliability.monitor.recordService('ai',o.ok,{ms:o.ms,detail:o.error||o.provider}));
+reliability.installRoutes(app,{platform:platformIdentity});
+if(process.env.NODE_ENV!=='test')reliability.start();
 installFinanceRoutes(app,{db,finance:subscriberFinance,platformFinance,requireSaasUser,requireSaasRole,platform:platformIdentity});
 if(process.env.NODE_ENV!=='test'){const runFinanceDaily=()=>platformFinance.daily().catch(e=>console.warn('[finance] daily run failed:',e.message));setTimeout(runFinanceDaily,60000).unref?.();setInterval(runFinanceDaily,6*3600000).unref?.();}
 installCommsRoutes(app,{db,comms:commsService,voice:voiceFlow,engine:automationEngine,requireSaasUser,requireSaasRole,platform:platformIdentity,saasAudit,createApproval:createWorkspaceApproval});

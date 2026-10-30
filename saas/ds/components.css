@@ -5,8 +5,8 @@
 .sp-site{margin:0;background:var(--sp-midnight);color:var(--sp-fg);font:400 var(--sp-fs-md)/var(--sp-lh-body) var(--sp-font-ui);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:clip}
 .sp-site *,.sp-site *::before,.sp-site *::after{box-sizing:border-box}
 .sp-site img,.sp-site svg,.sp-site canvas{display:block;max-width:100%}
-.sp-site a{color:inherit;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:.2em}
-.sp-site a:hover{text-decoration-color:currentColor}
+:where(.sp-site) a{color:inherit;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:.2em}
+:where(.sp-site) a:hover{text-decoration-color:currentColor}
 .sp-site h1,.sp-site h2,.sp-site h3,.sp-site h4{margin:0;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
 .sp-site p{margin:0;text-wrap:pretty}
 .sp-site :focus-visible{outline:3px solid var(--sp-focus);outline-offset:3px;border-radius:6px}

@@ -40,7 +40,14 @@
     "security:secrets": "node scripts/secret-scan.mjs",
     "storage:verify": "node scripts/verify-storage.mjs",
     "backup:restore-drill": "node scripts/restore-drill.mjs",
-    "deploy:check": "node scripts/post-deploy-check.mjs"
+    "deploy:check": "node scripts/post-deploy-check.mjs",
+    "build:ds": "node scripts/build-ds.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "check:site": "node scripts/build-site.mjs --check",
+    "test:site-ui": "node scripts/test-site-ui.mjs",
+    "test:visual": "node scripts/test-visual.mjs",
+    "test:visual:update": "node scripts/test-visual.mjs --update",
+    "report:a11y-perf": "node scripts/report-a11y-perf.mjs"
   },
   "engines": {
     "node": "22.x"
@@ -64,8 +71,11 @@
     "qs": "^6.16.1"
   },
   "devDependencies": {
+    "axe-core": "4.14.0",
     "esbuild": "0.25.12",
+    "pixelmatch": "7.2.0",
     "playwright": "1.62.1",
+    "pngjs": "7.0.0",
     "three": "0.186.1"
   }
 }

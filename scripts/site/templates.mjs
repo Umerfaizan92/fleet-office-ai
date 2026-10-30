@@ -272,7 +272,7 @@ function workflowDemo() {
       </div>
       ${Object.entries(flows).map(([k, [, steps]], i) => `<div class="sp-flow__panel" role="tabpanel" id="flow-panel-${k}" aria-labelledby="flow-tab-${k}"${i ? ' hidden' : ''} data-flow-panel="${k}">
         <ol class="sp-flow__steps">${steps.map(([ic, text, kind]) => `<li class="sp-flow__step" data-kind="${kind}">${icon(ic)}<span>${esc(text)}</span></li>`).join('')}</ol>
-        <div class="sp-flow__controls"><button type="button" class="sp-btn sp-btn--primary" data-flow-approve>Approve</button><button type="button" class="sp-btn sp-btn--quiet" data-flow-reset>Start again</button><span class="sp-flow__status" data-flow-status aria-live="polite"></span></div>
+        <div class="sp-flow__controls"><button type="button" class="sp-btn sp-btn--primary" data-flow-approve disabled>Approve</button><button type="button" class="sp-btn sp-btn--quiet" data-flow-reset>Start again</button><span class="sp-flow__status" data-flow-status aria-live="polite"></span></div>
       </div>`).join('')}
     </div>
   </div>
@@ -427,7 +427,7 @@ function callPlayer() {
     <div class="sp-call__head"><span class="sp-chat__avatar" aria-hidden="true"><span></span></span><div><strong>Sample call</strong><span class="sp-muted sp-small">Harbour Plumbing is an example business</span></div>
       <button type="button" class="sp-btn sp-btn--primary" data-call-play aria-pressed="false">${icon('play')}<span>Play sample call</span></button></div>
     <div class="sp-wave" aria-hidden="true">${Array.from({ length: 28 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
-    <ol class="sp-call__lines" data-call-lines aria-live="polite">
+    <ol class="sp-call__lines" data-call-lines aria-live="polite" tabindex="0" aria-label="Call transcript">
       ${RECEPTIONIST_CALL.map(([who, text], i) => `<li class="sp-line sp-line--${who}" data-line="${i}"${i ? ' hidden' : ''}><b>${who === 'ai' ? 'Receptionist' : who === 'caller' ? 'Caller' : 'In your workspace'}</b><span>${esc(text)}</span></li>`).join('')}
     </ol>
     <button type="button" class="sp-btn sp-btn--quiet sp-small" data-call-all>Show the whole transcript</button>

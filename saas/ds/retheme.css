@@ -48,7 +48,7 @@ html:not([data-theme="light"]) :is(.site-header,.portal-topbar,.workspace-topbar
   background-color:color-mix(in srgb,var(--sp-midnight) 78%,transparent);
   backdrop-filter:blur(var(--sp-blur)) saturate(1.3);-webkit-backdrop-filter:blur(var(--sp-blur)) saturate(1.3);
 }
-html:not([data-theme="light"]) :is(.portal-rail,.sidebar){background-color:color-mix(in srgb,#090E19 92%,transparent)}
+html:not([data-theme="light"]) :is(.portal-rail,.sidebar){background-color:#090E19}
 
 /* Live and AI states are cyan everywhere. */
 :is(.live-dot,.pulse-dot,.manual-live-dot,.sp-live-dot,.status-dot.live,.ai-status-dot,[data-live-indicator]){background:var(--sp-cyan)!important;box-shadow:0 0 0 0 transparent}
@@ -76,3 +76,23 @@ html:not([data-theme="light"]) .gx-tile{background:radial-gradient(240px 160px a
 html[data-theme="light"] .gx-tile{background:radial-gradient(240px 160px at var(--mx,50%) var(--my,0%),var(--sp-gold-soft),transparent 70%),#FFFFFF;border-color:var(--sp-line)}
 html:not([data-theme="light"]) :is(.gx-shortcut,.gx-workspace-links){background:linear-gradient(140deg,color-mix(in srgb,var(--sp-gold) 4%,transparent),transparent 60%),var(--sp-graphite-1);border-color:var(--sp-line)}
 html[data-theme="light"] :is(.gx-shortcut,.gx-workspace-links){background:linear-gradient(140deg,var(--sp-gold-soft),transparent 60%),#FFFFFF;border-color:var(--sp-line)}
+
+/* The release notice lost its inner padding to a broad unified-ui.css reset (dialog .release-card{padding:0}); restore it. */
+html body dialog.release-dialog .release-card{padding:28px 28px 22px}
+@media (max-width:520px){html body dialog.release-dialog .release-card{padding:22px 18px 18px}}
+html:not([data-theme="light"]) dialog.release-dialog{background:var(--sp-graphite-1);border-color:color-mix(in srgb,var(--sp-gold) 26%,var(--sp-line))}
+
+/* Light-theme contrast fixes found by axe (small helper text and the dark bars that stay dark in light mode). */
+html[data-theme="light"] :is(.form-section-head small,.security-baseline span,.progress-steps span){color:var(--sp-fg-muted)}
+html[data-theme="light"] .join-bar>span{color:#C9D1DF}
+
+/* /saas/ landing in light mode: its header, guide card and member bar stay dark, so they keep dark-theme text colours. */
+html[data-theme="light"] :is(.site-header,.guide-card,.join-bar){
+  --sp-fg:#EDF1F8;--sp-fg-2:#C9D1DF;--sp-fg-muted:#95A1B6;--sp-gold:#E6B455;--sp-line:#26314A;
+  --text:#EDF1F8;--text-2:#C9D1DF;--muted:#95A1B6;--muted-2:#95A1B6;--sp-text:#EDF1F8;--sp-muted:#95A1B6;--brand:#E6B455;--brand-2:#F0C46E;--sp-gold-hover:#F0C46E;--gold:#E6B455;--gold-hi:#F0C46E;--sp-accent:#E6B455;
+  color:#EDF1F8;
+}
+html[data-theme="light"] .site-header .brand small{color:#A9B3C4}
+html[data-theme="light"] .hero-actions a.secondary{color:var(--sp-fg);border-color:var(--sp-line)}
+html[data-theme="light"] .hero-lead{color:var(--sp-fg-2)}
+html[data-theme="light"] .guide-card select{color:#0C1424}

@@ -1,0 +1,422 @@
+{
+  "standard": "WCAG 2.2 AA (axe-core 4.14.0 rules)",
+  "results": [
+    {
+      "page": "home",
+      "url": "/",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "home",
+      "url": "/",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "features",
+      "url": "/features",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "features",
+      "url": "/features",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "feature-money",
+      "url": "/features/money",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "feature-money",
+      "url": "/features/money",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "industries",
+      "url": "/for",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "industries",
+      "url": "/for",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "industry-clinics",
+      "url": "/for/clinics",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "industry-clinics",
+      "url": "/for/clinics",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "pricing",
+      "url": "/pricing",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "pricing",
+      "url": "/pricing",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "receptionist",
+      "url": "/receptionist",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "receptionist",
+      "url": "/receptionist",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "stories",
+      "url": "/stories",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "stories",
+      "url": "/stories",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "help",
+      "url": "/help",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "help",
+      "url": "/help",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "contact",
+      "url": "/contact",
+      "group": "site",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "contact",
+      "url": "/contact",
+      "group": "site",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "legacy-landing",
+      "url": "/saas/",
+      "group": "existing",
+      "width": 1440,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 1,
+          "targets": [
+            ".brand[href$=\"saas/\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "legacy-landing",
+      "url": "/saas/",
+      "group": "existing",
+      "width": 390,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 1,
+          "targets": [
+            ".brand[href$=\"saas/\"]"
+          ]
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "help": "Scrollable region must have keyboard access",
+          "count": 1,
+          "targets": [
+            "#chat-log"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "legacy-landing",
+      "url": "/saas/",
+      "group": "existing",
+      "width": 1440,
+      "theme": "light",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 1,
+          "targets": [
+            ".brand[href$=\"saas/\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "url": "/saas/sign-in.html",
+      "group": "existing",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "sign-in",
+      "url": "/saas/sign-in.html",
+      "group": "existing",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "sign-in",
+      "url": "/saas/sign-in.html",
+      "group": "existing",
+      "width": 1440,
+      "theme": "light",
+      "violations": []
+    },
+    {
+      "page": "create-account",
+      "url": "/saas/create-account.html",
+      "group": "existing",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "create-account",
+      "url": "/saas/create-account.html",
+      "group": "existing",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "create-account",
+      "url": "/saas/create-account.html",
+      "group": "existing",
+      "width": 1440,
+      "theme": "light",
+      "violations": []
+    },
+    {
+      "page": "workspace",
+      "url": "/saas/workspace.html",
+      "group": "app",
+      "width": 1440,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 8,
+          "targets": [
+            ".search-button",
+            ".gx-gold.gx-tile[data-jump=\"comms\"]",
+            ".gx-good.gx-tile[data-jump=\"approvals\"]",
+            ".gx-gold.gx-tile[data-jump=\"jobs\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "workspace",
+      "url": "/saas/workspace.html",
+      "group": "app",
+      "width": 390,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 7,
+          "targets": [
+            ".gx-gold.gx-tile[data-jump=\"comms\"]",
+            ".gx-good.gx-tile[data-jump=\"approvals\"]",
+            ".gx-gold.gx-tile[data-jump=\"jobs\"]",
+            ".gx-good.gx-tile[data-jump=\"workforce\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "workspace",
+      "url": "/saas/workspace.html",
+      "group": "app",
+      "width": 1440,
+      "theme": "light",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 8,
+          "targets": [
+            ".search-button",
+            ".gx-gold.gx-tile[data-jump=\"comms\"]",
+            ".gx-good.gx-tile[data-jump=\"approvals\"]",
+            ".gx-gold.gx-tile[data-jump=\"jobs\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "workspace-money",
+      "url": "/saas/workspace.html#money",
+      "group": "app",
+      "width": 1440,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 3,
+          "targets": [
+            ".search-button",
+            "button[aria-label=\"Expand main navigation\"]",
+            ".copilot-launch"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "workspace-money",
+      "url": "/saas/workspace.html#money",
+      "group": "app",
+      "width": 390,
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 2,
+          "targets": [
+            "button[aria-label=\"Expand main navigation\"]",
+            ".copilot-launch"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "workspace-money",
+      "url": "/saas/workspace.html#money",
+      "group": "app",
+      "width": 1440,
+      "theme": "light",
+      "violations": [
+        {
+          "id": "label-content-name-mismatch",
+          "impact": "serious",
+          "help": "Elements must have their visible text as part of their accessible name",
+          "count": 3,
+          "targets": [
+            ".search-button",
+            "button[aria-label=\"Expand main navigation\"]",
+            ".copilot-launch"
+          ]
+        }
+      ]
+    },
+    {
+      "page": "founder-console",
+      "url": "/office/",
+      "group": "app",
+      "width": 1440,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "founder-console",
+      "url": "/office/",
+      "group": "app",
+      "width": 390,
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "page": "founder-console",
+      "url": "/office/",
+      "group": "app",
+      "width": 1440,
+      "theme": "light",
+      "violations": []
+    }
+  ]
+}

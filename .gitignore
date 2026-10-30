@@ -21,3 +21,7 @@ dist/
 *.db-shm
 
 bin/
+
+# Runtime cache, and visual-test screenshots (baselines are made locally: npm run test:visual:update)
+data/social-stats-cache.json
+qa/visual/

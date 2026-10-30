@@ -83,7 +83,7 @@
         let i = 0;
         const next = () => {
           if (i < gateAt) { steps[i].setAttribute('data-on', ''); i += 1; panel._t = setTimeout(next, reduce() ? 0 : 650); return; }
-          steps[gateAt].setAttribute('data-waiting', ''); approve.disabled = false; status.textContent = 'Waiting for your approval'; approve.focus({ preventScroll: true });
+          steps[gateAt].setAttribute('data-waiting', ''); approve.disabled = false; status.textContent = 'Waiting for your approval';
         };
         clearTimeout(panel._t); next();
         approve.onclick = () => {

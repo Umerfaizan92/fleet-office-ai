@@ -44,6 +44,10 @@ export const SUBSCRIBER = [
   ['Notifications', ['b01/home'], ['/api/saas/notifications', '/api/saas/notification-preferences'], ['test:ui', 'npm test (notifications)'], 'Push and email delivery need providers'],
   ['Help and support', ['b08/help', 'b08/support-access'], ['/api/saas/support-access'], ['test:ui', 'npm test (support cases)'], null],
   ['Integrations', ['b08/connections'], ['/api/saas/integrations/self-service'], ['integration:test', 'test:ui'], 'Each provider’s credentials'],
+  ['SEO Command Centre and reports', ['b06/seo', 'b06/reports', 'b06/analytics'], ['/api/saas/seo/command', '/api/saas/seo/dashboard', '/api/saas/seo/reports'], ['seo-platform.test', 'test:seo-ui'], 'Search Console and Analytics data need a Google connection'],
+  ['Technical SEO audit and keyword clusters', ['b06/audit', 'b06/keywords'], ['/api/saas/seo/audit', '/api/saas/seo/keywords'], ['seo-audit.test', 'seo-units.test', 'seo-platform.test'], null],
+  ['Google Integration Centre and local SEO', ['b06/google', 'b06/local'], ['/api/saas/seo/google', '/api/saas/seo/local'], ['seo-units.test', 'seo-platform.test', 'test:seo-ui'], 'Google OAuth client, Business Profile API access, PageSpeed key; not yet verified against live Google'],
+  ['Content Studio and Website Builder', ['b06/studio', 'b06/builder'], ['/api/saas/seo/studio', '/api/saas/seo/sites'], ['seo-platform.test', 'test:seo-ui'], 'AI drafts need an AI provider (templates otherwise)'],
   ['AI automations and approvals', ['b01/automations', 'b01/approvals'], ['/api/saas/automation/engine', '/api/saas/automation/workflows', '/api/saas/automation/runs', '/api/saas/automation/audit', '/api/saas/approvals'], ['automation-governance.test', 'automation-engine.test', 'test:automations-ui'], 'AI analysis needs an AI provider (built-in rules otherwise); sending needs an email provider'],
   ['Automation settings', ['b08/automation'], ['/api/saas/automation', '/api/saas/approvals', '/api/saas/payments/settings'], ['business-ops.test', 'test:pipeline-ui'], 'Inbox AI drafts need an AI provider; customer reminders need email or SMS']
 ];
@@ -54,6 +58,7 @@ export const FOUNDER = [
   ['Platform billing', ['f03/invoices', 'f03/legacy:subpay'], ['/api/operator/invoices'], ['npm test (platform invoices)'], 'Stripe for platform card payments'],
   ['Revenue analytics', ['f01/platform/revenue'], ['/api/operator/platform/revenue'], ['platform-health.test', 'test:console-ui'], 'Figures are Super Pro records; reconcile with Stripe'],
   ['Infrastructure status', ['f01/system'], ['/api/operator/system', '/api/operator/jobs'], ['platform-health.test', 'test:console-ui'], null],
+  ['Platform SEO and website', ['f06/platform/seo'], ['/api/operator/seo/command', '/api/operator/seo/audit'], ['seo-platform.test', 'test:seo-ui'], 'Google service account for Search Console and GA4'],
   ['Platform automations', ['f07/platform/automation'], ['/api/operator/automation', '/api/operator/automation/audit'], ['automation-governance.test', 'test:automations-ui', 'test:console-ui'], 'Deployments and key rotation are always done by a person'],
   ['Storage and backups', ['f01/platform/backups'], ['/api/operator/platform/backups'], ['platform-health.test', 'storage:verify', 'backup:restore-drill'], 'AWS S3 buckets and keys'],
   ['AI usage and costs', ['f01/platform/ai-usage'], ['/api/operator/platform/ai-usage'], ['platform-health.test'], 'Provider cost is not recorded by Super Pro'],

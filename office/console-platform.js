@@ -91,6 +91,11 @@
           table([['profile', 'Complimentary profile', label], ['count', 'Businesses']], d.feature_access.complimentary_grants_by_profile, 'No complimentary grants.'))
       );
     },
+    // Phase 06: SEO Command Centre, audit, clusters, Google, content, analytics and reports for Super Pro's own website.
+    async 'platform/seo'(host, api) {
+      if (!window.SuperProSeo) { host.append(note('The SEO module did not load. Reload the page.')); return; }
+      await window.SuperProSeo.mount(host, '/api/operator/seo', api).render('seocentre');
+    },
     // Phase 05: platform automations, platform approvals (Level 3), manual completion, platform-wide pause and audit.
     async 'platform/automation'(host, api) {
       const d = await api('/api/operator/automation');

@@ -66,6 +66,41 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: src/automation/engine.js, render.yaml (needs owner approval)
 - Acceptance: Owner-approved plan; schedules still run once per period
 
+## T-049 Phase 06: autonomous SEO, Google and website intelligence platform
+- Status: IN_PROGRESS
+- Added: 2026-10-30
+- Requirement: docs/phase-06/PROMPT.md (verbatim): modules A-H, deliverables 1-10, strict account separation, no fabricated search data, no ranking guarantees, human approval for public claims and production releases
+- Files: src/seo/*, src/server.js, saas/workspace-seo-*.js, office/console-platform.js, scripts/*seo*.test.mjs, docs/phase-06/*
+- Acceptance: Contract and browser tests for every module; real crawler/audit tested against the running server; Google clients tested against documented response formats and a live self-test recorded when credentials and network exist; report lists anything not verified
+
+## T-050 Phase 06 follow-up: fix the public-site SEO findings
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Owner decision: legal pages noindex vs sitemap; shorten 7 long titles; add 3 meta descriptions; trim 3 long descriptions; responsive images; complete structured data; permanent redirect for /start (see docs/phase-06/REPORT.md)
+- Files: site/, src/server.js sitemap
+- Acceptance: Platform audit shows none of these findings; test:visual and site tests pass
+
+## T-051 Phase 06 follow-up: image re-encoding for the Website Builder
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Add an image library (sharp) to convert uploads to WebP/AVIF with sizes; needs owner approval for the new dependency on Render
+- Files: package.json, src/seo/*
+- Acceptance: Uploaded JPEG becomes WebP with srcset; Render build passes
+
+## T-052 Phase 06 follow-up: custom domains for builder sites
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Serve a business site on its own domain: DNS verification and certificates on Render (infrastructure change, owner approval)
+- Files: render.yaml, src/seo/routes.js
+- Acceptance: Owner-approved plan; domain ownership verified before serving
+
+## T-053 Phase 06: record live Google evidence after deploy
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: After deploy with Google credentials: run Check connection for each Google service and Sync; confirm seo_google_checks rows show ok=1 with real samples
+- Files: none (operational)
+- Acceptance: Each connected service shows Verified in the Google Integration Centre
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

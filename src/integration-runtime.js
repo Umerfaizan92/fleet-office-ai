@@ -80,7 +80,7 @@ export function createIntegrationRuntime({env,fetchImpl=globalThis.fetch,legacyS
   async function refreshToken(provider,bundle){
     if(!bundle?.refresh_token)throw new Error('This provider did not return a refresh token. Re-authorisation is required.');
     let next;
-    if(provider==='youtube'||provider==='google_business'){
+    if(provider==='youtube'||provider==='google_business'||provider==='google_seo'){
       next=await postForm('https://oauth2.googleapis.com/token',{client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,refresh_token:bundle.refresh_token,grant_type:'refresh_token'});
     }else if(provider==='tiktok'){
       next=await postForm('https://open.tiktokapis.com/v2/oauth/token/',{client_key:env.TIKTOK_CLIENT_KEY,client_secret:env.TIKTOK_CLIENT_SECRET,grant_type:'refresh_token',refresh_token:bundle.refresh_token});
@@ -99,7 +99,7 @@ export function createIntegrationRuntime({env,fetchImpl=globalThis.fetch,legacyS
   async function ensureFreshToken(provider,bundle){
     const current=normalizeToken(bundle||{},bundle||{});
     if(!expiring(current))return {bundle:current,refreshed:false};
-    if(['youtube','google_business','tiktok','x','snapchat'].includes(provider)&&current.refresh_token){
+    if(['youtube','google_business','google_seo','tiktok','x','snapchat'].includes(provider)&&current.refresh_token){
       return {bundle:await refreshToken(provider,current),refreshed:true};
     }
     if(!current.access_token)throw new Error('This connection has no usable access token. Re-authorise the provider.');
@@ -164,6 +164,11 @@ export function createIntegrationRuntime({env,fetchImpl=globalThis.fetch,legacyS
     }
     return {identity:{id:resources[0]?.id||'',label:resources[0]?.label||'Google Business Profile'},resources};
   }
+  async function testGoogleSeo(bundle){
+    const d=await requestJson('https://searchconsole.googleapis.com/webmasters/v3/sites',{headers:authHeaders(bundle)});
+    const resources=(d.siteEntry||[]).map(x=>({id:String(x.siteUrl),type:'search_console_property',label:String(x.siteUrl)+' ('+String(x.permissionLevel||'')+')'}));
+    return {identity:{id:resources[0]?.id||'',label:resources.length?resources.length+' Search Console propert'+(resources.length===1?'y':'ies'):'Google account'},resources};
+  }
   async function testX(bundle){
     const d=await requestJson('https://api.x.com/2/users/me?user.fields=id,name,username,profile_image_url',{headers:authHeaders(bundle)});
     const u=d.data||{};
@@ -185,6 +190,7 @@ export function createIntegrationRuntime({env,fetchImpl=globalThis.fetch,legacyS
     else if(provider==='tiktok')result=await testTikTok(fresh.bundle);
     else if(provider==='youtube')result=await testYouTube(fresh.bundle);
     else if(provider==='google_business')result=await testGoogleBusiness(fresh.bundle);
+    else if(provider==='google_seo')result=await testGoogleSeo(fresh.bundle);
     else if(provider==='x')result=await testX(fresh.bundle);
     else if(provider==='snapchat')result=await testSnapchat(fresh.bundle);
     else throw new Error('Live connection testing is not implemented for '+provider+'.');
@@ -194,7 +200,7 @@ export function createIntegrationRuntime({env,fetchImpl=globalThis.fetch,legacyS
     const token=String(bundle?.access_token||'');
     if(!token)return {remote_revoked:false,reason:'no_access_token'};
     try{
-      if(provider==='youtube'||provider==='google_business'){
+      if(provider==='youtube'||provider==='google_business'||provider==='google_seo'){
         await postForm('https://oauth2.googleapis.com/revoke',{token});
         return {remote_revoked:true};
       }

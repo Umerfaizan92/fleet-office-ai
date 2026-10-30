@@ -920,6 +920,7 @@ const integrationHelp={
   youtube:'Authorise the Google account and select the YouTube channel permitted for publishing and analytics.',
   snapchat:'Authorise the Snapchat business account through the provider consent flow when platform credentials are ready.',
   x:'Authorise the X account through X OAuth when the Super Pro app credentials are configured.',
+  google_seo:'Authorise Google, then choose your Search Console property and GA4 property in Website & Visibility > Google.',
   google_business:'Authorise Google and select the Business Profile locations this workspace may manage.',
   website:'Configure your website form/webhook endpoint. No social-media password is required.',
   email_sms:'Connect the platform-managed email/SMS provider and configure sender identity/consent rules.'

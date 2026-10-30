@@ -80,7 +80,7 @@ or credentials were changed, and no production data was touched. The prompt is i
 | Check | Result |
 |---|---|
 | `npm test` (Render build check) | 73/73 |
-| `npm run test:unit` (all contract test files) | 152/152, including `automation.test` 7/7 and `automation-engine.test` 8/8 |
+| `npm run test:unit` (all contract test files) | 155/155, including `automation-governance.test` 7/7 and `automation-engine.test` 8/8; the existing stock and calendar `automation.test` (3) is unchanged |
 | `npm run test:automations-ui` (real browser) | 11/11: builder, dry run, activity, approvals actions, rules, pause, audit, refusal shown as failure, Founder Console, axe WCAG 2.2 AA clean, phone and iPad fit |
 | `npm run test:ui` | 34/34 |
 | `npm run test:pipeline-ui` / `test:console-ui` | 15/15 / 14/14 (new founder tab included) |

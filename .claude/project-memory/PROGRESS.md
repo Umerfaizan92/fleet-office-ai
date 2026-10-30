@@ -7,8 +7,8 @@ Last updated: 2026-10-30 (P03.5 completed).
 
 - Default branch `main` = `8318b9e` on GitHub (last commit before this work).
 - Local branch `phase-02-infrastructure-security` = `5cf7377` (P02).
-- Local branch `phase-03-cinematic-design` = P02 + P03 + P03.5 commits. **Not pushed**: the cloud session has no
-  GitHub write access. The owner has `super-pro-phase-02-03.bundle` and pushes from PowerShell.
+- Branch `phase-03-cinematic-design` = P02 + P03 + P03.5 commits, pushed to GitHub on 2026-10-30 after the owner
+  installed the Claude GitHub App on this repository. Pull request into main awaits the owner's review.
 - Other tools (Codex, Cursor) have their own remote branches (`codex/*`, `cursor/*`). Do not modify or delete them;
   check `git log origin/main` for new commits before starting work.
 

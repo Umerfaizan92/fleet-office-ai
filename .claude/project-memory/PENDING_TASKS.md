@@ -10,9 +10,10 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
   labelled "Open Super Pro AI co-pilot"; dashboard tiles' labels do not contain their visible text.
 - Acceptance: axe `label-content-name-mismatch` 0 on workspace; tests updated in the same commit.
 
-## T-038 Publish P02/P03 to GitHub (owner action)
-- Status: BLOCKED (cloud session cannot push; GitHub account not linked)
-- Next: owner runs the PowerShell steps in SESSION_HANDOVER.md, or links GitHub so Claude can push.
+## T-038 Publish P02/P03 to GitHub
+- Status: IN_PROGRESS
+- Requirement: get the P02, P03 and P03.5 commits onto GitHub without touching main.
+- Acceptance: branch `phase-03-cinematic-design` on GitHub matches the local branch; pull request into main open for the owner's review (no merge, no deploy).
 
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here

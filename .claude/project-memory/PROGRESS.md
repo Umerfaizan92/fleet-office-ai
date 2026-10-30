@@ -52,8 +52,13 @@ See task T-035 in PENDING_TASKS.md.
 |---|---|---|
 | `npm test` | syntax, migrations, permissions, pipeline, contract tests, quality, manifest | 73/73 |
 | `npm run test:unit` | contract tests (`scripts/*.test.mjs`) | 127/127 |
-| `npm run test:ui` | Business OS and Console browser checks | 33/33 |
+| `npm run test:ui` | Business OS and Console browser checks | 34/34 |
 | `npm run test:site-ui` | public website browser checks | 15/15 |
 | `npm run test:visual` | 51 screens vs local baselines (`test:visual:update` makes them) | 51 same |
 | `npm run report:a11y-perf` | axe WCAG 2.2 AA and throttled Web Vitals | 0 new-site issues, all budgets met |
 | `npm run smoke:test`, `integration:test`, `security:secrets`, `verify:manifest` | runtime, integrations, secrets, manifest | pass |
+
+## Log
+
+One line per notable change, newest last (written by `npm run memory:task -- progress`).
+- 2026-10-30: T-036 done: live-update notices stay right of the folded rail on phones (finished in the recovery drill by a new session)

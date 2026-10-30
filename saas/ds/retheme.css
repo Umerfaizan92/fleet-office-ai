@@ -96,3 +96,6 @@ html[data-theme="light"] .site-header .brand small{color:#A9B3C4}
 html[data-theme="light"] .hero-actions a.secondary{color:var(--sp-fg);border-color:var(--sp-line)}
 html[data-theme="light"] .hero-lead{color:var(--sp-fg-2)}
 html[data-theme="light"] .guide-card select{color:#0C1424}
+
+/* T-036: on phones the live-update notices sat under the folded navigation rail (--portal-rail). Keep them right of it. */
+@media (max-width:760px){body:has(.portal-rail) .gds-live-toasts{right:10px!important;width:calc(100vw - var(--portal-rail,56px) - 20px)!important}}

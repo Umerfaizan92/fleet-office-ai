@@ -33,3 +33,11 @@ Newest last. Never edit evidence after the fact; add a correcting entry instead.
 ## T-006 Visual regression, accessibility and performance (P03)
 - Files: `scripts/test-visual.mjs`, `scripts/report-a11y-perf.mjs`, `scripts/visual/session.mjs`, `qa/reports/*`, `docs/design/DESIGN_SYSTEM.md`.
 - Evidence: 51 screens identical on repeat runs; axe 0 issues on new site; LCP 0.7–1.2 s throttled mobile; commit `6a5ddc8`; `npm test` 73/73.
+
+## T-036 Fix "Live update" notice sliding under the folded rail on phones (P03 follow-up)
+- Requirement: on 390 px the Business OS "Live update" notice is partly hidden behind the folded navigation rail.
+  It must sit fully inside the content area. Existed before P03.
+- Files: likely `saas/ds/retheme.css` (no layout changes to other elements).
+- Acceptance: notice fully visible at 390 and 768; `test:ui` 33/33; `test:visual` only the expected screens change.
+- Files changed: saas/ds/retheme.css (+ .br/.gz); scripts/test-ui.mjs
+- Evidence: test:ui 34/34 incl. new notice-vs-rail check at 390/700/768/1440 (fails without the rule); test:visual 51 same; npm test 73/73; public-site tests 11/11. Fix finished by a fresh Claude Code session in the recovery drill (recorded 2026-10-30 on phase-03-cinematic-design at 98f6389)

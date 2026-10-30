@@ -19,13 +19,6 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
   (start task → snapshot → lose working tree → new session → resume → finish without repeating) passes.
 - Remaining: see SESSION_HANDOVER.md.
 
-## T-036 Fix "Live update" notice sliding under the folded rail on phones (P03 follow-up)
-- Status: IN_PROGRESS
-- Requirement: on 390 px the Business OS "Live update" notice is partly hidden behind the folded navigation rail.
-  It must sit fully inside the content area. Existed before P03.
-- Files: likely `saas/ds/retheme.css` (no layout changes to other elements).
-- Acceptance: notice fully visible at 390 and 768; `test:ui` 33/33; `test:visual` only the expected screens change.
-
 ## T-037 Accessible names that match visible text in the Business OS (P03 follow-up)
 - Status: NOT_STARTED (needs owner approval: existing tests use the current labels)
 - Requirement: "Pin navigation" button labelled "Expand main navigation"; co-pilot button showing "Ask Super Pro"

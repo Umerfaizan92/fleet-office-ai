@@ -4,7 +4,7 @@ Ordered: the first task whose status is not COMPLETED is the one to resume. Stat
 BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS.md with its evidence.
 
 ## T-035 Persistent autosave, checkpoint and resume system (P03.5)
-- Status: IN_PROGRESS
+- Status: TESTING
 - Requirement (owner prompt, 2026-10-30, summarised): persistent project memory in `CLAUDE.md` and
   `.claude/project-memory/` (MASTER_PLAN, PROGRESS, COMPLETED_TASKS, PENDING_TASKS, DECISIONS, ERROR_LOG,
   SESSION_HANDOVER, CHECKPOINTS); task IDs and statuses; checkpoints with timestamp, phase, task, steps, files, tests,

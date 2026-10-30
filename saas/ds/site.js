@@ -23,7 +23,7 @@
     if (hero) {
       const conn = navigator.connection || {};
       const forced = /[?&]force3d=1/.test(location.search);
-      const capable = forced || !reduce() && !conn.saveData && !/2g/.test(conn.effectiveType || '') && (navigator.hardwareConcurrency || 4) >= 4 && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
+      const capable = !reduce() && (forced || matchMedia('(min-width: 760px)').matches) && !conn.saveData && !/2g/.test(conn.effectiveType || '') && (navigator.hardwareConcurrency || 4) >= 4 && (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
       if (capable && !/[?&]static3d=1/.test(location.search)) {
         const go = () => import('/saas/ds/hero-3d.js?v=20261030').then((m) => m.mountHero(hero, { quality: innerWidth < 760 || (navigator.deviceMemory || 8) < 4 ? 'low' : 'high' })).catch(() => {});
         const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300));

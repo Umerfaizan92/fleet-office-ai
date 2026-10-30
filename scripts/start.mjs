@@ -6,13 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { prepareStorage } from '../src/diagnostics.js';
-import { makeClient, restoreUploads } from '../src/s3-files.js';
-import { backupBucket, applyBackupEnv, awsVariableNames } from '../src/backup-env.js';
+import { assertIsolatedPreview } from '../src/preview-preflight.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const env = process.env;
+assertIsolatedPreview(env);
+const { prepareStorage } = await import('../src/diagnostics.js');
+const { makeClient, restoreUploads } = await import('../src/s3-files.js');
+const { backupBucket, applyBackupEnv, awsVariableNames } = await import('../src/backup-env.js');
 const bucket = backupBucket(env), fileDir = env.BACKUP_FILE_DIR;
 const creds = applyBackupEnv(env); // trims stray spaces, finds keys saved under another name, and gives every part the standard names
 if (bucket && (!creds.id || !creds.secret)) {

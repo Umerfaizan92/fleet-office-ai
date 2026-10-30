@@ -1,5 +1,7 @@
 # Master Plan v2: implementation and release status
 
+> **31 October security update:** Production promotion remains on hold. Preview isolation failed at runtime before the late seed check; PR #41 introduces an earlier preflight and runtime regression tests. Current verification, fresh production snapshot evidence and outstanding release gates are in [security continuation](SECURITY-CONTINUATION-2026-10-31.md).
+
 Date: 29 October 2026 (Australia/Perth). Base: baa55d246024eacfa458c1d1cc28204d110b2c73.
 Branch: codex/superpro-two-portals-v2. Production promotion: **ON HOLD**.
 

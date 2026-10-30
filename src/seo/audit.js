@@ -8,7 +8,7 @@
 // Honesty rules: a check that cannot be measured from the HTML says "not measured" (Core Web Vitals without PageSpeed
 // field or lab data, external links that could not be reached). Nothing is guessed.
 import crypto from 'node:crypto';
-import { extractJsonLd, robotsAllows } from '../visibility.js';
+import { extractJsonLd, robotsAllows, publicHost } from '../visibility.js';
 
 const UA = 'SuperProSEOAudit/1.0 (+https://superpro.ai/answers.html)';
 const strip = (h) => String(h || '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").replace(/\s+/g, ' ').trim();
@@ -54,14 +54,21 @@ export function parseSitemap(xml) {
 }
 
 /* ------------------------------------------------------------------ crawling --- */
-export async function crawlSite(startUrl, { fetchImpl = globalThis.fetch, resolveHost = async () => true, maxPages = 40, timeoutMs = 8000, ownSite = false, checkExternal = 15, concurrency = 4, scopePath = '/', now = () => Date.now() } = {}) {
+export async function crawlSite(startUrl, { fetchImpl = globalThis.fetch, resolveHost = publicHost, maxPages = 40, timeoutMs = 8000, ownSite = false, checkExternal = 15, concurrency = 4, scopePath = '/', now = () => Date.now() } = {}) {
   let start; try { start = new URL(startUrl); } catch { return { ok: false, error: 'The website address is not valid.' }; }
   if (!/^https?:$/.test(start.protocol)) return { ok: false, error: 'Only http and https websites can be audited.' };
   if (!ownSite && !(await resolveHost(start.hostname))) return { ok: false, error: 'Only public websites can be audited.' };
   const started = now();
+  const allowedTarget = async (value) => {
+    let target; try { target = new URL(value); } catch { return false; }
+    if (!/^https?:$/.test(target.protocol)) return false;
+    if (ownSite && target.origin === start.origin) return true;
+    try { return Boolean(await resolveHost(target.hostname)); } catch { return false; }
+  };
   async function get(url, { method = 'GET', accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.5' } = {}) {
     const chain = []; let current = url;
     for (let hop = 0; hop < 6; hop++) {
+      if (!(await allowedTarget(current))) return { url, status: 0, chain, final_url: current, error: 'Blocked non-public audit target', ms: 0 };
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeoutMs), t0 = now();
       try {
         const r = await fetchImpl(current, { method, redirect: 'manual', signal: ctl.signal, headers: { 'user-agent': UA, accept } });

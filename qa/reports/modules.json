@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T14:59:32.637Z",
+  "generated_at": "2026-10-30T18:36:45.839Z",
   "subscriber": [
     {
       "module": "Dashboard",
@@ -1847,6 +1847,417 @@
       "provider": "Inbox AI drafts need an AI provider; customer reminders need email or SMS",
       "problems": [],
       "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Unified Inbox (all folders and AI triage)",
+      "routes": [
+        {
+          "390": {
+            "view": "unifiedinbox-view",
+            "heading": "Unified Inbox",
+            "controls": 11,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "unifiedinbox-view",
+            "heading": "Unified Inbox",
+            "controls": 11,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/unified"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/comms/unified",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/comms/unified/suggestions",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "comms.test",
+        "test:comms-ui"
+      ],
+      "provider": "Telnyx, Resend and Meta for live channels",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Call handling (voice)",
+      "routes": [
+        {
+          "390": {
+            "view": "voiceflow-view",
+            "heading": "Call Handling",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "voiceflow-view",
+            "heading": "Call Handling",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/voice"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/comms/voice",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "comms.test",
+        "test:comms-ui"
+      ],
+      "provider": "Telnyx number, AI assistant and transcription; not verified against live Telnyx",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Campaign Studio and consent",
+      "routes": [
+        {
+          "390": {
+            "view": "campaignstudio-view",
+            "heading": "Campaign Studio",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "campaignstudio-view",
+            "heading": "Campaign Studio",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/campaign-studio"
+        },
+        {
+          "390": {
+            "view": "consent-view",
+            "heading": "Consent & Unsubscribes",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "consent-view",
+            "heading": "Consent & Unsubscribes",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/consent"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/growth/campaigns",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/comms/consents",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "comms.test",
+        "test:comms-ui"
+      ],
+      "provider": "Resend or Telnyx for sending; every send needs approval",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Quotes, estimates, deposits and tax invoices",
+      "routes": [
+        {
+          "390": {
+            "view": "finsales-view",
+            "heading": "Quotes & Invoices",
+            "controls": 14,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finsales-view",
+            "heading": "Quotes & Invoices",
+            "controls": 14,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/sales"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/hub",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/documents",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/settings",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": "Card payment links need the business's own Stripe or PayPal",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Payments, receipts and refunds",
+      "routes": [
+        {
+          "390": {
+            "view": "finpayments-view",
+            "heading": "Payments & Refunds",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finpayments-view",
+            "heading": "Payments & Refunds",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/payments-refunds"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/receipts",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/refunds",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": "Card refunds need the business's own Stripe; not verified against live Stripe",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Bank reconciliation",
+      "routes": [
+        {
+          "390": {
+            "view": "finreconcile-view",
+            "heading": "Bank Reconciliation",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finreconcile-view",
+            "heading": "Bank Reconciliation",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/reconcile"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/reconciliation",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Financial reports and GST",
+      "routes": [
+        {
+          "390": {
+            "view": "finreports-view",
+            "heading": "Reports & GST",
+            "controls": 5,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finreports-view",
+            "heading": "Reports & GST",
+            "controls": 5,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/reports"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/reports/pl",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/reports/gst",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/reports/aged",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/insights",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Finance settings, compliance and audit",
+      "routes": [
+        {
+          "390": {
+            "view": "fincompliance-view",
+            "heading": "Finance Settings & Compliance",
+            "controls": 16,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "fincompliance-view",
+            "heading": "Finance Settings & Compliance",
+            "controls": 16,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/compliance"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/compliance",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/audit",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/rules",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Change plan",
+      "routes": [
+        {
+          "390": {
+            "view": "finplan-view",
+            "heading": "Change Plan",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finplan-view",
+            "heading": "Change Plan",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b09/change-plan"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/plan-changes",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
     }
   ],
   "founder": [
@@ -1855,14 +2266,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing 926531de-4dff-4d7c-8b6a-139c33f594bcAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing 926531de-4dff-4d7c-8b6a-139c33f594bcAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1890,14 +2301,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing 926531de-4dff-4d7c-8b6a-139c33f594bcAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing 926531de-4dff-4d7c-8b6a-139c33f594bcAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1942,14 +2353,14 @@
         },
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2070,14 +2481,14 @@
       "routes": [
         {
           "390": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 112 MB Heap 29 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 2 min Node v22.23.4 Memory in use 120 MB Heap 33 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 111 MB Heap 29 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 118 MB Heap 31 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2433,14 +2844,14 @@
       "routes": [
         {
           "390": {
-            "text": "access.read founder · security · 2026-10-30T15:01:28.247Z access.read founder · support · 2026-10-30T15:01:27.228Z acces",
+            "text": "access.read founder · security · 2026-10-30T18:39:00.054Z access.read founder · support · 2026-10-30T18:38:59.043Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "access.read founder · security · 2026-10-30T15:01:06.351Z access.read founder · support · 2026-10-30T15:01:05.333Z acces",
+            "text": "access.read founder · security · 2026-10-30T18:38:35.585Z access.read founder · support · 2026-10-30T18:38:34.573Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2469,14 +2880,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2562,14 +2973,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33937 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2608,6 +3019,134 @@
       "provider": null,
       "problems": [],
       "result": "VERIFIED"
+    },
+    {
+      "module": "Newsletter campaigns (platform)",
+      "routes": [
+        {
+          "390": {
+            "text": "Communications overview Business customer conversations are private to each business and are not shown here. Measure Cou",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Communications overview Business customer conversations are private to each business and are not shown here. Measure Cou",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f06/platform/campaigns"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/campaigns",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/comms/overview",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "comms.test",
+        "test:comms-ui"
+      ],
+      "provider": "Resend and PLATFORM_MAIL_FROM for sending",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Plan prices, renewals, dunning and revenue",
+      "routes": [
+        {
+          "390": {
+            "text": "Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.00 Invoiced, unpaid 0 invoice(s) 0 Failed payments Month Collec",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.00 Invoiced, unpaid 0 invoice(s) 0 Failed payments Month Collec",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f03/platform/finance"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/finance/plans",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/finance/renewals",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/finance/dunning",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/finance/revenue",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "finance.test",
+        "test:finance-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Reliability and backups",
+      "routes": [
+        {
+          "390": {
+            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet. Alerts (0 ope",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet. Alerts (0 ope",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f07/platform/reliability"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/reliability",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "reliability.test",
+        "test:reliability-ui"
+      ],
+      "provider": "AWS S3 backup bucket and keys; not verified against live AWS",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
     }
   ]
 }

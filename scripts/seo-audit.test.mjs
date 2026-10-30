@@ -35,7 +35,10 @@ const find = (a, cat, id) => a.checks.find((c) => c.category === cat && c.id ===
 
 test('fixture site: every Module A category is reported, with the planted problems found', async (t) => {
   const site = await fixtureSite(); t.after(site.close);
-  const crawl = await crawlSite(site.base + '/', { ownSite: true, maxPages: 20, checkExternal: 5 });
+  const fixtureFetch = (url, options) => new URL(url).hostname === 'unreachable.invalid'
+    ? Promise.reject(new TypeError('Fixture external host cannot be reached'))
+    : globalThis.fetch(url, options);
+  const crawl = await crawlSite(site.base + '/', { fetchImpl: fixtureFetch, ownSite: true, maxPages: 20, checkExternal: 5 });
   assert.equal(crawl.ok, true);
   const a = auditCrawl(crawl);
   const cats = a.categories.map((c) => c.id);
@@ -94,4 +97,26 @@ test('the real Super Pro public site, served by the application, audits without 
   assert.ok(crawl.sitemaps.some((x) => x.valid), 'the sitemap is valid');
   assert.ok(!crawl.pages.some((p) => p.url.includes('/office/') || p.url.includes('/api/')), 'robots.txt keeps the audit out of private areas');
   const s5 = find(a, 'status', '5xx'); assert.ok(!s5, 'no server errors on the public site');
+});
+
+test('crawler refuses private redirect and sitemap targets before fetching them', async () => {
+  const fetched=[];
+  const fetchImpl=async(url)=>{
+    fetched.push(url);
+    if(url.endsWith('/robots.txt'))return new Response('User-agent: *\nSitemap: http://169.254.169.254/metadata\n');
+    if(url==='https://public.example/')return new Response('',{status:302,headers:{location:'http://127.0.0.1/private'}});
+    throw new Error('Blocked target must never be fetched');
+  };
+  const crawl=await crawlSite('https://public.example/',{fetchImpl,resolveHost:async host=>host==='public.example',maxPages:1,checkExternal:0});
+  assert.equal(crawl.ok,true);
+  assert.deepEqual(fetched,['https://public.example/robots.txt','https://public.example/']);
+  assert.match(crawl.pages[0].error,/Blocked non-public/);
+  assert.equal(crawl.sitemaps[0].status,0);
+});
+
+test('own-site permission does not extend to another origin in a redirect', async()=>{
+  const fetched=[];
+  const fetchImpl=async url=>{fetched.push(url);if(url.endsWith('/robots.txt'))return new Response('');if(url.endsWith('/sitemap.xml'))return new Response('<urlset></urlset>');return new Response('',{status:302,headers:{location:'http://169.254.169.254/metadata'}});};
+  const crawl=await crawlSite('http://127.0.0.1:12345/',{ownSite:true,fetchImpl,resolveHost:async()=>false,maxPages:1,checkExternal:0});
+  assert.equal(crawl.ok,true);assert.ok(fetched.every(url=>url.startsWith('http://127.0.0.1:12345/')));assert.match(crawl.pages[0].error,/Blocked non-public/);
 });

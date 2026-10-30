@@ -24,23 +24,19 @@ NOT_STARTED, IN_PROGRESS, BLOCKED, TESTING, COMPLETED.
 |---|---|---|---|---|
 | P00 | Repository discovery and preservation audit | COMPLETED | none | report delivered in chat (no repo changes) |
 | P01 | Competitor intelligence and master blueprint | COMPLETED | P00 | report delivered in chat (no repo changes) |
-| P02 | Enterprise infrastructure and security | COMPLETED (not yet on GitHub) | P00, P01 | `phase-02-infrastructure-security` / `5cf7377` |
-| P03 | Cinematic design system and frontend transformation | COMPLETED (not yet on GitHub) | P02 | `phase-03-cinematic-design` / `6b387fd`, `6a5ddc8` |
-| P03.5 | Persistent autosave, checkpoint and resume system | COMPLETED (not yet on GitHub) | none (process) | `phase-03-cinematic-design` |
-| P04 | Subscriber Workspace (Business OS) | NOT_STARTED | P03 | prompt not yet received |
-| P05 | Founder Console | NOT_STARTED | P03 | prompt not yet received |
-| P06 | AI automation and human approvals | NOT_STARTED | P04, P05 | prompt not yet received |
-| P07 | Website automation, SEO and Google integrations | NOT_STARTED | P03 | prompt not yet received |
-| P08 | Communications and marketing | NOT_STARTED | P04, P06 | prompt not yet received |
-| P09 | Payments and accounting | NOT_STARTED | P04 | prompt not yet received |
-| P10 | AWS S3 storage and automated backups | NOT_STARTED (foundations in P02) | P02 | prompt not yet received |
-| P11 | Security review | NOT_STARTED (foundations in P02) | P02 | prompt not yet received |
-| P12 | Testing programme | NOT_STARTED (suites exist, see PROGRESS.md) | all feature phases | prompt not yet received |
-| P13 | GitHub workflow (branches, CI, pull requests) | NOT_STARTED (CI files added in P02) | P02 | prompt not yet received |
-| P14 | Render deployment and staging | NOT_STARTED (plan in docs/infrastructure) | P02, owner approval | prompt not yet received |
+| P02 | Enterprise infrastructure and security | COMPLETED | P00, P01 | `5cf7377`, now included on GitHub |
+| P03 | Cinematic design system and frontend transformation | COMPLETED | P02 | `6b387fd`, `6a5ddc8` |
+| P03.5 | Persistent checkpoint and resume system | COMPLETED | none | included in consolidated branch |
+| P04 | Subscriber Business OS and Founder Console | COMPLETED | P03 | `f1cfa16` and preceding Phase 04 commits |
+| P05 | AI operations and human governance | COMPLETED | P04 | `2863893`, `605edcd` |
+| P06 | SEO, Google and website intelligence | COMPLETED | P03, P04 | `426b472`, `2519c2c` |
+| P07 | Communications and campaign automation | COMPLETED | P04, P05 | `4af3df6`, `ed9de92` |
+| P08 | Finance, payments and compliance automation | COMPLETED | P04 | `e5c8c8c` |
+| P09 | Backup and reliability engine | COMPLETED | P02 | `96bf844` |
+| P10 | Final QA, security audit and release candidate | TESTING | P02–P09 | `7074e36`, `9e895b8`; recovery T-063 verifies combined tree |
+| Release | Consolidation, correct-source CI and isolated preview | IN_PROGRESS | P10 | T-062, T-063; production release remains pending |
 
-Phase numbers after P03 are provisional: the owner sends each phase prompt; when one arrives, record its full text in
-`PENDING_TASKS.md` before starting and renumber here if needed.
+Correction during recovery: the previous table stopped at Phase 03 and incorrectly described later prompts as not received. The owner's eleven prompts (00–10) are present in `consolidated-improvements-2026` at `24dd8c7`. Completion above records implemented phases and their historical evidence; it does not certify external providers or production deployment. Outstanding integration limits remain in PENDING_TASKS.md and docs/release/KNOWN_ISSUES.md.
 
 ## Standing rules (never change without the owner's explicit approval)
 

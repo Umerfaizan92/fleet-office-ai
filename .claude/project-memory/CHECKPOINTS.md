@@ -633,3 +633,45 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: refs/recovery/consolidated-improvements-2026/20261030T152850Z (ad33fc9)
 - Known errors: none
 - Next exact action: Write docs/release files
+
+## CP-046 2026-10-31T02:32:33+08:00 T-063 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-063 (IN_PROGRESS)
+- Completed steps: Recovered eleven-prompt source and compared archive: 470 files identical; baseline npm test 72/73 with a failing SEO fixture contract
+- Incomplete steps: Diagnose SEO assertion; combine preview and backup fixes; verify full release matrix and correct-source preview
+- Files modified (uncommitted at checkpoint): .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md
+- Tests executed: none
+- Test results: none
+- Git branch: fix/claude-release-recovery-20261031
+- Commit: 24dd8c7 (docs: capture production S3 replication incident and safe IAM repair procedure); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Read the failing seo-audit fixture assertion, then merge the tested safety branch without replacing Claude phase changes
+
+## CP-047 2026-10-31T02:47:36+08:00 T-063 TESTING
+- Phase: Claude eleven-prompt recovery
+- Task: T-063 (TESTING)
+- Completed steps: Proved all 470 archive files match consolidated 24dd8c7; combined Claude history and security fixes without replacing the frontend; created seven missing release documents and corrected stale roadmap; added phase UI coverage to CI; fixed phone hero budget with existing static fallback
+- Incomplete steps: Finish final core and performance runs; publish tested recovery commit and PR; verify final commit CI; deploy correct source to isolated preview and accept hosted modules
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/MASTER_PLAN.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; .github/workflows/ci.yml; docs/restructure/AUDIT-RELEASE-2026-10-31.md; docs/restructure/MASTER-V2-STATUS.md; docs/restructure/REVIEW-DEPLOYMENT.md; docs/restructure/SECURITY-CONTINUATION-2026-10-31.md; qa/reports/A11Y-PERF.md; qa/reports/modules.json; qa/reports/performance.json; qa/reports/release-audit.json; qa/reports/release-seo.json; qa/reports/visual-regression.json; saas/ds/site.js; saas/ds/site.js.br; saas/ds/site.js.gz; scripts/preview-diagnostics.test.mjs; scripts/preview-preflight.test.mjs; scripts/preview-seed.test.mjs; scripts/s3-files.test.mjs; scripts/seo-audit.test.mjs; scripts/start.mjs; scripts/test-site-ui.mjs; src/backup-env.js; src/diagnostics.js; src/preview-preflight.js; src/preview-seed.js; src/s3-files.js; src/seo/audit.js; src/server.js; docs/release/ARCHITECTURE.md; docs/release/DEPLOYMENT_PLAN.md; docs/release/INTEGRATIONS.md; docs/release/KNOWN_ISSUES.md; docs/release/ROLLBACK_PLAN.md; docs/release/SECURITY_AUDIT.md; docs/release/TEST_RESULTS.md
+- Tests executed: public site UI; phase UI matrix; modules; release preservation; dependencies
+- Test results: 16 passed; all eight suites passed; 66 modules zero problems; passed; zero vulnerabilities
+- Git branch: fix/claude-release-recovery-20261031
+- Commit: 24dd8c7 (docs: capture production S3 replication incident and safe IAM repair procedure); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Record final test results and manifest;publish recovery merge through connected GitHub;keep production unchanged until release verification
+
+## CP-048 2026-10-31T02:49:32+08:00 T-063 TESTING
+- Phase: Claude eleven-prompt recovery
+- Task: T-063 (TESTING)
+- Completed steps: Final core verifier passed 73/73 with all 45 contract files; new-site accessibility has zero serious/critical issues; performance rerun has zero over-budget new-site pages; 16 site browser checks passed; all seven missing release docs populated
+- Incomplete steps: Publish exact recovery merge commit and dedicated PR; verify final commit CI; deploy and accept correct source on isolated preview; production migration and fresh backup review
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/MASTER_PLAN.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; .github/workflows/ci.yml; SHA256SUMS.txt; docs/release/ARCHITECTURE.md; docs/release/DEPLOYMENT_PLAN.md; docs/release/INTEGRATIONS.md; docs/release/KNOWN_ISSUES.md; docs/release/ROLLBACK_PLAN.md; docs/release/SECURITY_AUDIT.md; docs/release/TEST_RESULTS.md; docs/restructure/AUDIT-RELEASE-2026-10-31.md; docs/restructure/MASTER-V2-STATUS.md; docs/restructure/REVIEW-DEPLOYMENT.md; docs/restructure/SECURITY-CONTINUATION-2026-10-31.md; qa/reports/A11Y-PERF.md; qa/reports/modules.json; qa/reports/performance.json; qa/reports/release-audit.json; qa/reports/release-seo.json; qa/reports/visual-regression.json; saas/ds/site.js; saas/ds/site.js.br; saas/ds/site.js.gz; scripts/preview-diagnostics.test.mjs; scripts/preview-preflight.test.mjs; scripts/preview-seed.test.mjs; scripts/s3-files.test.mjs; scripts/seo-audit.test.mjs; scripts/start.mjs; scripts/test-site-ui.mjs; src/backup-env.js; src/diagnostics.js; src/preview-preflight.js; src/preview-seed.js; src/s3-files.js; src/seo/audit.js; src/server.js
+- Tests executed: npm test; site UI; accessibility and performance
+- Test results: 73/73 passed; 16 passed; zero serious-critical new-site findings and zero budget breaches
+- Git branch: fix/claude-release-recovery-20261031
+- Commit: 24dd8c7 (docs: capture production S3 replication incident and safe IAM repair procedure); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Publish recovery tree with both Claude and security parents;require final commit CI before preview deployment

@@ -129,6 +129,14 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: docs/release/*
 - Acceptance: Branch pushed with exact SHA; 9 release docs with evidence; all suites pass; no deploy
 
-## P04 onwards
-- Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
-  in full before starting.
+## T-063 Recover the Claude eleven-prompt release and reconcile security fixes
+- Status: TESTING
+- Added: 2026-10-30
+- Requirement: Owner completed Prompt 00 through Prompt 10 in Claude and transferred SUPER_PRO_AI_EMERGENCY_HANDOVER.zip. The previous preview deployed the older baseline. Preserve consolidated-improvements-2026 and all 470 matching archive files; verify and release the actual implementation with the tested storage/isolation fixes.
+- Files: src; saas; office; scripts; docs/release
+- Acceptance: Correct source proved by archive hashes; release tests and preview acceptance pass; production data and credentials preserved
+
+## Roadmap correction
+The eleven prompts 00–10 were received and implemented in Claude. The former "P04 onwards not received" placeholder was stale. Phase completion evidence is in MASTER_PLAN.md; the concrete unfinished tasks above remain open.
+
+T-062 historical stop-before-deploy instruction is superseded operationally by the owner's later explicit requests to push to Render. Its consolidation evidence is carried forward in T-063; neither task is marked complete before the correct-source CI and hosted acceptance pass.

@@ -1,3 +1,4 @@
+import { assertIsolatedPreview } from './preview-preflight.js';
 import {seedIsolatedPreview} from './preview-seed.js';
 import {installBusinessHub} from './business-hub.js';
 import { installPipeline } from './pipeline.js';
@@ -86,9 +87,11 @@ const backendRoot = path.resolve(__dirname, '..');
 const siteRoot = backendRoot;
 
 // SUPERPRO_SKIP_DOTENV=1 is set by the test runner so automated tests can never pick up real provider keys from a developer's .env.
+assertIsolatedPreview(process.env);
 if (process.env.SUPERPRO_SKIP_DOTENV !== '1') dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const env = process.env;
+assertIsolatedPreview(env);
 const port = Number(env.PORT || 3000);
 const integrationRuntime=createIntegrationRuntime({
   env,
@@ -1028,11 +1031,11 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-// Fleet Office AI is the primary product on the SaaS host.
+// Super Pro AI Office Manager is the primary product on the SaaS host.
 // Keep the public the business pages available by their explicit file routes.
-// Phase 03: the public website (/, /features, /for/*, /pricing, /receptionist, /stories, /help, /contact, /start).
+// Phase 03: preserve Claude's redesigned public website and clean routes.
 installPublicSite(app, { env, siteRoot });
-app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'fleet-office-ai', time: new Date().toISOString() }));
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'super-pro-ai-office-manager', time: new Date().toISOString() }));
 
 app.get('/robots.txt', (req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');

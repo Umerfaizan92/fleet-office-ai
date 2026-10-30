@@ -70,3 +70,76 @@ test('AWS keys are found under common alternative names and cleaned of stray spa
   assert.equal(fuzzy.secret.value, 'sec');
   assert.equal(backupCredentials({ AWS_KMS_KEY_ID: 'kms' }).id, null, 'a KMS key id is never mistaken for an access key');
 });
+
+test('restart never marks an unconfirmed local upload as durable; failed uploads retry', async () => {
+  bucketStore.clear();
+  const dir = tmp(), seen = new Map();
+  try {
+    fs.writeFileSync(path.join(dir, 'pending.jpg'), 'not-yet-backed-up');
+    await restoreUploads({ client: fakeClient, bucket: 'b', prefix: 'p', dir, seen, log: quiet });
+    assert.equal(seen.size, 0, 'local presence is not proof of a completed S3 write');
+    const failing = { send: async () => { throw new Error('synthetic outage'); } };
+    assert.equal((await syncUploads({ client: failing, bucket: 'b', prefix: 'p', dir, seen, log: quiet })).failed, 1);
+    assert.equal(seen.size, 0);
+    assert.equal((await syncUploads({ client: fakeClient, bucket: 'b', prefix: 'p', dir, seen, log: quiet })).uploaded, 1);
+    assert.equal(bucketStore.get('p/pending.jpg').toString(), 'not-yet-backed-up');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an interrupted restore resumes missing files without overwriting existing customer files', async () => {
+  bucketStore.clear();
+  bucketStore.set('p/first.jpg', Buffer.from('first'));
+  bucketStore.set('p/second.jpg', Buffer.from('second'));
+  const dir = tmp();
+  let fail = true;
+  const interrupted = { send: async (cmd) => {
+    if (fail && cmd.constructor.name === 'GetObjectCommand' && cmd.input.Key === 'p/second.jpg') throw new Error('synthetic interruption');
+    return fakeClient.send(cmd);
+  } };
+  try {
+    await assert.rejects(restoreUploads({ client: interrupted, bucket: 'b', prefix: 'p', dir, log: quiet }), /synthetic interruption/);
+    assert.equal(fs.readFileSync(path.join(dir, 'first.jpg'), 'utf8'), 'first');
+    assert.ok(fs.existsSync(path.join(dir, '.superpro-s3-restore.pending')));
+    // A customer edit must survive retry, and restore metadata must never be uploaded.
+    fs.writeFileSync(path.join(dir, 'first.jpg'), 'customer edit');
+    fail = false;
+    const r = await restoreUploads({ client: interrupted, bucket: 'b', prefix: 'p', dir, log: quiet });
+    assert.equal(r.restored, 1); assert.equal(r.skipped, 1);
+    assert.equal(fs.readFileSync(path.join(dir, 'first.jpg'), 'utf8'), 'customer edit');
+    assert.equal(fs.readFileSync(path.join(dir, 'second.jpg'), 'utf8'), 'second');
+    assert.equal(fs.existsSync(path.join(dir, '.superpro-s3-restore.pending')), false);
+    fs.writeFileSync(path.join(dir, '.superpro-s3-restore-1234.tmp'), 'incomplete download');
+    await syncUploads({ client: fakeClient, bucket: 'b', prefix: 'p', dir, seen: new Map(), log: quiet });
+    assert.ok(![...bucketStore.keys()].some(k => k.includes('.superpro-s3-restore')));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('restore cannot follow symlink files or directories outside its root', async () => {
+  for (const directory of [false, true]) {
+    bucketStore.clear();
+    const dir = tmp(), outside = tmp();
+    try {
+      fs.writeFileSync(path.join(outside, 'protected'), 'unchanged');
+      fs.symlinkSync(directory ? outside : path.join(outside, 'protected'), path.join(dir, 'link'));
+      bucketStore.set(directory ? 'p/link/protected' : 'p/link', Buffer.from('overwrite attempt'));
+      await assert.rejects(restoreUploads({ client: fakeClient, bucket: 'b', prefix: 'p', dir, log: quiet }), /symbolic links/);
+      assert.equal(fs.readFileSync(path.join(outside, 'protected'), 'utf8'), 'unchanged');
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+  }
+});
+
+test('pending restore cannot silently switch backup sources and invalid pagination fails closed', async () => {
+  const dir = tmp();
+  try {
+    const client = { send: async () => ({ Contents: [], IsTruncated: true, NextContinuationToken: 'repeated' }) };
+    await assert.rejects(restoreUploads({ client, bucket: 'b', prefix: 'p', dir, log: quiet }), /pagination did not advance/);
+    await assert.rejects(restoreUploads({ client: fakeClient, bucket: 'different', prefix: 'p', dir, log: quiet }), /different backup source/);
+    assert.ok(fs.existsSync(path.join(dir, '.superpro-s3-restore.pending')));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('backup bucket selection normalizes copied values before any startup storage call', () => {
+  assert.equal(backupBucket({ BACKUP_S3_BUCKET: ' "primary"\n', RENDER: 'true' }), 'primary');
+  assert.equal(backupBucket({ BACKUP_S3_BUCKET: '   ', AWS_S3_BUCKET: ' fallback\n', RENDER: 'true' }), 'fallback');
+  for (const flag of ['1', 'true', 'yes', 'on', ' TRUE ']) assert.equal(backupBucket({ BACKUP_S3_BUCKET: 'production', BACKUP_DISABLED: flag }), '');
+});

@@ -163,6 +163,14 @@ try {
     await ctx.close();
   });
 
+  await check('phone uses the still hero even when motion is allowed', async () => {
+    const { page, ctx } = await open('/', { width: 390, height: 844, reducedMotion: 'no-preference' });
+    await page.waitForTimeout(2800);
+    assert.equal(await page.evaluate(() => performance.getEntriesByType('resource').some((e) => e.name.includes('hero-3d.js'))), false);
+    assert.equal(await page.locator('[data-hero3d] canvas').count(), 0);
+    await ctx.close();
+  });
+
   await check('with motion allowed, content reveals and nothing stays hidden after scrolling', async () => {
     const { page, ctx } = await open('/', { reducedMotion: 'no-preference' });
     await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 500) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } });

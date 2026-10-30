@@ -3,6 +3,7 @@
 import { securityPosture } from './security-policy.js';
 import fs from 'node:fs';
 import { backupBucket } from './backup-env.js';
+import { assertIsolatedPreview } from './preview-preflight.js';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -38,6 +39,8 @@ export function probeDirectory(dir) {
 // - If the chosen folder is not writable the server either stops (REQUIRE_PERSISTENT_DISK=1, used on Render)
 //   or falls back to ./data (then os.tmpdir()) and reports itself as degraded so nobody mistakes it for durable storage.
 export function prepareStorage({ env = process.env, backendRoot = process.cwd(), persistentRoot = PERSISTENT_ROOT } = {}) {
+  const isolatedPreview = env.SUPERPRO_ISOLATED_PREVIEW === '1';
+  if (isolatedPreview) assertIsolatedPreview({ ...env });
   const warnings = [];
   const mounted = fs.existsSync(persistentRoot);
   const resolveFrom = (configured, mountedDefault, localDefault) => path.isAbsolute(configured || '')
@@ -51,7 +54,7 @@ export function prepareStorage({ env = process.env, backendRoot = process.cwd(),
   const onRender = truthy(env.RENDER);
 
   const replicated = Boolean(backupBucket(env) || env.BACKUP_FILE_DIR);
-  if (onRender && !mounted && !replicated) warnings.push(`Running on Render but ${persistentRoot} is not mounted. Attach the persistent disk or data will be lost on every deploy.`);
+  if (onRender && !mounted && !replicated) warnings.push(isolatedPreview ? 'Isolated preview uses temporary synthetic data; it is erased on restart or deployment.' : `Running on Render but ${persistentRoot} is not mounted. Attach the persistent disk or data will be lost on every deploy.`);
   const dbProbe = probeDirectory(path.dirname(requested.databasePath));
   const uploadProbe = probeDirectory(requested.uploadRoot);
   let databasePath = requested.databasePath, uploadRoot = requested.uploadRoot, fallback = false;
@@ -59,6 +62,7 @@ export function prepareStorage({ env = process.env, backendRoot = process.cwd(),
   const broken = [!dbProbe.writable && `database folder ${dbProbe.path} (${dbProbe.error})`, !uploadProbe.writable && `upload folder ${uploadProbe.path} (${uploadProbe.error})`].filter(Boolean);
   if (broken.length || (requirePersistent && onRender && !mounted && !replicated)) {
     const reason = broken.length ? `Cannot write to ${broken.join(' and ')}.` : `${persistentRoot} is not mounted.`;
+    if (isolatedPreview) throw new Error('Isolated preview storage is not writable; refusing fallback outside its configured temporary paths.');
     if (requirePersistent) throw new Error(`${reason} REQUIRE_PERSISTENT_DISK is on, so the server will not start on non-durable storage. Check the Render disk mount and permissions.`);
     const candidates = [path.resolve(backendRoot, 'data'), path.join(os.tmpdir(), 'super-pro-data')];
     const usable = candidates.find((dir) => probeDirectory(dir).writable);
@@ -147,11 +151,13 @@ export function runDiagnostics({ db, env = process.env, storage, startedAt = Dat
   const checks = [];
   const add = (id, status, detail, extra = {}) => checks.push({ id, status, detail, ...extra });
   const production = env.NODE_ENV === 'production';
+  const isolatedPreview = env.SUPERPRO_ISOLATED_PREVIEW === '1';
+  if (isolatedPreview) assertIsolatedPreview({ ...env });
 
   // Storage
   if (storage) {
     add('storage.writable', storage.fallback ? 'warn' : 'pass', storage.fallback ? 'Using fallback storage because the configured folder is not writable.' : 'Database and upload folders are writable.');
-    add('storage.persistent', storage.persistent ? 'pass' : (production ? 'fail' : 'warn'), storage.persistent ? (storage.replicated ? 'Data is backed up to S3 and restored automatically after a restart.' : `Data is stored on the persistent disk (${storage.persistentRoot}).`) : `Data is not on ${storage.persistentRoot}. It may be erased on restart.`);
+    add('storage.persistent', storage.persistent ? 'pass' : (production && !isolatedPreview ? 'fail' : 'warn'), storage.persistent ? (storage.replicated ? 'Data is backed up to S3 and restored automatically after a restart.' : `Data is stored on the persistent disk (${storage.persistentRoot}).`) : isolatedPreview ? 'Isolated preview stores synthetic data temporarily; it is erased on restart or deployment.' : `Data is not on ${storage.persistentRoot}. It may be erased on restart.`);
     const free = storage.probes?.database?.freeBytes ?? probeDirectory(path.dirname(storage.databasePath)).freeBytes;
     if (free !== null && free !== undefined) add('storage.free_space', free < MIN_FREE_BYTES ? 'warn' : 'pass', `${Math.round(free / 1048576)} MB free.`, { freeBytes: free });
     for (const w of storage.warnings || []) add('storage.warning', 'warn', w);

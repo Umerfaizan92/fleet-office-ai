@@ -51,15 +51,15 @@ Budgets: LCP ≤ 2500 ms, CLS ≤ 0.1, total blocking time ≤ 200 ms.
 
 | Page | Mode | LCP ms | CLS | TBT ms | FCP ms | Transfer KB | JS KB | Requests | 3D loaded |
 |---|---|---|---|---|---|---|---|---|---|
-| home | mobile-throttled | 1004 | 0 | 189 | 948 | 163 | 50 | 13 | no |
-| features | mobile-throttled | 1520 | 0.001 | 69 | 788 | 96 | 6 | 11 | no |
-| feature-money | mobile-throttled | 848 | 0 | 75 | 848 | 94 | 6 | 11 | no |
-| industries | mobile-throttled | 804 | 0 | 74 | 804 | 92 | 6 | 11 | no |
-| industry-clinics | mobile-throttled | 832 | 0.002 | 102 | 832 | 95 | 6 | 11 | no |
-| pricing | mobile-throttled | 1148 | 0 | 115 | 888 | 97 | 6 | 11 | no |
-| receptionist | mobile-throttled | 880 | 0.002 | 92 | 880 | 97 | 6 | 11 | no |
-| stories | mobile-throttled | 1728 | 0.001 | 111 | 864 | 93 | 6 | 12 | no |
-| help | mobile-throttled | 832 | 0 | 109 | 832 | 98 | 6 | 11 | no |
-| contact | mobile-throttled | 816 | 0.001 | 57 | 816 | 92 | 6 | 11 | no |
-| legacy-landing | mobile-throttled | 1916 | 0 | 626 | 1916 | 360 | 143 | 30 | no |
-| home (desktop, 3D on) | desktop-unthrottled | 248 | 0 | 690 | 248 | 277 | 164 | 14 | yes |
+| home | mobile-throttled | 744 | 0.003 | 94 | 744 | 163 | 51 | 13 | no |
+| features | mobile-throttled | 704 | 0 | 34 | 704 | 96 | 6 | 11 | no |
+| feature-money | mobile-throttled | 704 | 0.044 | 26 | 704 | 94 | 6 | 11 | no |
+| industries | mobile-throttled | 688 | 0 | 14 | 688 | 92 | 6 | 11 | no |
+| industry-clinics | mobile-throttled | 720 | 0 | 34 | 720 | 95 | 6 | 11 | no |
+| pricing | mobile-throttled | 808 | 0 | 28 | 708 | 97 | 6 | 11 | no |
+| receptionist | mobile-throttled | 728 | 0 | 41 | 728 | 97 | 6 | 11 | no |
+| stories | mobile-throttled | 824 | 0 | 15 | 708 | 93 | 6 | 12 | no |
+| help | mobile-throttled | 704 | 0 | 23 | 704 | 98 | 6 | 11 | no |
+| contact | mobile-throttled | 704 | 0 | 12 | 704 | 92 | 6 | 11 | no |
+| legacy-landing | mobile-throttled | 1848 | 0 | 169 | 1848 | 360 | 143 | 30 | no |
+| home (desktop, 3D on) | desktop-unthrottled | 136 | 0 | 105 | 136 | 277 | 164 | 14 | yes |

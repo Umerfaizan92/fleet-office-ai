@@ -41,3 +41,34 @@ jobs:
         run: npm run smoke:test
       - name: Dependency vulnerability gate
         run: npm audit --omit=dev --audit-level=high
+
+  recovered-release-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Source and handover consistency
+        run: |
+          npm run verify:manifest
+          npm run memory:validate
+          npm run check:site
+          npm run release:audit
+      - name: Verify recovered public website and phase interfaces
+        run: |
+          npm run test:site-ui
+          npm run test:pipeline-ui
+          npm run test:console-ui
+          npm run test:automations-ui
+          npm run test:seo-ui
+          npm run test:comms-ui
+          npm run test:finance-ui
+          npm run test:reliability-ui
+          npm run verify:modules

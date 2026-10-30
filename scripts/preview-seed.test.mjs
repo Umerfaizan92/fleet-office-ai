@@ -9,6 +9,8 @@ test("isolated preview only seeds synthetic users, is repeatable and rejects pro
     assert.equal(db.prepare("SELECT COUNT(*) n FROM organisations").get().n, 0);
     const env = {
       SUPERPRO_ISOLATED_PREVIEW: "1",
+      DATABASE_PATH: "/tmp/superpro-preview/app.sqlite",
+      UPLOAD_DIR: "/tmp/superpro-preview/uploads",
       PREVIEW_BUSINESS_PASSWORD: "Synthetic-preview-password-only-123!",
     };
     seedIsolatedPreview(db, env);

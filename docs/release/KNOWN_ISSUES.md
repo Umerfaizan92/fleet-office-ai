@@ -9,3 +9,18 @@ Baseline validation reproduced one failing SEO fixture caused by the environment
 Historical visual baselines are not included in git or the ZIP. A first local visual run creates a baseline; it verifies layout/overflow but is not proof of pixel equality to Claude's earlier machine. Source/archive hashes provide the independent preservation proof for the transferred frontend.
 
 No production promotion is justified by the older PR #41 tests alone. The corrected source and final recovery commit need their own full matrix, CI, source/branch verification and hosted acceptance. Do not merge stacked phase PRs blindly or delete old branches as part of recovery.
+
+## Added by Claude, 2026-10-31
+
+- **Phone homepage blocking time is borderline.** It measured 214–218 ms against a 200 ms budget on the Claude
+  workspace; ChatGPT measured 94 ms. Re-measure on CI or the preview. See TEST_RESULTS.
+- **CodeQL reports 5 "insecure randomness" alerts** in `saas/ds/hero-3d.js`, the minified 3D library. It uses
+  `Math.random()` for internal object IDs, with no authentication, tokens or secrets involved. These are false
+  positives; the owner should dismiss them in GitHub Security (Claude cannot reach that API).
+- **Uploaded files are uploaded again after each restart** (since the upload-retry fix). This is safer, because a
+  file is never assumed backed up, but it uses more S3 requests on restart.
+- **Backup folder root.** Snapshots and configuration backups now go next to the Litestream copy (production:
+  `super-pro-v2/`). The IAM and lifecycle templates in `infra/aws/` still say `super-pro/`; replace the root before
+  applying them.
+- **The AWS IAM repair** for `super-pro-v2/db` was confirmed by the owner through ChatGPT on 2026-10-31. Claude did not
+  verify it independently (no AWS or Render access from the Claude workspace).

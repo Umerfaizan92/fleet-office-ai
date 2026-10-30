@@ -13,3 +13,14 @@ Recovery-specific corrections:
 - The unreachable-host SEO fixture is deterministic and does not depend on a proxy's response for an invalid external hostname.
 
 Secrets scans, full tests and hosted acceptance must be recorded in TEST_RESULTS.md on the final candidate. Do not weaken authentication/MFA, IAM, bucket policies, networking, encryption or approval gates to make a test pass. Production account/session and provider-policy settings require their own deliberate operational review.
+
+## Claude review, 2026-10-31
+
+- Reviewed ChatGPT's recovery commits (preview preflight, S3 restore marker and symlink refusal, bucket normalisation,
+  SEO crawl target checks). No defects found.
+- Fixed: Phase 09 snapshot and configuration prefixes and the bucket check were hard-coded to `super-pro/`. Production
+  grants the backup identity `super-pro-v2/`, so daily snapshots would have been refused. They now follow
+  `BACKUP_S3_DB_PREFIX` (commit fca5a84, with a regression test).
+- CodeQL: 5 high "insecure randomness" alerts, all in the minified 3D library; triaged as false positives (KNOWN_ISSUES).
+- `release-security.test` passed 13/13, `npm audit` found 0 vulnerabilities, and the secret scan passed. This is a
+  self-review, not an independent penetration test.

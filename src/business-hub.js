@@ -131,6 +131,7 @@ export function installBusinessHub(
       saasAudit(req, "business_document.approved", m.kind, m.id, {
         revision: m.revision,
       });
+      if (m.kind === "quote") hooks.emit?.(req.saas.organisation_id, "quote.approved", { quote_id: m.id }, { key: `${m.id}:r${m.revision}` });
       res.json({ ok: true });
     },
   );
@@ -165,6 +166,7 @@ export function installBusinessHub(
         "UPDATE tenant_documents SET status='accepted',acceptance_evidence=?,updated_at=? WHERE id=? AND organisation_id=?",
       ).run(p.data.evidence, at(), m.id, req.saas.organisation_id);
       saasAudit(req, "quote.acceptance_recorded", "quote", m.id, {});
+      hooks.emit?.(req.saas.organisation_id, "quote.accepted", { quote_id: m.id }, { key: m.id });
       res.json({ ok: true });
     },
   );
@@ -233,6 +235,7 @@ export function installBusinessHub(
         }
         saasAudit(req, "quote.booking_created", "booking", id, { quote: m.id, work_order: jobId || null });
       })();
+      if (jobId) hooks.emit?.(req.saas.organisation_id, "job.booked", { booking_id: id, work_order_id: jobId }, { key: id });
       res.status(201).json({ ok: true, id, work_order_id: jobId });
     },
   );

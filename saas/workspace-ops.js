@@ -103,7 +103,7 @@
         if (acts.childNodes.length) c.append(acts);
         grid.append(c);
       }
-      body.append(grid);
+      body.append(el('article', { class: 'portal-card pl-card au-link', 'data-key': 'ai_automations' }, el('div', { class: 'pl-card-head' }, el('h2', { text: 'AI Automations' })), el('p', { class: 'pl-body', text: 'Build your own automations, set which routine actions may run without asking, pause everything at once, and read the audit report.' }), el('div', { class: 'pl-actions' }, el('a', { class: 'portal-button primary', href: '#b01/automations', text: 'Open AI Automations' }))), grid);
     } catch (e) { body.replaceChildren(el('p', { class: 'portal-note', 'data-tone': 'bad', text: e.message })); }
   }
 

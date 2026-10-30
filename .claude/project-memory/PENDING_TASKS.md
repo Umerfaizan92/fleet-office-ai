@@ -52,6 +52,20 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: not known yet
 - Acceptance: Owner approval of scope; tests added; verify:modules clean
 
+## T-047 Phase 05 follow-up: inbound Inbox messages as automation triggers
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Emails, SMS and social messages recorded by recordInbound should emit an inbox.message event (untrusted text) so automations can classify and draft replies
+- Files: src/saas-platform.js, src/automation/*
+- Acceptance: Contract test: inbound email starts an automation, text treated as untrusted, injection forces approval
+
+## T-048 Phase 05 follow-up: move the automation scheduler to a worker process
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: The per-minute automation scheduler runs in the web process; move it to a worker before running more than one instance
+- Files: src/automation/engine.js, render.yaml (needs owner approval)
+- Acceptance: Owner-approved plan; schedules still run once per period
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

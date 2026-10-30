@@ -630,5 +630,26 @@ export function installMailCentre(
       at,
     );
   };
-  return { tick, dispatch };
+  // Phase 05: the automation engine uses the same drafts, approval fingerprint, send timer and send-time permission
+  // re-check as people do. Business scope only; marketing and campaign categories are never queued for sending.
+  function createDraft({ ownerId, recipient, subject, body, category = "general", createdBy }) {
+    const id = crypto.randomUUID(), at = now();
+    db.prepare("INSERT INTO portal_mail(id,scope,owner_id,recipient,subject,body,category,created_by,created_at,updated_at) VALUES (?,'business',?,?,?,?,?,?,?,?)")
+      .run(id, ownerId, recipient, subject, body, category, createdBy, at, at);
+    event({ scope: "business", owner: ownerId, actor: createdBy }, { id, revision: 1 }, "drafted_by_automation");
+    return id;
+  }
+  function queueApproved({ ownerId, recipient, subject, body, category = "general", approvedBy, sendAt = null }) {
+    if (["marketing", "campaign"].includes(category)) throw new Error("Marketing email is never sent by automation.");
+    const at = now(), when = sendAt || at;
+    const m = { id: crypto.randomUUID(), scope: "business", owner_id: ownerId, recipient, subject, body, category, scheduled_at: when, revision: 1 };
+    if (!authorised(m, "approve", approvedBy) || !authorised(m, "send", approvedBy)) throw new Error("The approving person does not have email approve and send access.");
+    db.prepare("INSERT INTO portal_mail(id,scope,owner_id,recipient,subject,body,category,status,approved_by,approval_hash,scheduled_at,scheduled_by,created_by,created_at,updated_at) VALUES (?,'business',?,?,?,?,?,'scheduled',?,?,?,?,?,?,?)")
+      .run(m.id, ownerId, recipient, subject, body, category, approvedBy, digest(m), when, approvedBy, "automation", at, at);
+    event({ scope: "business", owner: ownerId, actor: approvedBy }, m, "queued_by_automation");
+    return m.id;
+  }
+  const mailStatus = (id, ownerId) => db.prepare("SELECT id,status,scheduled_at,recipient FROM portal_mail WHERE id=? AND owner_id=? AND scope='business'").get(id, ownerId) || null;
+  const providerReady = () => Boolean(transport || (env.RESEND_API_KEY && env.SAAS_VERIFY_FROM));
+  return { tick, dispatch, createDraft, queueApproved, mailStatus, providerReady };
 }

@@ -28,7 +28,7 @@ export function verifyStripeSignature(rawBody, header, secret, nowMs = Date.now(
   return signatures.some((s) => safeEqual(s, expected));
 }
 
-export function installPayments(app, { db, env, runtime, requireSaasUser, requireSaasRole, saasAudit, financeRoles, syncJobFinance, uploadRoot, notify, isAuthorised, fetchImpl = globalThis.fetch }) {
+export function installPayments(app, { db, env, runtime, requireSaasUser, requireSaasRole, saasAudit, financeRoles, syncJobFinance, uploadRoot, notify, isAuthorised, events = { emit() {} }, fetchImpl = globalThis.fetch }) {
   const limiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { ok: false, error: 'Too many requests.' } });
   const money_roles = [requireSaasUser, requireSaasRole(...financeRoles)];
   const base = () => String(env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
@@ -138,6 +138,7 @@ export function installPayments(app, { db, env, runtime, requireSaasUser, requir
     audit(p.organisation_id, 'payment.received', p.id, { work_order_id: p.work_order_id, provider: p.provider, amount_cents: p.amount_cents, receipt_no: p.receipt_no });
     const job = db.prepare(`SELECT * FROM work_orders WHERE id=?`).get(p.work_order_id);
     await sendReceipt(job, p);
+    try { events.emit(p.organisation_id, 'payment.received', { payment_id: p.id, work_order_id: p.work_order_id }, { key: p.id }); } catch (e) { console.warn('[payments] automation event failed:', e.message); }
     await toOwner(p.organisation_id, job, p, 'payment_received', `Payment received: ${money(p.amount_cents)}`, `${money(p.amount_cents)} received for "${job.title}" (${METHOD_LABEL[p.method || p.provider] || p.provider}). Receipt ${p.receipt_no}. ${owingOf(job) ? `Still owing: ${money(owingOf(job))}.` : 'This job is now paid in full.'}`, `paid:${p.id}`);
     return result;
   }

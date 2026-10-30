@@ -82,6 +82,7 @@
         ["records:incident", "Incidents"],
         ["records:cost", "Operating costs"],
         ["legacy:connections", "Provider readiness"],
+        ["platform/automation", "AI automations"],
       ],
     ],
     [

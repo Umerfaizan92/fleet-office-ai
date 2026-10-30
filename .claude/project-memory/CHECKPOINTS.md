@@ -241,3 +241,73 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner: merge #33 then #34; choose the next task (T-040..T-045) or send the next phase prompt
+
+## CP-018 2026-10-30T14:09:22+08:00 T-046 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-046 (IN_PROGRESS)
+- Completed steps: Refactors in pipeline/server/mail-centre; src/automation/catalogue.js written
+- Incomplete steps: engine.js, routes.js, server wiring, approvals extension, UI, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; src/mail-centre.js; src/pipeline.js; src/server.js; docs/phase-05/PROMPT.md; src/automation/catalogue.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-05-ai-automation
+- Commit: af72660 (Checkpoint: PR #34 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-05-ai-automation/20261030T060922Z (cbe7462)
+- Known errors: none
+- Next exact action: Write src/automation/engine.js
+
+## CP-019 2026-10-30T16:15:35+08:00 T-046 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-046 (IN_PROGRESS)
+- Completed steps: engine.js, routes.js, server wiring (events from pipeline, business hub, payments), approval queue Schedule/Clarify and automation decision hook; scripts/automation.test.mjs 6/6 pass
+- Incomplete steps: sweep test of every action, in-process retry/idempotency tests, builder UI, approvals UI, founder tab, full suites, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; scripts/automation.test.mjs; src/business-hub.js; src/mail-centre.js; src/payments.js; src/pipeline.js; src/server.js; docs/phase-05/PROMPT.md; src/automation/catalogue.js; src/automation/engine.js; src/automation/routes.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-05-ai-automation
+- Commit: af72660 (Checkpoint: PR #34 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-05-ai-automation/20261030T081535Z (2cd6e9d)
+- Known errors: none
+- Next exact action: Write the every-action sweep test and engine unit tests
+
+## CP-020 2026-10-30T16:17:32+08:00 T-046 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-046 (IN_PROGRESS)
+- Completed steps: Backend complete: automation.test 7/7 (incl. every-action sweep), automation-engine.test 8/8
+- Incomplete steps: UI: builder b01/automations, approvals fields+schedule/clarify, b08 link, founder tab; full suites; report; commit; PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; scripts/automation.test.mjs; src/business-hub.js; src/mail-centre.js; src/payments.js; src/pipeline.js; src/server.js; docs/phase-05/PROMPT.md; scripts/automation-engine.test.mjs; src/automation/catalogue.js; src/automation/engine.js; src/automation/routes.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-05-ai-automation
+- Commit: af72660 (Checkpoint: PR #34 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-05-ai-automation/20261030T081732Z (d77dfc7)
+- Known errors: none
+- Next exact action: Build saas/workspace-automations.js
+
+## CP-021 2026-10-30T16:25:36+08:00 T-046 TESTING
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-046 (TESTING)
+- Completed steps: UI: b01/automations builder/activity/suggestions/rules/audit, approvals card fields + Edit/Schedule/Clarify/Answer, b08 link, founder tab f07/platform/automation; test:automations-ui 10/10
+- Incomplete steps: full suites, verify:modules, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.js; office/console.js; package.json; saas/approvals.js; saas/workspace-nav.js; saas/workspace-ops.js; saas/workspace.html; scripts/automation.test.mjs; scripts/test-console-platform.mjs; src/business-hub.js; src/mail-centre.js; src/payments.js; src/pipeline.js; src/server.js; docs/phase-05/PROMPT.md; saas/workspace-automations.css; saas/workspace-automations.js; scripts/automation-engine.test.mjs; scripts/test-automations-ui.mjs; src/automation/catalogue.js; src/automation/engine.js; src/automation/routes.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-05-ai-automation
+- Commit: af72660 (Checkpoint: PR #34 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-05-ai-automation/20261030T082536Z (80683ff)
+- Known errors: none
+- Next exact action: Run npm test and all UI suites
+
+## CP-022 2026-10-30T16:48:59+08:00 T-046 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-046 (COMPLETED)
+- Completed steps: Phase 05 complete: engine, catalogue, approvals, builder, founder tab, tests, report
+- Incomplete steps: Owner: merge PRs #33, #34 and the Phase 05 PR; choose among T-040 to T-045, T-047, T-048; approve T-037
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md
+- Tests executed: npm test; test:unit; test:automations-ui; test:ui; test:pipeline-ui; test:console-ui; verify:modules; test:visual
+- Test results: 73/73; 155/155; 11/11; 34/34; 15/15; 14/14; 49/0; 51 same
+- Git branch: phase-05-ai-automation
+- Commit: c6bc352 (Phase 05: keep the existing stock and calendar automation tests (E-013)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner's next phase prompt or task choice

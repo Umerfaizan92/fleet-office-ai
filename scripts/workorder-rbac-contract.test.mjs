@@ -21,9 +21,14 @@ test('only one canonical POST offer route with management RBAC',()=>{
  assert.equal(routes.length,1,'duplicate offer route');
  assert.match(routes[0],/requireSaasUser\s*,\s*requireSaasRole\(\s*'owner'\s*,\s*'admin'\s*,\s*'manager'\s*,\s*'super_admin'\s*\)/);
  const routeBody=source.slice(source.indexOf("app.post('/api/saas/work-orders/:id/offer'"),source.indexOf('const workforceOnboardingLimiter'));
- assert.match(routeBody,/workerComplianceState/);
- assert.match(routeBody,/work_rights_verified/);
- assert.match(routeBody,/verification_status/);
+ // Phase 05: eligibility lives in evaluateWorkOrder, shared by this route and the automation engine, so both apply the same checks.
+ assert.match(routeBody,/offerWorkOrder\(/);
+ const evaluate=source.slice(source.indexOf('function evaluateWorkOrder('),source.indexOf('function offerWorkOrder('));
+ assert.ok(evaluate.length>100,'evaluateWorkOrder exists');
+ assert.match(evaluate,/workerComplianceState/);
+ assert.match(evaluate,/work_rights_verified/);
+ assert.match(evaluate,/verification_status/);
+ assert.match(source.slice(source.indexOf('function offerWorkOrder('),source.indexOf("app.post('/api/saas/work-orders/:id/offer'")),/evaluateWorkOrder\(/);
 });
 
 test('finance is restricted to owner, admin and super_admin',()=>{

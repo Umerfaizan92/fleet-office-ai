@@ -1,0 +1,14 @@
+/* Phase 04 Founder Console tabs (Revenue, Infrastructure, Storage & backups, AI usage, Compliance, Configuration). */
+.cp-view{display:grid;gap:14px}
+.cp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.cp-stat{display:grid;gap:4px}
+.cp-stat b{font-size:24px;line-height:1.15;color:var(--sp-fg,var(--text));font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cp-label{font-size:13px;color:var(--sp-fg-muted,var(--muted))}
+.cp-stat small{color:var(--sp-fg-2,var(--text-2))}
+.cp-section{display:grid;gap:10px}
+.cp-section h2{margin:0;font-size:17px}
+.cp-note{margin:0}
+.cp-table-wrap{overflow-x:auto;max-width:100%}
+.cp-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.cp-table th,.cp-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--sp-line,var(--line));vertical-align:top;overflow-wrap:anywhere}
+.cp-table th{font-size:12px;font-weight:600;color:var(--sp-fg-muted,var(--muted))}

@@ -4,6 +4,8 @@ import { installPipeline } from './pipeline.js';
 import {createSubscriptionPolicy} from './subscription-policy.js';
 import {createPlatformIdentity} from './platform-identity.js';
 import {installOperatorConsole} from './operator-console.js';
+import { installPlatformHealth } from './platform-health.js';
+import { LEGAL_VERSION as PLATFORM_LEGAL_VERSION } from './legal.js';
 import {installMailCentre} from './mail-centre.js';
 import {createFounderIdentity} from './founder-identity.js';
 import {createStaffAccess} from './staff-access.js';
@@ -5708,6 +5710,8 @@ installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,password
 const platformIdentity=createPlatformIdentity({db,env,validTotp,founderAuthenticate:requireAdmin,onFounderLogout:req=>{const token=String(req.get('x-admin-key')||'');if(token.startsWith('sps.'))db.prepare('INSERT OR IGNORE INTO revoked_operator_sessions VALUES (?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),new Date(Number(token.split('.')[1])).toISOString())}});
 platformIdentity.install(app,{limiter:operatorLoginLimiter});
 installOperatorConsole(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,requireSaasUser,requireSaasRole,saasAudit,entitlements});
+// Phase 04: founder revenue, storage and backups, AI usage, compliance and configuration (read-only).
+installPlatformHealth(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,legalVersion:PLATFORM_LEGAL_VERSION});
 // Phase 02: durable background jobs (retries, idempotency, dead letters) and founder-only operational views.
 const jobQueue=createJobQueue({db});
 jobQueue.register('audit.verify_chain',()=>{const r=verifyAuditChain(db);if(!r.ok)throw new Error('Audit chain did not verify ('+(r.reason||r.brokenAt||'unknown')+').');return {checked:r.checked}},{maxAttempts:3,baseDelayMs:600000,timeoutMs:120000});

@@ -54,7 +54,8 @@
     "memory:restore": "node scripts/memory/restore.mjs",
     "memory:validate": "node scripts/memory/validate.mjs",
     "memory:task": "node scripts/memory/task.mjs",
-    "test:pipeline-ui": "node scripts/test-pipeline-ui.mjs"
+    "test:pipeline-ui": "node scripts/test-pipeline-ui.mjs",
+    "test:console-ui": "node scripts/test-console-platform.mjs"
   },
   "engines": {
     "node": "22.x"

@@ -1,32 +1,9 @@
+import { assertIsolatedPreview } from './preview-preflight.js';
 // Synthetic acceptance-test identities only. Never imports or reads production data.
 import crypto from "node:crypto";
 export function seedIsolatedPreview(db, env) {
   if (env.SUPERPRO_ISOLATED_PREVIEW !== "1") return;
-  if (
-    env.REQUIRE_PERSISTENT_DISK === "1" ||
-    env.BACKUP_S3_BUCKET ||
-    env.AWS_S3_BUCKET ||
-    env.DATABASE_PATH?.startsWith("/var/data")
-  )
-    throw Error("Isolated preview must not use production storage or backups.");
-  if (
-    !env.PREVIEW_BUSINESS_PASSWORD ||
-    env.PREVIEW_BUSINESS_PASSWORD.length < 20
-  )
-    throw Error("Set a unique strong preview test password.");
-  if (
-    [
-      "RESEND_API_KEY",
-      "TELNYX_API_KEY",
-      "STRIPE_SECRET_KEY",
-      "GEMINI_API_KEY",
-      "OPENAI_API_KEY",
-      "AI_PROVIDER_API_KEY",
-    ].some((k) => env[k])
-  )
-    throw Error(
-      "Isolated preview cannot use live message, payment or AI provider credentials.",
-    );
+  assertIsolatedPreview(env);
   const at = new Date().toISOString();
   db.transaction(() => {
     for (const [label, name] of [

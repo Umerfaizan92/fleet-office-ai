@@ -1,3 +1,4 @@
+import { assertIsolatedPreview } from './preview-preflight.js';
 import {seedIsolatedPreview} from './preview-seed.js';
 import {installBusinessHub} from './business-hub.js';
 import {createSubscriptionPolicy} from './subscription-policy.js';
@@ -61,9 +62,11 @@ const backendRoot = path.resolve(__dirname, '..');
 const siteRoot = backendRoot;
 
 // SUPERPRO_SKIP_DOTENV=1 is set by the test runner so automated tests can never pick up real provider keys from a developer's .env.
+assertIsolatedPreview(process.env);
 if (process.env.SUPERPRO_SKIP_DOTENV !== '1') dotenv.config({ path: path.join(backendRoot, '.env') });
 
 const env = process.env;
+assertIsolatedPreview(env);
 const port = Number(env.PORT || 3000);
 const integrationRuntime=createIntegrationRuntime({
   env,

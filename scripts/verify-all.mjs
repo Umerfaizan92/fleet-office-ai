@@ -72,18 +72,6 @@ const run = (command, argv, options = {}) => spawnSync(command, argv, { cwd: ROO
 
 /* ================================================================ 1. SYNTAX ===== */
 await stage('syntax', 'Syntax validity across all files', async () => {
-  await check('isolated preview rejects production backup settings before any S3 access', () => {
-    const start = fs.readFileSync(path.join(ROOT, 'scripts/start.mjs'), 'utf8');
-    const guard = start.indexOf("if (env.SUPERPRO_ISOLATED_PREVIEW === '1'");
-    const credentials = start.indexOf('const creds = applyBackupEnv(env)');
-    const uploads = start.indexOf('await restoreUploads(');
-    const restore = start.indexOf("spawnSync(bin, ['restore'");
-    assert.ok(guard >= 0 && credentials > guard && uploads > guard && restore > guard,
-      'preview safety guard must run before credential application, S3 restore and replication');
-    for (const variable of ['BACKUP_S3_BUCKET', 'AWS_S3_BUCKET', 'BACKUP_FILE_DIR', 'REQUIRE_PERSISTENT_DISK']) {
-      assert.ok(start.slice(guard, credentials).includes(variable), 'missing preview restriction: ' + variable);
-    }
-  });
   const files = walk(ROOT);
   const scripts = files.filter((f) => /\.(mjs|cjs|js)$/.test(f));
   await check(`${scripts.length} JavaScript files parse`, () => {

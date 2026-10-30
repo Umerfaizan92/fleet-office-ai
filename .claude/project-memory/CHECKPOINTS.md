@@ -115,3 +115,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner's next phase prompt (P04 or other); record it with npm run memory:task -- add before starting
+
+## CP-009 2026-10-30T12:56:24+08:00 T-038
+- Phase: P03.5 completed; PR #33 awaiting owner review
+- Task: T-038
+- Completed steps: branch pushed; PR #33 opened
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md; .claude/project-memory/SESSION_HANDOVER.md
+- Tests executed: verify:manifest; memory:validate
+- Test results: pass; valid
+- Git branch: phase-03-cinematic-design
+- Commit: 4d2c1c3 (Project memory: branch published to GitHub (T-038 in progress, D-014))
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: review/merge PR #33, decide T-037, send the next phase prompt

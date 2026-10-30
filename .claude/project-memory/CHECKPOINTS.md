@@ -87,3 +87,31 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner's next phase prompt (P04 or other); record it with npm run memory:task -- add before starting
+
+## CP-007 2026-10-30T12:45:59+08:00 T-035
+- Phase: P03.5 completed; waiting for the owner's next phase prompt
+- Task: T-035
+- Completed steps: committed 885f3cc; npm test pending re-run
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: project-memory tests
+- Test results: 5/5
+- Git branch: phase-03-cinematic-design
+- Commit: 885f3cc (Resume check: only new snapshots, clear message when all open tasks are blocked; T-037 waits for approval); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner's next phase prompt; record it with npm run memory:task -- add before starting
+
+## CP-008 2026-10-30T12:47:11+08:00 T-035
+- Phase: P03.5 completed; waiting for the owner's next phase prompt
+- Task: T-035
+- Completed steps: final verification on 885f3cc: npm test 73/73
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/SESSION_HANDOVER.md
+- Tests executed: npm test; project-memory tests; memory:validate; verify:manifest
+- Test results: 73/73; 5/5; valid; pass
+- Git branch: phase-03-cinematic-design
+- Commit: 885f3cc (Resume check: only new snapshots, clear message when all open tasks are blocked; T-037 waits for approval); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner's next phase prompt (P04 or other); record it with npm run memory:task -- add before starting

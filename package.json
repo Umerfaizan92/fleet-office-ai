@@ -52,7 +52,8 @@
     "memory:checkpoint": "node scripts/memory/checkpoint.mjs",
     "memory:snapshot": "node scripts/memory/snapshot.mjs",
     "memory:restore": "node scripts/memory/restore.mjs",
-    "memory:validate": "node scripts/memory/validate.mjs"
+    "memory:validate": "node scripts/memory/validate.mjs",
+    "memory:task": "node scripts/memory/task.mjs"
   },
   "engines": {
     "node": "22.x"

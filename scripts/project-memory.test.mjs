@@ -143,3 +143,37 @@ test('resume check reports a branch mismatch and an interrupted merge', { skip: 
   assert.ok(report.warnings.some((w) => /Handover was written on branch "phase-03-cinematic-design" but you are on "main"/.test(w)));
   assert.ok(report.warnings.some((w) => /does not exist here/.test(w)), 'recorded commit from another clone is flagged');
 });
+
+test('memory:task adds, updates and completes tasks and logs notes without hand edits', { skip: !hasGit && 'git not installed' }, async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-memory-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.cpSync(path.join(ROOT, 'scripts', 'memory'), path.join(dir, 'scripts', 'memory'), { recursive: true });
+  fs.cpSync(path.join(ROOT, '.claude', 'project-memory'), path.join(dir, '.claude', 'project-memory'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'CLAUDE.md'), path.join(dir, 'CLAUDE.md'));
+  spawnSync('git', ['init', '-q'], { cwd: dir });
+  const task = (...a) => spawnSync(process.execPath, [path.join(dir, 'scripts/memory/task.mjs'), ...a], { cwd: dir, encoding: 'utf8' });
+  const mem = (f) => fs.readFileSync(path.join(dir, '.claude/project-memory', f), 'utf8');
+
+  let r = task('add', '--title', 'Drill task', '--requirement', 'do the thing', '--files', 'a.js', '--acceptance', 'tests pass');
+  assert.equal(r.status, 0, r.stderr);
+  const id = r.stdout.match(/T-\d+/)[0];
+  assert.match(mem('PENDING_TASKS.md'), new RegExp(`## ${id} Drill task\\n- Status: NOT_STARTED`));
+  assert.equal(task('status', '--task', id, '--status', 'IN_PROGRESS').status, 0);
+  assert.match(mem('PENDING_TASKS.md'), new RegExp(`## ${id} Drill task\\n- Status: IN_PROGRESS`));
+  assert.notEqual(task('status', '--task', id, '--status', 'COMPLETED').status, 0, 'COMPLETED only through complete');
+  assert.notEqual(task('complete', '--task', id, '--evidence', 'ok').status, 0, 'evidence must describe the verification');
+  assert.notEqual(task('complete', '--task', id, '--evidence', 'test:ui 2 failed of 34').status, 0, 'failing evidence is refused');
+  r = task('complete', '--task', id, '--evidence', 'test:ui 34/34; npm test 73/73');
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(!mem('PENDING_TASKS.md').includes(`## ${id} `));
+  assert.match(mem('COMPLETED_TASKS.md'), new RegExp(`## ${id} Drill task\\n- Added: .*\\n- Requirement: do the thing[\\s\\S]*- Evidence: test:ui 34/34; npm test 73/73`));
+  assert.equal(task('decision', '--text', 'Use scripts for memory edits', '--why', 'hand edits need approval').status, 0);
+  assert.match(mem('DECISIONS.md'), /\| D-\d{3} \| \d{4}-\d{2}-\d{2} \| Use scripts for memory edits \| hand edits need approval \|/);
+  assert.equal(task('error', '--task', id, '--text', 'drill error', '--partial', 'No', '--recovery', 'none needed').status, 0);
+  assert.match(mem('ERROR_LOG.md'), /\| E-\d{3} \| .* \| drill error \| No \| none needed \|/);
+  assert.equal(task('progress', '--text', 'drill line').status, 0);
+  assert.match(mem('PROGRESS.md'), /## Log[\s\S]*- \d{4}-\d{2}-\d{2}: drill line/);
+  assert.notEqual(task('progress', '--text', 'token=abcdefghijkl123').status, 0, 'secrets refused');
+  const { validate: v } = await import(path.join(dir, 'scripts/memory/validate.mjs'));
+  assert.deepEqual(v(dir).filter((p) => !/SESSION_HANDOVER|CLAUDE/.test(p)), []);
+});

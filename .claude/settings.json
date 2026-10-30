@@ -23,5 +23,12 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run memory:*)",
+      "Edit(.claude/project-memory/**)",
+      "Write(.claude/project-memory/**)"
+    ]
   }
 }

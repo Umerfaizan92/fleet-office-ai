@@ -1,7 +1,7 @@
 # Progress
 
 Where the project stands, phase by phase. Detail per task lives in COMPLETED_TASKS.md and PENDING_TASKS.md.
-Last updated: 2026-10-30 (P03.5 in progress).
+Last updated: 2026-10-30 (P03.5 completed).
 
 ## Repository state
 
@@ -42,9 +42,11 @@ Report delivered in chat; not stored in the repository. No code changed.
 - Tests and reports: `scripts/public-site.test.mjs`, `test-site-ui.mjs` (15), `test-visual.mjs` (51 screens),
   `report-a11y-perf.mjs`; results in `qa/reports/`; documentation in `docs/design/DESIGN_SYSTEM.md`.
 
-## P03.5 Persistent autosave, checkpoint and resume (IN_PROGRESS)
+## P03.5 Persistent autosave, checkpoint and resume (COMPLETED)
 
-See task T-035 in PENDING_TASKS.md.
+`CLAUDE.md`, `.claude/project-memory/`, `scripts/memory/` (resume, checkpoint, snapshot, restore, task, validate),
+hooks in `.claude/settings.json`, `docs/process/PROJECT_MEMORY.md`. Recovery drill passed with a fresh Claude Code
+session that resumed and finished T-036.
 
 ## Test suites (all passing at 6a5ddc8)
 

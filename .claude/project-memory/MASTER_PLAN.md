@@ -26,7 +26,7 @@ NOT_STARTED, IN_PROGRESS, BLOCKED, TESTING, COMPLETED.
 | P01 | Competitor intelligence and master blueprint | COMPLETED | P00 | report delivered in chat (no repo changes) |
 | P02 | Enterprise infrastructure and security | COMPLETED (not yet on GitHub) | P00, P01 | `phase-02-infrastructure-security` / `5cf7377` |
 | P03 | Cinematic design system and frontend transformation | COMPLETED (not yet on GitHub) | P02 | `phase-03-cinematic-design` / `6b387fd`, `6a5ddc8` |
-| P03.5 | Persistent autosave, checkpoint and resume system | IN_PROGRESS | none (process) | `phase-03-cinematic-design` |
+| P03.5 | Persistent autosave, checkpoint and resume system | COMPLETED (not yet on GitHub) | none (process) | `phase-03-cinematic-design` |
 | P04 | Subscriber Workspace (Business OS) | NOT_STARTED | P03 | prompt not yet received |
 | P05 | Founder Console | NOT_STARTED | P03 | prompt not yet received |
 | P06 | AI automation and human approvals | NOT_STARTED | P04, P05 | prompt not yet received |

@@ -12,7 +12,7 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
   handover before context runs out; atomic commits, no force-push, no automatic push without permission; failure
   recovery that never blindly retries migrations, payments, emails, deploys or external APIs; Claude Code hooks for
   startup and handover without loops; a recovery drill; no secrets in memory.
-- Files: `CLAUDE.md`, `.claude/settings.json`, `.claude/project-memory/*`, `scripts/memory/*`,
+- Files: `CLAUDE.md`, `.claude/settings.json`, `.claude/project-memory/*`, `scripts/memory/*` (incl. `task.mjs`), `docs/process/PROJECT_MEMORY.md`,
   `scripts/project-memory.test.mjs`, `package.json`.
 - Acceptance: memory files present and validated; `npm run memory:checkpoint`, `memory:snapshot`, `memory:resume`,
   `memory:validate` work; SessionStart hook prints state; contract test passes inside `npm test`; recovery drill

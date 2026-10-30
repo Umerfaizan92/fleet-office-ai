@@ -22,12 +22,25 @@ project's durable state. Read this file fully before doing anything else.
 
 ## 2. While working
 
-- Give every task an ID (`T-` plus three digits, next free number) and record its requirement, files and acceptance
-  criteria in `PENDING_TASKS.md` before starting. New phase prompts from the owner are recorded there in full first.
+Update memory through the `npm run memory:*` commands. Claude Code treats files under `.claude/` as sensitive and asks
+permission for every direct edit (an unattended session cannot edit them at all), so the commands are the reliable path:
+
+| Need | Command |
+|---|---|
+| New task (ID assigned automatically) | `npm run memory:task -- add --title "..." --requirement "..." --files "..." --acceptance "..."` |
+| Change status | `npm run memory:task -- status --task T-0xx --status IN_PROGRESS` (or BLOCKED, TESTING) |
+| Verified and done | `npm run memory:task -- complete --task T-0xx --evidence "tests and results, commit"` |
+| Decision | `npm run memory:task -- decision --text "..." --why "..."` |
+| Error | `npm run memory:task -- error --task T-0xx --text "..." --partial "Yes/No/Unknown" --recovery "..."` |
+| Progress line | `npm run memory:task -- progress --text "..."` |
+| Checkpoint and handover | `npm run memory:checkpoint -- ...` (below) |
+
+- Give every task an ID and record its requirement, files and acceptance criteria before starting. New phase prompts
+  from the owner are recorded in full first (owner-approved hand edit, or `add --requirement`).
 - Status values: NOT_STARTED, IN_PROGRESS, BLOCKED, TESTING, COMPLETED. A task is COMPLETED only after its acceptance
-  criteria are verified (tests run and passing, page checked). Then move it to `COMPLETED_TASKS.md` with evidence.
-- Record decisions in `DECISIONS.md` and errors (with whether they partially executed and the safe recovery) in
-  `ERROR_LOG.md`.
+  criteria are verified (tests run and passing, page checked); `complete` moves it to `COMPLETED_TASKS.md` with
+  evidence and refuses evidence that mentions failures.
+- Record decisions and errors (with whether they partially executed and the safe recovery) as they happen.
 - Checkpoint with `npm run memory:checkpoint -- --task T-0xx --status IN_PROGRESS --done "..." --todo "..." --next "..."`:
   - before a significant task or a potentially disruptive operation (migration, dependency upgrade, mass edit);
   - after a meaningful implementation step, after changing critical files, after a successful test run;

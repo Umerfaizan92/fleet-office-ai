@@ -49,7 +49,17 @@ export const SUBSCRIBER = [
   ['Google Integration Centre and local SEO', ['b06/google', 'b06/local'], ['/api/saas/seo/google', '/api/saas/seo/local'], ['seo-units.test', 'seo-platform.test', 'test:seo-ui'], 'Google OAuth client, Business Profile API access, PageSpeed key; not yet verified against live Google'],
   ['Content Studio and Website Builder', ['b06/studio', 'b06/builder'], ['/api/saas/seo/studio', '/api/saas/seo/sites'], ['seo-platform.test', 'test:seo-ui'], 'AI drafts need an AI provider (templates otherwise)'],
   ['AI automations and approvals', ['b01/automations', 'b01/approvals'], ['/api/saas/automation/engine', '/api/saas/automation/workflows', '/api/saas/automation/runs', '/api/saas/automation/audit', '/api/saas/approvals'], ['automation-governance.test', 'automation-engine.test', 'test:automations-ui'], 'AI analysis needs an AI provider (built-in rules otherwise); sending needs an email provider'],
-  ['Automation settings', ['b08/automation'], ['/api/saas/automation', '/api/saas/approvals', '/api/saas/payments/settings'], ['business-ops.test', 'test:pipeline-ui'], 'Inbox AI drafts need an AI provider; customer reminders need email or SMS']
+  ['Automation settings', ['b08/automation'], ['/api/saas/automation', '/api/saas/approvals', '/api/saas/payments/settings'], ['business-ops.test', 'test:pipeline-ui'], 'Inbox AI drafts need an AI provider; customer reminders need email or SMS'],
+  // Consolidation release: modules added in Phases 07 to 09.
+  ['Unified Inbox (all folders and AI triage)', ['b04/unified'], ['/api/saas/comms/unified', '/api/saas/comms/unified/suggestions'], ['comms.test', 'test:comms-ui'], 'Telnyx, Resend and Meta for live channels'],
+  ['Call handling (voice)', ['b04/voice'], ['/api/saas/comms/voice'], ['comms.test', 'test:comms-ui'], 'Telnyx number, AI assistant and transcription; not verified against live Telnyx'],
+  ['Campaign Studio and consent', ['b05/campaign-studio', 'b05/consent'], ['/api/saas/growth/campaigns', '/api/saas/comms/consents'], ['comms.test', 'test:comms-ui'], 'Resend or Telnyx for sending; every send needs approval'],
+  ['Quotes, estimates, deposits and tax invoices', ['b07/sales'], ['/api/saas/finance/hub', '/api/saas/finance/documents', '/api/saas/finance/settings'], ['finance.test', 'test:finance-ui'], 'Card payment links need the business\'s own Stripe or PayPal'],
+  ['Payments, receipts and refunds', ['b07/payments-refunds'], ['/api/saas/finance/receipts', '/api/saas/finance/refunds'], ['finance.test', 'test:finance-ui'], 'Card refunds need the business\'s own Stripe; not verified against live Stripe'],
+  ['Bank reconciliation', ['b07/reconcile'], ['/api/saas/finance/reconciliation'], ['finance.test', 'test:finance-ui'], null],
+  ['Financial reports and GST', ['b07/reports'], ['/api/saas/finance/reports/pl', '/api/saas/finance/reports/gst', '/api/saas/finance/reports/aged', '/api/saas/finance/insights'], ['finance.test', 'test:finance-ui'], null],
+  ['Finance settings, compliance and audit', ['b07/compliance'], ['/api/saas/finance/compliance', '/api/saas/finance/audit', '/api/saas/finance/rules'], ['finance.test', 'test:finance-ui'], null],
+  ['Change plan', ['b09/change-plan'], ['/api/saas/finance/plan-changes'], ['finance.test', 'test:finance-ui'], null]
 ];
 export const FOUNDER = [
   ['Subscriber administration', ['f02/subscribers'], ['/api/operator/subscribers'], ['test:ui (founder)'], null],
@@ -68,7 +78,10 @@ export const FOUNDER = [
   ['Security and audit logs', ['f08/audit'], ['/api/operator/audit'], ['test:ui (founder)', 'npm test (audit chain)'], null],
   ['Feature flags', ['f09/platform/configuration', 'f09/complimentary'], ['/api/operator/platform/configuration', '/api/operator/complimentary'], ['platform-health.test'], 'Plan and grant based; no runtime on/off switches'],
   ['Compliance', ['f08/platform/compliance'], ['/api/operator/platform/compliance'], ['platform-health.test', 'test:console-ui'], null],
-  ['Platform configuration', ['f09/platform/configuration', 'f09/staff'], ['/api/operator/platform/configuration'], ['platform-health.test'], null]
+  ['Platform configuration', ['f09/platform/configuration', 'f09/staff'], ['/api/operator/platform/configuration'], ['platform-health.test'], null],
+  ['Newsletter campaigns (platform)', ['f06/platform/campaigns'], ['/api/operator/campaigns', '/api/operator/comms/overview'], ['comms.test', 'test:comms-ui'], 'Resend and PLATFORM_MAIL_FROM for sending'],
+  ['Plan prices, renewals, dunning and revenue', ['f03/platform/finance'], ['/api/operator/finance/plans', '/api/operator/finance/renewals', '/api/operator/finance/dunning', '/api/operator/finance/revenue'], ['finance.test', 'test:finance-ui'], null],
+  ['Reliability and backups', ['f07/platform/reliability'], ['/api/operator/reliability'], ['reliability.test', 'test:reliability-ui'], 'AWS S3 backup bucket and keys; not verified against live AWS']
 ];
 
 const s = await startServer();

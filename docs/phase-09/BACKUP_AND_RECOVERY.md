@@ -42,28 +42,21 @@ Use a bucket only for backups. It must be different from primary file storage; t
 1. **Block all public access**: on.
 2. **Bucket Versioning**: enabled. Overwritten or deleted backups stay recoverable.
 3. **Default encryption**: SSE-S3 or SSE-KMS.
-4. **Lifecycle rules.** Retention is enforced here, not by app code, so the app never deletes a backup.
+4. **Lifecycle rules.** Retention is enforced by the bucket, not by app code, so the app never deletes a backup.
+   Apply [`infra/aws/backup-lifecycle.json`](../../infra/aws/backup-lifecycle.json) (the single source of truth,
+   extended in the consolidation release). It keeps:
+   - old database versions for 35 days and upload copies for 90 days;
+   - daily snapshots for 35 days and monthly copies for about 13 months;
+   - configuration backups for 90 days.
+   Litestream manages its own 72 h retention under `super-pro/db/`.
+   Monthly copies: copy the first snapshot of each month to `super-pro/monthly/` (follow-up T-059).
+5. **IAM.** Apply [`infra/aws/backup-iam-policy.json`](../../infra/aws/backup-iam-policy.json) to the backup user.
+   - It allows delete **only** under `super-pro/db/`, where Litestream needs it to manage its own retention.
+   - Snapshots, configuration and upload copies are get and put only, with no delete.
+   - It adds read-only access to the bucket's versioning, encryption, lifecycle and public-access settings for the
+     bucket check.
 
-```json
-{
-  "Rules": [
-    { "ID": "daily-snapshots-35-days", "Status": "Enabled", "Filter": { "Prefix": "super-pro/snapshots/" },
-      "Expiration": { "Days": 35 }, "NoncurrentVersionExpiration": { "NoncurrentDays": 30 } },
-    { "ID": "monthly-snapshots-12-months", "Status": "Enabled", "Filter": { "Prefix": "super-pro/monthly/" },
-      "Expiration": { "Days": 400 } },
-    { "ID": "config-90-days", "Status": "Enabled", "Filter": { "Prefix": "super-pro/config/" },
-      "Expiration": { "Days": 90 } },
-    { "ID": "old-versions-uploads", "Status": "Enabled", "Filter": { "Prefix": "super-pro/uploads/" },
-      "NoncurrentVersionExpiration": { "NoncurrentDays": 90 } }
-  ]
-}
-```
-
-   Litestream manages its own 72 h retention under `super-pro/db/`. Monthly copies: copy the first snapshot of each
-   month to `super-pro/monthly/` (an S3 Batch Operations job or a manual copy; follow-up T-059).
-5. **IAM.** The backup keys need only `s3:ListBucket` and `s3:GetBucket*` on the bucket, plus
-   `s3:GetObject`/`s3:PutObject` on `super-pro/*`. Do not give them `s3:DeleteObject`. Versioning combined with no
-   delete permission means a leaked backup key cannot erase backups.
+   Versioning plus no delete permission on the snapshot prefixes means a leaked backup key cannot erase snapshots.
 6. Optional: **S3 Object Lock** (governance mode, 7 days) on the snapshots prefix for protection against ransomware.
 
 ## Settings

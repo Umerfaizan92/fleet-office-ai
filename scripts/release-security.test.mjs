@@ -145,3 +145,14 @@ test('roles inside a business, file access, AI tool access, injection, secret ex
     assert.equal(chain.ok, true, JSON.stringify(chain).slice(0, 300));
   });
 });
+
+test('the least-privilege backup IAM policy and lifecycle rules cover every prefix the app writes', () => {
+  const iam = JSON.parse(fs.readFileSync('infra/aws/backup-iam-policy.json', 'utf8')), life = JSON.parse(fs.readFileSync('infra/aws/backup-lifecycle.json', 'utf8'));
+  const allowed = (prefix, action) => iam.Statement.some((s) => s.Effect === 'Allow' && [].concat(s.Action).includes(action) && [].concat(s.Resource).some((r) => r === `arn:aws:s3:::BACKUP_BUCKET/${prefix}/*`));
+  for (const p of ['super-pro/db', 'super-pro/uploads', 'super-pro/snapshots', 'super-pro/config']) { assert.ok(allowed(p, 's3:PutObject'), `PutObject on ${p}`); assert.ok(allowed(p, 's3:GetObject'), `GetObject on ${p}`); }
+  for (const p of ['super-pro/uploads', 'super-pro/snapshots', 'super-pro/config', 'super-pro/monthly']) assert.ok(!allowed(p, 's3:DeleteObject'), `no delete on ${p}`);
+  for (const a of ['s3:GetBucketVersioning', 's3:GetEncryptionConfiguration', 's3:GetLifecycleConfiguration', 's3:GetBucketPublicAccessBlock']) assert.ok(iam.Statement.some((s) => [].concat(s.Action).includes(a)), a);
+  for (const p of ['super-pro/db/', 'super-pro/uploads/', 'super-pro/snapshots/', 'super-pro/config/', 'super-pro/monthly/']) assert.ok(life.Rules.some((r) => r.Status === 'Enabled' && r.Filter?.Prefix === p), `lifecycle rule for ${p}`);
+  const code = fs.readFileSync('src/reliability/backup.js', 'utf8');
+  for (const k of ['snapshots', 'config']) assert.match(code, new RegExp(`prefix\\('${k}'\\)`));
+});

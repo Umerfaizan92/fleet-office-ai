@@ -114,24 +114,29 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
     customer_id: z.string().uuid().optional(),
     customer: z.object({ name: z.string().trim().min(2).max(160), email: z.string().trim().email().max(254).optional().or(z.literal('')), phone: z.string().trim().max(40).optional(), address: z.string().trim().max(300).optional() }).optional()
   }).strict().refine((d) => d.customer_id || d.customer, { message: 'Choose a customer or add a new one.' });
-  app.post('/api/saas/pipeline/enquiries', requireSaasUser, can('customers', 'create'), (req, res) => {
-    const p = enquirySchema.safeParse(req.body);
-    if (!p.success) return fail(res, 400, p.error.issues[0]?.message === 'Choose a customer or add a new one.' ? p.error.issues[0].message : 'Add a short title and the customer.');
-    const org = req.saas.organisation_id, d = p.data, now = iso();
-    let customerId = d.customer_id;
-    if (customerId && !customer(org, customerId)) return fail(res, 400, 'That customer does not belong to this workspace.');
-    const id = crypto.randomUUID();
+  // Shared by the enquiry form, website contact forms and inbound messages (Phase 07). The caller checks the customer belongs here.
+  function createEnquiry(org, actorId, d) {
+    const now = iso(), id = crypto.randomUUID();
+    let customerId = d.customer_id || null;
     db.transaction(() => {
       if (!customerId) {
         customerId = crypto.randomUUID();
         db.prepare(`INSERT INTO tenant_customers (id,organisation_id,name,email,phone,address,status,source,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?,'lead','enquiry',?,?,?)`)
-          .run(customerId, org, d.customer.name, d.customer.email || null, d.customer.phone || null, d.customer.address || null, req.saas.user_id, now, now);
+          .run(customerId, org, d.customer.name, d.customer.email || null, d.customer.phone || null, d.customer.address || null, /^[0-9a-f-]{36}$/.test(String(actorId)) ? actorId : null, now, now);
       }
       db.prepare(`INSERT INTO tenant_documents (id,organisation_id,kind,customer_id,title,body,status,channel,created_by,created_at,updated_at) VALUES (?,?,'enquiry',?,?,?,'open',?,?,?,?)`)
-        .run(id, org, customerId, d.title, d.details, d.channel, req.saas.user_id, now, now);
+        .run(id, org, customerId, d.title, d.details || '', d.channel || 'other', actorId, now, now);
     })();
-    saasAudit(req, 'enquiry.created', 'enquiry', id, { channel: d.channel, new_customer: !d.customer_id });
     events.emit(org, 'enquiry.created', { enquiry_id: id }, { key: id });
+    return { id, customer_id: customerId };
+  }
+  app.post('/api/saas/pipeline/enquiries', requireSaasUser, can('customers', 'create'), (req, res) => {
+    const p = enquirySchema.safeParse(req.body);
+    if (!p.success) return fail(res, 400, p.error.issues[0]?.message === 'Choose a customer or add a new one.' ? p.error.issues[0].message : 'Add a short title and the customer.');
+    const org = req.saas.organisation_id, d = p.data;
+    if (d.customer_id && !customer(org, d.customer_id)) return fail(res, 400, 'That customer does not belong to this workspace.');
+    const { id, customer_id: customerId } = createEnquiry(org, req.saas.user_id, d);
+    saasAudit(req, 'enquiry.created', 'enquiry', id, { channel: d.channel, new_customer: !d.customer_id });
     res.status(201).json({ ok: true, id, customer_id: customerId });
   });
   app.post('/api/saas/pipeline/enquiries/:id/close', requireSaasUser, can('customers', 'edit'), (req, res) => {
@@ -248,5 +253,5 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
     res.json({ ok: true, issued_at: now, due_at: due, total_cents: totalCents });
   });
 
-  return { createJobForBooking, refreshInvoice, gstFor, createQuoteFromEnquiry, createInvoiceFromJob };
+  return { createJobForBooking, refreshInvoice, gstFor, createQuoteFromEnquiry, createInvoiceFromJob, createEnquiry };
 }

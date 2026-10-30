@@ -94,6 +94,13 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: none (operational)
 - Acceptance: Each connected service shows Verified in the Google Integration Centre
 
+## T-055 Live Telnyx and Resend verification for Phase 07
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Place a staging test call (assistant, transcript, transfer, voicemail) and send a test campaign; confirm Resend receipts reach /api/webhooks/communications/resend
+- Files: src/comms/voice.js, src/comms/service.js
+- Acceptance: Live call and email evidence recorded in docs/phase-07/REPORT.md
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

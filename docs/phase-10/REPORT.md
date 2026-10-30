@@ -203,6 +203,7 @@ were checked locally).
 | `security:secrets` | pass |
 | `npm audit --omit=dev --audit-level=high` | 0 vulnerabilities |
 | `build:ds`, `build:site` | rebuild with no unexpected changes |
+| GitHub CI on PR #40 (secret scan, npm test, UI tests, integration, smoke, npm audit) and the Security workflow | pass (runs 41079564788 and 41079564951) |
 | `storage:verify` | fails here as expected (no AWS keys in this session); must pass on Render |
 
 ## 10. Known limitations
@@ -231,7 +232,7 @@ were checked locally).
   schema changes are additive, so rollback is safe; a tested rollback plan exists.
 - **Before go-live:**
   - your approval;
-  - green CI on the Phase 10 PR;
+  - green CI on the Phase 10 PR (done: PR #40, CI and Security pass);
   - a pre-deploy database backup;
   - the post-deploy checks in `RELEASE_CANDIDATE.md`.
 - **Strongly recommended first:**

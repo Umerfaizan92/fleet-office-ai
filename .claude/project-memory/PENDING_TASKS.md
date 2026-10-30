@@ -10,12 +10,47 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
   labelled "Open Super Pro AI co-pilot"; dashboard tiles' labels do not contain their visible text.
 - Acceptance: axe `label-content-name-mismatch` 0 on workspace; tests updated in the same commit.
 
-## T-039 Phase 04: complete Business Operating System integration
-- Status: IN_PROGRESS
+## T-040 Create enquiries from inbox messages and receptionist calls
+- Status: NOT_STARTED
 - Added: 2026-10-30
-- Requirement: Owner prompt 2026-10-30 (full text in docs/phase-04/PROMPT.md). Use the Phase 00 inventory as mandatory preservation checklist; improve every existing module; complete broken or disconnected workflows. Subscriber workspace: dashboard, business setup, CRM/customers, enquiries, quotations, bookings, jobs, work orders, worker allocation, workforce compliance, offshore staff, AI receptionist, unified inbox, email and messaging, invoices, payments, accounting and GST, marketing, campaigns, social media, content studio, website management, SEO, AI approvals, files and documents, reports, analytics, branding, notifications, help and support, integrations, automation settings. Preserve pipeline Enquiry > Quote > Booking > Allocation > Completion > Invoice > Payment with correct propagation. Founder console: subscriber admin, organisation management, plans, platform billing, revenue analytics, infrastructure status, storage and backups, AI usage and costs, platform marketing, system email, support tickets, security and audit logs, feature flags, compliance, platform configuration; keep subscriber business comms separate from founder platform comms. Unified navigation, search, filters, notifications, activity history, AI assistance, file attachments, permissions, mobile. Never show success for a backend action that did not succeed. Every existing feature verified working or documented with blockers.
-- Files: src/*, saas/*, office/*, scripts/*
-- Acceptance: Feature inventory saved; pipeline end-to-end test passes; every module verified or blocker documented in docs/phase-04/VERIFICATION.md; no false success messages (tested); npm test and UI suites pass
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
+
+## T-041 Customer-facing quote and invoice documents (PDF or email from the record)
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
+
+## T-042 Attachments on enquiries, quotes and invoices
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
+
+## T-043 Notifications for pipeline events
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
+
+## T-044 Pipeline summary on the Today dashboard
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
+
+## T-045 Store backup restore-drill results for the Storage & backups tab
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Phase 04 remaining gap (docs/phase-04/VERIFICATION.md)
+- Files: not known yet
+- Acceptance: Owner approval of scope; tests added; verify:modules clean
 
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here

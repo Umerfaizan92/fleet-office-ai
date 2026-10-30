@@ -73,3 +73,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner's next phase prompt (P04 or other); record it in PENDING_TASKS.md with npm run memory:task -- add before starting
+
+## CP-006 2026-10-30T12:45:58+08:00 T-035
+- Phase: P03.5 completed; waiting for the owner's next phase prompt
+- Task: T-035
+- Completed steps: resume check lists only snapshots newer than the last checkpoint and says when every open task is blocked; T-037 marked BLOCKED pending owner approval
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; SHA256SUMS.txt; scripts/memory/resume.mjs
+- Tests executed: project-memory tests; memory:validate; verify:manifest
+- Test results: 5/5; valid; pass
+- Git branch: phase-03-cinematic-design
+- Commit: 15b1374 (Checkpoint: T-035 completed with evidence); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner's next phase prompt (P04 or other); record it with npm run memory:task -- add before starting

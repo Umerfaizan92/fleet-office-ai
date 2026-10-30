@@ -49,13 +49,15 @@ export function resumeReport(root) {
   const open = pending.filter((t) => t.status && t.status !== 'COMPLETED');
   // The task the last session was working on wins while it is still open; otherwise the first active task, then the first not started.
   const recordedTask = ((ho['CURRENT TASK'] || '').match(/T-\d{3,}/) || [])[0];
-  const first = open.find((t) => t.id === recordedTask && t.status !== 'BLOCKED') || open.find((t) => t.status === 'IN_PROGRESS') || open.find((t) => t.status === 'TESTING') || open.find((t) => t.status === 'NOT_STARTED') || open[0] || null;
+  const first = open.find((t) => t.id === recordedTask && t.status !== 'BLOCKED') || open.find((t) => t.status === 'IN_PROGRESS') || open.find((t) => t.status === 'TESTING') || open.find((t) => t.status === 'NOT_STARTED') || null;
   for (const t of pending) if (t.status === 'COMPLETED' && !completed.includes(t.id)) warnings.push(`${t.id} is COMPLETED in PENDING_TASKS.md but has no evidence entry in COMPLETED_TASKS.md.`);
   for (const t of pending) if (completed.includes(t.id) && t.status !== 'COMPLETED') warnings.push(`${t.id} appears in COMPLETED_TASKS.md but PENDING_TASKS.md says ${t.status}.`);
 
   return {
     branch: state.branch, head: state.head, subject: state.subject, ahead: state.ahead, remoteBranch: state.remoteBranch,
-    changed: state.changed || [], untracked: state.untracked || [], snapshots: (state.snapshots || []).slice(0, 3),
+    changed: state.changed || [], untracked: state.untracked || [],
+    // Snapshots older than the last checkpoint are history (their work was checkpointed since); list only newer ones.
+    snapshots: (state.snapshots || []).filter((sn) => !cp?.heading || Date.parse(sn.date) > Date.parse(cp.heading.split(' ')[1])).slice(0, 3), olderSnapshots: Math.max(0, (state.snapshots || []).length - (state.snapshots || []).filter((sn) => !cp?.heading || Date.parse(sn.date) > Date.parse(cp.heading.split(' ')[1])).length),
     handover: ho, lastCheckpoint: cp, firstUnfinished: first, open: open.map((t) => ({ id: t.id, status: t.status, title: t.title })).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status)),
     completedCount: completed.length, warnings, facts
   };
@@ -72,10 +74,12 @@ export function formatReport(r) {
   if (h['APPROVALS REQUIRED'] && !/^none/i.test(h['APPROVALS REQUIRED'])) L.push(`Approvals required: ${h['APPROVALS REQUIRED']}`);
   if (r.lastCheckpoint) L.push(`Last checkpoint: ${r.lastCheckpoint.heading}`);
   if (r.firstUnfinished) L.push(`Resume with: ${r.firstUnfinished.id} ${r.firstUnfinished.title} [${r.firstUnfinished.status}]`);
+  else if (r.open.length) L.push(`No task can proceed: every open task is BLOCKED (${r.open.map((t) => t.id).join(', ')}). Ask the owner; do not start blocked work.`);
   else L.push('No unfinished task recorded. Wait for the owner\'s next instruction.');
   if (r.open.length > 1) L.push(`Other open tasks: ${r.open.filter((t) => t.id !== r.firstUnfinished?.id).map((t) => `${t.id} [${t.status}]`).join(', ')}`);
   L.push(`Verified completed tasks: ${r.completedCount} (do not redo them; see COMPLETED_TASKS.md).`);
-  if (r.snapshots.length) L.push(`Recovery snapshots: ${r.snapshots.map((s) => `${s.ref} (${s.date})`).join('; ')}`);
+  if (r.snapshots.length) L.push(`Recovery snapshots newer than the last checkpoint: ${r.snapshots.map((s) => `${s.ref} (${s.date})`).join('; ')}`);
+  if (r.olderSnapshots) L.push(`${r.olderSnapshots} older recovery snapshot(s) kept as history (npm run memory:snapshot -- --list).`);
   for (const f of r.facts) L.push(f);
   for (const w of r.warnings) L.push(`WARNING: ${w}`);
   L.push('Before editing: confirm the state above matches the code (git log, git diff, tests). Checkpoint with npm run memory:checkpoint.');

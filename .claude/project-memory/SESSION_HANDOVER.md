@@ -8,15 +8,15 @@ CURRENT BRANCH: phase-03-cinematic-design (not on GitHub yet)
 LATEST VERIFIED COMMIT: 0af91f5 (Project memory: memory:task command, recovery drill write-up (T-035))
 CURRENT PHASE: P03.5 completed; waiting for the owner's next phase prompt
 CURRENT TASK: T-035
-LAST COMPLETED STEP: T-035 verified and committed (0af91f5)
-FILES MODIFIED: .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md
-TESTS PASSED: npm test 73/73; test:unit 132/132; memory:validate valid; security:secrets pass; verify:manifest pass; smoke:test pass
+LAST COMPLETED STEP: T-037 marked BLOCKED pending owner approval
+FILES MODIFIED: .claude/project-memory/PENDING_TASKS.md; SHA256SUMS.txt; scripts/memory/resume.mjs
+TESTS PASSED: project-memory tests 5/5; memory:validate valid; verify:manifest pass
 TESTS FAILED: none
 UNCOMMITTED CHANGES: 3 file(s)
 KNOWN BLOCKERS: GitHub push not available from the cloud session (T-038)
-NEXT EXACT ACTION: wait for the owner's next phase prompt (P04 or other); record it in PENDING_TASKS.md with npm run memory:task -- add before starting
+NEXT EXACT ACTION: wait for the owner's next phase prompt (P04 or other); record it with npm run memory:task -- add before starting
 APPROVALS REQUIRED: owner: push or link GitHub (T-038); approve T-037 label changes; any deploy
-LAST CHECKPOINT: CP-005 at 2026-10-30T12:45:25+08:00
+LAST CHECKPOINT: CP-006 at 2026-10-30T12:45:58+08:00
 <!-- handover:end -->
 
 ## Notes

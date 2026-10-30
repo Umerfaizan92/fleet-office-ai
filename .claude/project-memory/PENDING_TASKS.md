@@ -4,7 +4,8 @@ Ordered: the first task whose status is not COMPLETED is the one to resume. Stat
 BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS.md with its evidence.
 
 ## T-037 Accessible names that match visible text in the Business OS (P03 follow-up)
-- Status: NOT_STARTED (needs owner approval: existing tests use the current labels)
+- Status: BLOCKED
+- Blocked by: owner approval (existing tests and the console page use the current labels; they change together).
 - Requirement: "Pin navigation" button labelled "Expand main navigation"; co-pilot button showing "Ask Super Pro"
   labelled "Open Super Pro AI co-pilot"; dashboard tiles' labels do not contain their visible text.
 - Acceptance: axe `label-content-name-mismatch` 0 on workspace; tests updated in the same commit.

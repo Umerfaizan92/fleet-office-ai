@@ -129,3 +129,115 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner: review/merge PR #33, decide T-037, send the next phase prompt
+
+## CP-010 2026-10-30T12:57:12+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: branch phase-04-business-os created from phase-03-cinematic-design
+- Incomplete steps: save prompt; build feature inventory from code; map pipeline; test end to end
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: c5d9d90 (Project memory: PR #33 opened (T-038 completed)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: save prompt to docs/phase-04/PROMPT.md, then inventory routes and UI modules
+
+## CP-011 2026-10-30T13:06:47+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: pipeline server layer + end-to-end test committed (4d3a739)
+- Incomplete steps: pipeline UI in workspace; dashboard pipeline strip; inbox/receptionist to enquiry; module-by-module verification of all subscriber and founder modules; false-success audit; verification report
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: pipeline.test.mjs; npm test
+- Test results: 2/2; 73/73
+- Git branch: phase-04-business-os
+- Commit: 4d3a739 (Phase 04: connect the subscriber pipeline end to end (server)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: build saas/workspace-pipeline.js replacing the generic enquiry/quote/booking/invoice views
+
+## CP-012 2026-10-30T13:16:36+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: pipeline screens committed (e221942)
+- Incomplete steps: dashboard pipeline card; inbox/receptionist to enquiry; jobs view shows linked booking; module-by-module verification (subscriber 32, founder 15, unified 9); false-success audit across frontend; verification report
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: pipeline.test.mjs; test-pipeline-ui.mjs; test:ui; npm test
+- Test results: 2/2; 12/12; 34/34; 73/73
+- Git branch: phase-04-business-os
+- Commit: e221942 (Phase 04: connected pipeline screens for Enquiries, Quotes, Bookings and Invoices); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: write the module verification harness (scripts/verify-modules.mjs) driving every workspace and console route
+
+## CP-013 2026-10-30T13:29:20+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: founder console tabs committed (e689d94)
+- Incomplete steps: verification harness over all 32 subscriber + 15 founder + 9 unified items; false-success audit of frontend; dashboard pipeline card; inbox to enquiry; verification report
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: platform-health.test; test:console-ui; test:ui; npm test
+- Test results: 2/2; 12/12; 34/34; 73/73
+- Git branch: phase-04-business-os
+- Commit: e689d94 (Phase 04: Founder Console revenue, infrastructure, backups, AI usage, compliance, configuration); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: write scripts/verify-modules.mjs and docs/phase-04/VERIFICATION.md
+
+## CP-014 2026-10-30T13:42:32+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: offshore staff, automation, module harness committed (a7f632c); 47/47 modules clean
+- Incomplete steps: unified experience review (navigation, search, filters, notifications, activity, AI, attachments, permissions, mobile); write docs/phase-04/VERIFICATION.md; final full test run; PR
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: business-ops.test; test:pipeline-ui; test:ui; verify:modules; npm test
+- Test results: 2/2; 14/14; 34/34; 47/47; 73/73
+- Git branch: phase-04-business-os
+- Commit: a7f632c (Phase 04: Offshore Staff, Automation overview, module inventory and harness); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: review unified experience items and write docs/phase-04/VERIFICATION.md
+
+## CP-015 2026-10-30T13:56:09+08:00 T-039
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-039
+- Completed steps: Phase 04 verified and committed (55d009e)
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md
+- Tests executed: npm test; test:unit; test:ui; test:pipeline-ui; test:console-ui; verify:modules
+- Test results: 73/73; 139/139; 34/34; 15/15; 12/12; 47/47
+- Git branch: phase-04-business-os
+- Commit: 55d009e (Phase 04: record search in the workspace, verification report); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: review PR for phase-04-business-os; choose which remaining gap (T-040..T-045) to do next
+
+## CP-016 2026-10-30T13:56:52+08:00 T-039
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-039
+- Completed steps: manifest fix committed (69d11c0)
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: 69d11c0 (Manifest: exclude project memory and generated reports (E-012)); 3 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: review the Phase 04 pull request; choose which remaining gap (T-040..T-045) to do next
+
+## CP-017 2026-10-30T13:58:49+08:00 T-039
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-039
+- Completed steps: PR #34 opened
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PROGRESS.md
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: 113eea1 (Checkpoint: manifest fix verified)
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: merge #33 then #34; choose the next task (T-040..T-045) or send the next phase prompt

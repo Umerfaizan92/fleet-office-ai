@@ -491,7 +491,7 @@
       "page": "/office/",
       "width": 390,
       "status": "same",
-      "ratio": 0,
+      "ratio": 0.0010743589743589744,
       "sidewaysScroll": false,
       "overflow": [],
       "errors": []
@@ -501,7 +501,7 @@
       "page": "/office/",
       "width": 768,
       "status": "same",
-      "ratio": 0,
+      "ratio": 0.0012219746907552083,
       "sidewaysScroll": false,
       "overflow": [],
       "errors": []
@@ -511,7 +511,7 @@
       "page": "/office/",
       "width": 1440,
       "status": "same",
-      "ratio": 0,
+      "ratio": 0.0007415123456790124,
       "sidewaysScroll": false,
       "overflow": [],
       "errors": []

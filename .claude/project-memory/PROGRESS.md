@@ -66,3 +66,5 @@ One line per notable change, newest last (written by `npm run memory:task -- pro
 - 2026-10-30: T-036 done: live-update notices stay right of the folded rail on phones (finished in the recovery drill by a new session)
 - 2026-10-30: T-035 done: project memory, checkpoints, recovery snapshots, resume check, hooks; recovery drill passed
 - 2026-10-30: Branch pushed and PR #33 opened into main (no merge, no deploy)
+- 2026-10-30: Phase 04 complete: pipeline connected, 47 modules verified, offshore staff, automation, search, founder platform tabs
+- 2026-10-30: Phase 04 pull request #34 opened (stacked on #33)

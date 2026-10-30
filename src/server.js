@@ -1,8 +1,12 @@
 import {seedIsolatedPreview} from './preview-seed.js';
 import {installBusinessHub} from './business-hub.js';
+import { installPipeline } from './pipeline.js';
+import { installBusinessOps } from './business-ops.js';
 import {createSubscriptionPolicy} from './subscription-policy.js';
 import {createPlatformIdentity} from './platform-identity.js';
 import {installOperatorConsole} from './operator-console.js';
+import { installPlatformHealth } from './platform-health.js';
+import { LEGAL_VERSION as PLATFORM_LEGAL_VERSION } from './legal.js';
 import {installMailCentre} from './mail-centre.js';
 import {createFounderIdentity} from './founder-identity.js';
 import {createStaffAccess} from './staff-access.js';
@@ -3861,7 +3865,8 @@ app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole('owne
   const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
   if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);
-  const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=?`).all(req.saas.organisation_id,job.required_level);
+  // Offshore team members work remotely and are never offered on-site jobs (Phase 04).
+  const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=? AND COALESCE(work_location,'onshore')<>'offshore'`).all(req.saas.organisation_id,job.required_level);
   const evaluated=workers.map(w=>{
     const missingSkills=skills.filter(skill=>{
       const r=db.prepare(`SELECT competency,verification_status,expiry_date FROM worker_skills WHERE worker_id=? AND lower(skill_name)=lower(?) AND competency IN ('competent','advanced','expert')`).get(w.id,skill);
@@ -5707,6 +5712,8 @@ installTeamAccounts(app,{db,requireSaasUser,requireSaasRole,authLimiter,password
 const platformIdentity=createPlatformIdentity({db,env,validTotp,founderAuthenticate:requireAdmin,onFounderLogout:req=>{const token=String(req.get('x-admin-key')||'');if(token.startsWith('sps.'))db.prepare('INSERT OR IGNORE INTO revoked_operator_sessions VALUES (?,?)').run(crypto.createHash('sha256').update(token).digest('hex'),new Date(Number(token.split('.')[1])).toISOString())}});
 platformIdentity.install(app,{limiter:operatorLoginLimiter});
 installOperatorConsole(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,requireSaasUser,requireSaasRole,saasAudit,entitlements});
+// Phase 04: founder revenue, storage and backups, AI usage, compliance and configuration (read-only).
+installPlatformHealth(app,{db,env,platform:platformIdentity,policy:subscriptionPolicy,legalVersion:PLATFORM_LEGAL_VERSION});
 // Phase 02: durable background jobs (retries, idempotency, dead letters) and founder-only operational views.
 const jobQueue=createJobQueue({db});
 jobQueue.register('audit.verify_chain',()=>{const r=verifyAuditChain(db);if(!r.ok)throw new Error('Audit chain did not verify ('+(r.reason||r.brokenAt||'unknown')+').');return {checked:r.checked}},{maxAttempts:3,baseDelayMs:600000,timeoutMs:120000});
@@ -5717,7 +5724,12 @@ if(!/^(1|true|yes)$/i.test(String(env.JOBS_DISABLED||''))){
   const dailyAuditCheck=()=>{try{jobQueue.enqueue('audit.verify_chain',{},{idempotencyKey:'audit.verify_chain:'+new Date().toISOString().slice(0,10)})}catch(e){console.warn('[jobs] could not schedule the audit check:',e.message)}};
   dailyAuditCheck();setInterval(dailyAuditCheck,3600000).unref();
 }
-installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess});
+const businessHubHooks={};
+installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess,hooks:businessHubHooks});
+// Phase 04: connects enquiries, quotes, bookings and invoices to jobs, allocation, completion and payments.
+Object.assign(businessHubHooks,installPipeline(app,{db,requireSaasUser,saasAudit,staffAccess,syncJobFinance:saasPlatform.syncJobFinance}));
+// Phase 04: offshore staff and the automation overview.
+installBusinessOps(app,{db,env,requireSaasUser,requireSaasRole,saasAudit,staffAccess,aiConfigured:()=>aiProviderStatus().configured});
 installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
 
 app.listen(

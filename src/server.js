@@ -997,7 +997,7 @@ app.use(
 // Fleet Office AI is the primary product on the SaaS host.
 // Keep the public the business pages available by their explicit file routes.
 app.get('/', (req, res) => res.redirect(302, '/saas/'));
-app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'fleet-office-ai', time: new Date().toISOString() }));
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true, service: 'super-pro-ai-office-manager', time: new Date().toISOString() }));
 
 app.get('/robots.txt', (req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');

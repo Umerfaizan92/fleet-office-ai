@@ -47,7 +47,12 @@
     "test:site-ui": "node scripts/test-site-ui.mjs",
     "test:visual": "node scripts/test-visual.mjs",
     "test:visual:update": "node scripts/test-visual.mjs --update",
-    "report:a11y-perf": "node scripts/report-a11y-perf.mjs"
+    "report:a11y-perf": "node scripts/report-a11y-perf.mjs",
+    "memory:resume": "node scripts/memory/resume.mjs",
+    "memory:checkpoint": "node scripts/memory/checkpoint.mjs",
+    "memory:snapshot": "node scripts/memory/snapshot.mjs",
+    "memory:restore": "node scripts/memory/restore.mjs",
+    "memory:validate": "node scripts/memory/validate.mjs"
   },
   "engines": {
     "node": "22.x"

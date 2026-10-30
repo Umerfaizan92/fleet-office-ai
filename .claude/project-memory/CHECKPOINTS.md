@@ -143,3 +143,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: save prompt to docs/phase-04/PROMPT.md, then inventory routes and UI modules
+
+## CP-011 2026-10-30T13:06:47+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: pipeline server layer + end-to-end test committed (4d3a739)
+- Incomplete steps: pipeline UI in workspace; dashboard pipeline strip; inbox/receptionist to enquiry; module-by-module verification of all subscriber and founder modules; false-success audit; verification report
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: pipeline.test.mjs; npm test
+- Test results: 2/2; 73/73
+- Git branch: phase-04-business-os
+- Commit: 4d3a739 (Phase 04: connect the subscriber pipeline end to end (server)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: build saas/workspace-pipeline.js replacing the generic enquiry/quote/booking/invoice views

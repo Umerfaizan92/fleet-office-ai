@@ -58,6 +58,8 @@ test('pipeline: enquiry to payment with propagation, isolation and honest refusa
   assert.equal(r.status, 201, r.text);
   const bookingId = r.json.id, jobId = r.json.work_order_id;
   assert.ok(jobId, 'booking creates a job');
+  r = await O('GET', '/api/saas/pipeline/enquiry');
+  assert.equal(r.json.records.find((e) => e.id === enquiryId).status, 'booked', 'booking propagates back to the enquiry');
 
   // The job carries the customer, the address and the GST-inclusive price into Jobs and Money.
   let d = db(); let job = d.prepare('SELECT * FROM work_orders WHERE id=?').get(jobId); d.close();

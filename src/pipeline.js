@@ -35,6 +35,8 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
     db.prepare(`INSERT INTO work_orders (id,organisation_id,title,address,start_at,estimated_hours,required_workers,required_level,required_skills,customer_id,price_cents,gst_applies,created_at,updated_at) VALUES (?,?,?,?,?,?,?,1,'[]',?,?,?,?,?)`)
       .run(id, org, quote.title, address || cust?.address || null, start_at, estimated_hours || null, required_workers || 1, cust?.id || null, total(quote), quote.gst_applies === 0 ? 0 : 1, now, now);
     db.prepare('UPDATE tenant_documents SET work_order_id=?,updated_at=? WHERE id=? AND organisation_id=?').run(id, now, bookingId, org);
+    // The enquiry the quote came from is now booked work.
+    if (quote.source_id) db.prepare(`UPDATE tenant_documents SET status='booked',updated_at=? WHERE id=? AND organisation_id=? AND kind='enquiry' AND status IN ('open','draft','quoted')`).run(now, quote.source_id, org);
     return id;
   }
 

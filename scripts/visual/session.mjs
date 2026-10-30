@@ -23,6 +23,8 @@ export async function seedOwner(server, { business = 'Harbour Plumbing Pty Ltd',
 export async function ownerContext(browser, server, owner, options = {}) {
   const ctx = await browser.newContext(options);
   await ctx.addCookies([{ name: 'fp_session', value: owner.token, url: server.base }]);
+  // Test sessions have already seen every product-update notice (it opens a few seconds after load and blocks clicks).
+  await ctx.addInitScript(() => { const get = Storage.prototype.getItem; Storage.prototype.getItem = function (k) { return /^superpro_release_seen:/.test(String(k)) ? '1' : get.call(this, k); }; });
   await ctx.addInitScript((slug) => { try { localStorage.setItem('gds-tour-' + slug, 'done'); for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/release_seen/.test(k)) localStorage.setItem(k, '1'); } } catch { /* storage blocked */ } }, owner.slug);
   return ctx;
 }

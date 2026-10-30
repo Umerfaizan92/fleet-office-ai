@@ -31,9 +31,9 @@ test('preview rejects symlink escape from ephemeral storage', () => {
   finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('real startup aborts before application imports, backup access or child processes', () => {
-  for (const key of forbidden) {
+  for (const key of forbidden) for (const entry of ['scripts/start.mjs', 'src/server.js']) {
     // No inherited environment or network credentials; all values are synthetic.
-    const r = spawnSync(process.execPath, ['scripts/start.mjs'], { env: { ...safe(), [key]: 'synthetic-forbidden' }, encoding: 'utf8', timeout: 5000 });
+    const r = spawnSync(process.execPath, [entry], { env: { ...safe(), [key]: 'synthetic-forbidden' }, encoding: 'utf8', timeout: 5000 });
     assert.equal(r.status, 1, key); assert.match(r.stderr, /startup aborted before backup access/, key);
     assert.doesNotMatch(r.stdout + r.stderr, /synthetic-forbidden|\[backup\]|ERR_MODULE_NOT_FOUND/);
   }

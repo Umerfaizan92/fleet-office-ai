@@ -30,3 +30,7 @@ export function assertIsolatedPreview(env = process.env) {
   // Prevent a local .env from loading live credentials after the preflight.
   env.SUPERPRO_SKIP_DOTENV = '1';
 }
+
+// ESM evaluates this first import before server dependencies (some load dotenv).
+// Keep direct `node src/server.js` startup protected as well as npm start.
+assertIsolatedPreview();

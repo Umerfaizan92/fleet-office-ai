@@ -77,6 +77,10 @@ test('checkpoint, snapshot, lost session, resume and restore', { skip: !hasGit &
   assert.equal(report.firstUnfinished.status, 'IN_PROGRESS');
   assert.ok(report.warnings.some((w) => w.includes('npm run memory:restore -- refs/recovery/main/')), report.warnings.join('\n'));
   assert.equal(report.handover['NEXT EXACT ACTION'], 'finish notes.txt then run tests');
+  const pendingFile = path.join(dir, '.claude/project-memory/PENDING_TASKS.md'), pendingText = fs.readFileSync(pendingFile, 'utf8');
+  fs.writeFileSync(pendingFile, pendingText.replace('# Pending tasks\n', '# Pending tasks\n\n## T-899 Older task under test\n- Status: TESTING\n'));
+  assert.equal(JSON.parse(node('resume.mjs', '--json').stdout).firstUnfinished.id, 'T-900', 'the open task named in the handover wins over an earlier active task');
+  fs.writeFileSync(pendingFile, pendingText);
   const text = node('resume.mjs').stdout;
   assert.match(text, /Resume with: T-900 Add a greeting \[IN_PROGRESS\]/);
 

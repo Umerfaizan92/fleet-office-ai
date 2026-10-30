@@ -47,7 +47,9 @@ export function resumeReport(root) {
 
   const order = ['IN_PROGRESS', 'TESTING', 'BLOCKED', 'NOT_STARTED'];
   const open = pending.filter((t) => t.status && t.status !== 'COMPLETED');
-  const first = open.find((t) => t.status === 'IN_PROGRESS' || t.status === 'TESTING') || open.find((t) => t.status === 'NOT_STARTED') || open[0] || null;
+  // The task the last session was working on wins while it is still open; otherwise the first active task, then the first not started.
+  const recordedTask = ((ho['CURRENT TASK'] || '').match(/T-\d{3,}/) || [])[0];
+  const first = open.find((t) => t.id === recordedTask && t.status !== 'BLOCKED') || open.find((t) => t.status === 'IN_PROGRESS') || open.find((t) => t.status === 'TESTING') || open.find((t) => t.status === 'NOT_STARTED') || open[0] || null;
   for (const t of pending) if (t.status === 'COMPLETED' && !completed.includes(t.id)) warnings.push(`${t.id} is COMPLETED in PENDING_TASKS.md but has no evidence entry in COMPLETED_TASKS.md.`);
   for (const t of pending) if (completed.includes(t.id) && t.status !== 'COMPLETED') warnings.push(`${t.id} appears in COMPLETED_TASKS.md but PENDING_TASKS.md says ${t.status}.`);
 

@@ -13,3 +13,4 @@ Never paste secrets, tokens or customer data here.
 | E-006 | 2026-10-30 | T-005 | Legacy `--sp-ink` variable (dark text) clashed with the new token name. | No. | New text tokens renamed `--sp-fg`, `--sp-fg-2`, `--sp-fg-muted`. |
 | E-007 | 2026-10-30 | T-006 | Gold link buttons showed white text (`.sp-site a{color:inherit}` beat `.sp-btn`). | No. | Link rule wrapped in `:where()`; fixed in `6a5ddc8`. |
 | E-008 | 2026-10-30 | T-006 | Concern that the delivery patch might lose binary files (compressed assets, images). | No. | Checked: the patch reproduced the commit tree exactly in a fresh clone. Keep passing `--binary` and always verify a patch by applying it to a fresh clone before delivery. |
+| E-009 | 2026-10-30 | T-035 | Resume check named T-035 (first active task in the file) although the handover said work stopped in T-036. Found in the recovery-drill dry run. | No. | The open task named in the handover's CURRENT TASK now wins; contract test covers it. |

@@ -57,6 +57,11 @@ Use a bucket only for backups. It must be different from primary file storage; t
      bucket check.
 
    Versioning plus no delete permission on the snapshot prefixes means a leaked backup key cannot erase snapshots.
+
+   **Folder root.** Snapshots and configuration backups are stored next to the Litestream copy. If
+   `BACKUP_S3_DB_PREFIX` is `super-pro-v2/db`, as the production logs of 2026-10-30 show, they go under
+   `super-pro-v2/snapshots/` and `super-pro-v2/config/`. Replace `super-pro/` with that root everywhere in the policy
+   and lifecycle files before applying them. See `docs/release/PRODUCTION_S3_REPLICATION_INCIDENT_2026-10-30.md`.
 6. Optional: **S3 Object Lock** (governance mode, 7 days) on the snapshots prefix for protection against ransomware.
 
 ## Settings

@@ -15,6 +15,7 @@ import { startServer } from './test-server.mjs';
 import { seedOwner } from './visual/session.mjs';
 import { createJobQueue } from '../src/job-queue.js';
 import { createHealer, HEAL_POLICY } from '../src/reliability/heal.js';
+import { backupRoot } from '../src/reliability/backup.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function mockS3() {
@@ -189,4 +190,12 @@ test('approval-only recovery: requests need a named approver, nothing runs autom
   p = await go(['--approval', pa.reference_code, '--out', out]); assert.notEqual(p.status, 0); assert.match(p.stderr, /already exists|already been used/);
   const dash = (await F('GET', '/api/operator/reliability')).json;
   assert.equal(dash.approval_only.length, 7); assert.ok(dash.requests.some((x) => x.action === 'restore_database'));
+});
+
+test('backup folders follow the Litestream path, so snapshots and config share one IAM-granted root (production uses super-pro-v2/db)', () => {
+  assert.equal(backupRoot({}), 'super-pro');
+  assert.equal(backupRoot({ BACKUP_S3_DB_PREFIX: 'super-pro/db' }), 'super-pro');
+  assert.equal(backupRoot({ BACKUP_S3_DB_PREFIX: 'super-pro-v2/db' }), 'super-pro-v2');
+  assert.equal(backupRoot({ BACKUP_S3_DB_PREFIX: '/org/super-pro-v2/db/' }), 'org/super-pro-v2');
+  assert.equal(backupRoot({ BACKUP_S3_DB_PREFIX: 'db' }), 'super-pro');
 });

@@ -31,6 +31,13 @@ export const BACKUP_POLICY = Object.freeze({
   retention: { litestream_hours: 72, daily_snapshots_days: 35, monthly_snapshots_months: 12, config_days: 90 }
 });
 
+// The folder all backup objects share, taken from the Litestream path (default super-pro/db -> super-pro).
+export function backupRoot(env = process.env) {
+  const db = String(env.BACKUP_S3_DB_PREFIX || 'super-pro/db').replace(/^\/+|\/+$/g, '');
+  const parts = db.split('/');
+  return parts.length > 1 ? parts.slice(0, -1).join('/') : 'super-pro';
+}
+
 export function createBackups({ db, env = process.env, databasePath, clientFactory = null, clock = () => Date.now(), log = console }) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS reliability_backups (id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('snapshot','config')), started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, target TEXT, key TEXT, bytes INTEGER, sha256 TEXT, tables INTEGER, integrity TEXT, audit_ok INTEGER, error TEXT, trigger TEXT NOT NULL DEFAULT 'schedule');
@@ -38,7 +45,10 @@ export function createBackups({ db, env = process.env, databasePath, clientFacto
     CREATE TABLE IF NOT EXISTS reliability_restore_tests (id TEXT PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, backup_key TEXT, seconds REAL, checksum_ok INTEGER, integrity TEXT, audit_ok INTEGER, tables INTEGER, gaps_json TEXT, error TEXT, trigger TEXT NOT NULL DEFAULT 'schedule');`);
   const now = () => iso(clock());
   const bucket = () => backupBucket(env);
-  const prefix = (k) => String(env[`BACKUP_S3_${k.toUpperCase()}_PREFIX`] || `super-pro/${k}`).replace(/^\/+|\/+$/g, '');
+  // Backups live next to the Litestream copy: with BACKUP_S3_DB_PREFIX=super-pro-v2/db, snapshots default to
+  // super-pro-v2/snapshots, so one IAM grant on the root covers everything. Explicit prefixes still win.
+  const root = () => backupRoot(env);
+  const prefix = (k) => String(env[`BACKUP_S3_${k.toUpperCase()}_PREFIX`] || `${root()}/${k}`).replace(/^\/+|\/+$/g, '');
   const localDir = () => String(env.BACKUP_SNAPSHOT_DIR || '').trim();
   const target = () => (bucket() ? `s3://${bucket()}` : localDir() ? `file://${localDir()}` : null);
 
@@ -198,7 +208,7 @@ export function createBackups({ db, env = process.env, databasePath, clientFacto
     const S = await import('@aws-sdk/client-s3');
     const call = async (name, cmd, judge) => { try { const r = await (await s3()).send(cmd); const [status, detail] = judge(r); add(name, status, detail); } catch (e) { const code = e.name || e.Code || 'Error'; if (/NoSuch(Lifecycle|ServerSideEncryption|BucketPolicy)|ServerSideEncryptionConfigurationNotFound/i.test(code)) { const [status, detail] = judge(null); add(name, status, detail); } else if (/AccessDenied/i.test(code)) add(name, 'warn', `Cannot check (${code}). Apply infra/aws/backup-iam-policy.json to the backup keys, or check it in the AWS console.`); else { resetClient(); add(name, 'fail', `${code}: ${String(e.message).slice(0, 160)}`); } } };
     // A prefix-scoped list works with the least-privilege policy in infra/aws/backup-iam-policy.json (HeadBucket would not).
-    await call('Bucket reachable', new S.ListObjectsV2Command({ Bucket: bucket(), Prefix: 'super-pro/', MaxKeys: 1 }), () => ['ok', `Reached s3://${bucket()}.`]);
+    await call('Bucket reachable', new S.ListObjectsV2Command({ Bucket: bucket(), Prefix: `${root()}/`, MaxKeys: 1 }), () => ['ok', `Reached s3://${bucket()}.`]);
     if (out.checks.at(-1).status === 'fail') return out;
     await call('Versioning', new S.GetBucketVersioningCommand({ Bucket: bucket() }), (r) => (r?.Status === 'Enabled' ? ['ok', 'Bucket versioning is on, so overwritten or deleted backups can be recovered.'] : ['fail', `Bucket versioning is ${r?.Status || 'off'}. Turn it on (S3 > bucket > Properties > Bucket Versioning).`]));
     await call('Encryption', new S.GetBucketEncryptionCommand({ Bucket: bucket() }), (r) => { const rule = r?.ServerSideEncryptionConfiguration?.Rules?.[0]?.ApplyServerSideEncryptionByDefault; return rule ? ['ok', `Default encryption ${rule.SSEAlgorithm}${rule.KMSMasterKeyID ? ' with a KMS key' : ''}. Every backup is also uploaded with ${backupEncryption(env).ServerSideEncryption || 'no'} encryption.`] : ['warn', 'No default bucket encryption is set; Super Pro still encrypts each backup it uploads.']; });

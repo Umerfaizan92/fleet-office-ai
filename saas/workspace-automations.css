@@ -1,0 +1,55 @@
+/* Phase 05: AI Automations. Uses the Phase 03 tokens; no fixed colours. No looping animation. */
+.au-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.au-tabs [aria-selected="true"]{border-color:var(--sp-gold,#e6b455);color:var(--sp-fg,var(--text));background:var(--sp-gold-soft,transparent)}
+.au-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px}
+.au-paused{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:12px 14px;margin:0 0 12px;border:1px solid var(--sp-bad,#e5484d);border-radius:12px;background:color-mix(in srgb,var(--sp-bad,#e5484d) 10%,transparent);color:var(--sp-fg,var(--text))}
+.au-chips{display:flex;flex-wrap:wrap;gap:6px}
+.au-chip,.au-level{display:inline-flex;align-items:center;padding:3px 9px;border:1px solid var(--sp-line,var(--line));border-radius:999px;font-size:12px;color:var(--sp-fg-2,var(--text-2))}
+.au-level[data-level="1"]{border-color:color-mix(in srgb,var(--sp-good,#46a758) 55%,transparent);color:var(--sp-good,#46a758)}
+.au-level[data-level="2"]{border-color:color-mix(in srgb,var(--sp-cyan,#3fb8d4) 55%,transparent);color:var(--sp-cyan,#3fb8d4)}
+.au-level[data-level="3"]{border-color:color-mix(in srgb,var(--sp-gold,#e6b455) 60%,transparent);color:var(--sp-gold,#e6b455)}
+.au-level[data-level="4"]{border-color:var(--sp-bad,#e5484d);color:var(--sp-bad,#e5484d)}
+.au-builder{display:grid;gap:12px;margin:0 0 16px}
+.au-builder>label{display:grid;gap:5px}
+/* The seven steps read as one connected sequence: a rail joins the numbered markers. */
+.au-steps{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.au-step{position:relative;display:grid;gap:8px;padding:0 0 18px 44px}
+.au-step::before{content:"";position:absolute;left:15px;top:30px;bottom:0;width:2px;background:var(--sp-line,var(--line))}
+.au-step:last-child::before{display:none}
+.au-step-head{display:flex;align-items:center;gap:12px;margin-left:-44px}
+.au-step-head h3{margin:0;font-size:16px}
+.au-num{display:inline-grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;border:2px solid var(--sp-gold,#e6b455);color:var(--sp-fg,var(--text));font-weight:700;font-variant-numeric:tabular-nums;background:var(--sp-graphite-1,var(--panel))}
+.au-step select,.au-step input:not([type=checkbox]),.au-step textarea{width:100%;max-width:520px}
+.au-params,.au-conds{display:grid;gap:8px}
+.au-params label{display:grid;gap:4px;max-width:520px}
+.au-prices{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;border:1px solid var(--sp-line,var(--line));border-radius:12px;padding:10px 12px;margin:0}
+.au-prices label{display:grid;gap:4px;font-size:13px}
+.au-cond{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;max-width:720px}
+.au-levelbox{display:grid;gap:4px}
+.au-run{display:grid;gap:4px;margin-top:8px}
+.au-runs{display:grid;gap:10px}
+.au-runcard{display:grid;gap:6px}
+.au-trail,.au-log{margin:6px 0 0;padding-left:18px;font-size:13px;display:grid;gap:4px}
+.au-stop{display:grid;gap:8px;margin:0 0 16px;border-color:color-mix(in srgb,var(--sp-bad,#e5484d) 50%,var(--sp-line,#26314a))}
+.au-stop input{flex:1 1 220px;min-width:0}
+.portal-button.au-danger{border-color:var(--sp-bad,#e5484d);color:var(--sp-bad,#e5484d)}
+.au-h{margin:18px 0 6px;font-size:18px}
+.au-limits{margin:0;padding-left:18px;display:grid;gap:6px}
+.au-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0 0 14px}
+.au-tablewrap{overflow-x:auto;max-width:100%}
+.au-table{width:100%;border-collapse:collapse;font-size:14px}
+.au-table caption{text-align:left;font-weight:700;padding:6px 0}
+.au-table th,.au-table td{padding:8px 10px;border-bottom:1px solid var(--sp-line,var(--line));text-align:left}
+.au-table td{font-variant-numeric:tabular-nums}
+.au-versions ul{margin:6px 0 0;padding-left:18px;display:grid;gap:6px}
+@media (max-width:640px){
+  .au-cond{grid-template-columns:1fr 1fr}
+  .au-cond input{grid-column:1/-1}
+  .au-step{padding-left:0}
+  .au-step::before{display:none}
+  .au-step-head{margin-left:0}
+}
+@media print{.au-tabs,.au-toolbar,.pl-actions,.au-pause{display:none!important}}
+.au-levelbox,.au-conds{justify-items:start}
+.au-conds>.au-cond{justify-self:stretch}
+.au-step>label:not(.pl-check){display:grid;gap:4px;max-width:520px}

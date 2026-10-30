@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 import { startServer } from './test-server.mjs';
 import { seedOwner } from './visual/session.mjs';
 
-const TABS = [['f01/platform/revenue', 'Monthly recurring revenue'], ['f01/system', 'Background jobs'], ['f01/platform/backups', 'Database backups'], ['f01/platform/ai-usage', 'AI requests, 30 days'], ['f08/platform/compliance', 'Privacy requests'], ['f09/platform/configuration', 'Feature access']];
+const TABS = [['f07/platform/automation', 'Emergency pause'], ['f01/platform/revenue', 'Monthly recurring revenue'], ['f01/system', 'Background jobs'], ['f01/platform/backups', 'Database backups'], ['f01/platform/ai-usage', 'AI requests, 30 days'], ['f08/platform/compliance', 'Privacy requests'], ['f09/platform/configuration', 'Feature access']];
 const s = await startServer();
 const browser = await chromium.launch();
 let passed = 0;

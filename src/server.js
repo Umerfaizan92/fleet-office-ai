@@ -8,6 +8,9 @@ import {installOperatorConsole} from './operator-console.js';
 import { installPlatformHealth } from './platform-health.js';
 import { LEGAL_VERSION as PLATFORM_LEGAL_VERSION } from './legal.js';
 import {installMailCentre} from './mail-centre.js';
+import { createAutomationEngine } from './automation/engine.js';
+import { installAutomationRoutes } from './automation/routes.js';
+import { backupBucket as automationBackupBucket } from './backup-env.js';
 import {createFounderIdentity} from './founder-identity.js';
 import {createStaffAccess} from './staff-access.js';
 import {installStaffPresence} from './staff-presence.js';
@@ -3434,7 +3437,9 @@ function approvalPublic(row){
   return {
     ...row,
     draft_payload:safeJson(row.draft_payload_json,{}),
-    edited_payload:row.edited_payload_json?safeJson(row.edited_payload_json,{}):null
+    edited_payload:row.edited_payload_json?safeJson(row.edited_payload_json,{}):null,
+    data_involved:row.data_involved_json?safeJson(row.data_involved_json,[]):null,
+    requested_by_name:row.requested_by_name||row.requested_by_label||null
   };
 }
 function addWorkspaceApprovalEvent(req,approvalId,eventType,detail={}){
@@ -3453,7 +3458,7 @@ function createWorkspaceApproval(req,{approval_type='general',source_module='wor
 
 app.get('/api/saas/approvals',requireSaasUser,(req,res)=>{
   const status=String(req.query.status||'pending').toLowerCase();
-  const allowed=['pending','approved','rejected','cancelled','expired','all'];
+  const allowed=['pending','clarification_requested','approved','rejected','cancelled','expired','all'];
   if(!allowed.includes(status))return res.status(400).json({ok:false,error:'Invalid approval status filter.'});
   const base=`SELECT a.*, ru.full_name requested_by_name, du.full_name decided_by_name
     FROM workspace_approvals a
@@ -3464,9 +3469,12 @@ app.get('/api/saas/approvals',requireSaasUser,(req,res)=>{
   const mine=seniorView?'':' AND a.requested_by_user_id=?',mineArgs=seniorView?[]:[req.saas.user_id];
   const rows=status==='all'
     ?db.prepare(base+mine+` ORDER BY a.requested_at DESC LIMIT 500`).all(req.saas.organisation_id,...mineArgs)
+    :status==='pending'
+    ?db.prepare(base+mine+` AND a.status IN ('pending','clarification_requested') ORDER BY a.requested_at DESC LIMIT 500`).all(req.saas.organisation_id,...mineArgs)
     :db.prepare(base+mine+` AND a.status=? ORDER BY a.requested_at DESC LIMIT 500`).all(req.saas.organisation_id,...mineArgs,status);
   const counts=db.prepare(`SELECT
     SUM(status='pending') pending,
+    SUM(status='clarification_requested') clarification,
     SUM(status='approved') approved,
     SUM(status='rejected') rejected,
     COUNT(*) total
@@ -3475,7 +3483,7 @@ app.get('/api/saas/approvals',requireSaasUser,(req,res)=>{
   res.json({
     ok:true,
     approvals:rows.map(approvalPublic),
-    counts:{pending:Number(counts.pending||0),approved:Number(counts.approved||0),rejected:Number(counts.rejected||0),total:Number(counts.total||0)},
+    counts:{pending:Number(counts.pending||0),clarification:Number(counts.clarification||0),approved:Number(counts.approved||0),rejected:Number(counts.rejected||0),total:Number(counts.total||0)},
     policy:{mode:profile.approval_mode||'everything',rules:safeJson(profile.approval_rules_json,{})},
     can_decide:approvalCanDecide(req.saas.role)
   });
@@ -3510,8 +3518,12 @@ app.post('/api/saas/approvals',requireSaasUser,(req,res)=>{
 app.patch('/api/saas/approvals/:id',requireSaasUser,(req,res)=>{
   const parsed=z.object({edited_payload:z.record(z.string(),z.any()),decision_note:z.string().max(2000).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Check the approval changes.'});
-  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status IN ('pending','clarification_requested')`).get(req.params.id,req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
+  if(row.source_module==='automation'){
+    if(!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','approve'))return res.status(403).json({ok:false,error:'Only someone who can decide approvals can edit an automation proposal.'});
+    const v=automationEngine.validateEdit(row,parsed.data.edited_payload);if(!v.ok)return res.status(400).json(v);parsed.data.edited_payload=v.data;
+  }
   const now=new Date().toISOString();
   db.prepare(`UPDATE workspace_approvals SET edited_payload_json=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=?`)
     .run(JSON.stringify(parsed.data.edited_payload),parsed.data.decision_note||null,now,row.id,req.saas.organisation_id);
@@ -3523,24 +3535,72 @@ app.post('/api/saas/approvals/:id/decision',requireSaasUser,(req,res)=>{
   if(!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','approve'))return res.status(403).json({ok:false,error:'Only an authorised owner, administrator, manager or director can decide approvals.'});
   const parsed=z.object({decision:z.enum(['approve','reject']),note:z.string().trim().max(2000).optional(),edited_payload:z.record(z.string(),z.any()).optional()}).safeParse(req.body);
   if(!parsed.success)return res.status(400).json({ok:false,error:'Choose approve or reject.'});
-  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status IN ('pending','clarification_requested')`).get(req.params.id,req.saas.organisation_id);
   if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
   if(row.expires_at&&new Date(row.expires_at).getTime()<Date.now()){
     const now=new Date().toISOString();
     db.prepare(`UPDATE workspace_approvals SET status='expired',updated_at=? WHERE id=? AND organisation_id=?`).run(now,row.id,req.saas.organisation_id);
     addWorkspaceApprovalEvent(req,row.id,'expired',{});
+    if(row.source_module==='automation')automationEngine.onDecision(row,{status:'expired'});
     return res.status(409).json({ok:false,error:'This approval request has expired.'});
   }
   const status=parsed.data.decision==='approve'?'approved':'rejected',now=new Date().toISOString();
+  // Phase 05: an automation proposal can only be edited within its action's schema, never retargeted.
+  let automationEdit=null;
+  if(row.source_module==='automation'){
+    const run=automationEngine.runRow(row.automation_run_id);
+    if(!run||run.status!=='awaiting_approval')return res.status(409).json({ok:false,error:'This automation is no longer waiting for approval.'});
+    const pending=parsed.data.edited_payload||safeJson(row.edited_payload_json,null);
+    if(pending&&status==='approved'){const v=automationEngine.validateEdit(row,pending);if(!v.ok)return res.status(400).json(v);automationEdit=v.data;parsed.data.edited_payload=v.data}
+  }
   const edited=parsed.data.edited_payload?JSON.stringify(parsed.data.edited_payload):row.edited_payload_json;
   try{db.transaction(()=>{
-    const changed=db.prepare(`UPDATE workspace_approvals SET status=?,edited_payload_json=?,decided_by_user_id=?,decided_at=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=? AND status='pending'`)
+    const changed=db.prepare(`UPDATE workspace_approvals SET status=?,edited_payload_json=?,decided_by_user_id=?,decided_at=?,decision_note=?,updated_at=? WHERE id=? AND organisation_id=? AND status IN ('pending','clarification_requested')`)
       .run(status,edited||null,req.saas.user_id,now,parsed.data.note||null,now,row.id,req.saas.organisation_id).changes;
     if(changed!==1)throw Object.assign(new Error('already decided'),{code:'ALREADY_DECIDED'});
     addWorkspaceApprovalEvent(req,row.id,status,{note:parsed.data.note||'',source_module:row.source_module,entity_type:row.entity_type,entity_id:row.entity_id});
     applyApprovalToComms(db,row,status,edited);
   })()}catch(error){if(error.code==='ALREADY_DECIDED')return res.status(409).json({ok:false,error:'This approval was already decided.'});throw error}
+  if(row.source_module==='automation'){
+    const r=automationEngine.onDecision(row,{status,edited:automationEdit,actor:{id:req.saas.user_id,name:req.saas.full_name,role:req.saas.role},executeAfter:row.execute_after});
+    return res.json({ok:true,status,executed:false,queued:Boolean(status==='approved'&&r.ok),scheduled_for:r.scheduled_for||null,run_id:row.automation_run_id,message:status==='approved'?(r.scheduled_for?'Approved. It will run at the scheduled time; the result appears in Automations.':'Approved. The automation is running now; its result appears in Automations.'):'Rejected. Nothing was done.'});
+  }
   res.json({ok:true,status,executed:false,message:status==='approved'?'Approved. Any external execution remains subject to the connected module/provider action.':'Rejected. No external action was executed.'});
+});
+
+// Phase 05: schedule an approval's execution, and ask or answer a clarification question.
+app.post('/api/saas/approvals/:id/schedule',requireSaasUser,(req,res)=>{
+  if(!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','approve'))return res.status(403).json({ok:false,error:'Only someone who can decide approvals can schedule them.'});
+  const parsed=z.object({execute_after:z.iso.datetime().nullable()}).strict().safeParse(req.body);
+  if(!parsed.success||(parsed.data.execute_after&&Date.parse(parsed.data.execute_after)<Date.now()))return res.status(400).json({ok:false,error:'Choose a future date and time.'});
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status IN ('pending','clarification_requested')`).get(req.params.id,req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
+  if(row.expires_at&&parsed.data.execute_after&&Date.parse(parsed.data.execute_after)>Date.parse(row.expires_at)+30*86400000)return res.status(400).json({ok:false,error:'Choose a time within 30 days of the approval deadline.'});
+  db.prepare(`UPDATE workspace_approvals SET execute_after=?,updated_at=? WHERE id=? AND organisation_id=?`).run(parsed.data.execute_after,new Date().toISOString(),row.id,req.saas.organisation_id);
+  addWorkspaceApprovalEvent(req,row.id,'scheduled',{execute_after:parsed.data.execute_after});
+  res.json({ok:true,execute_after:parsed.data.execute_after});
+});
+app.post('/api/saas/approvals/:id/clarify',requireSaasUser,(req,res)=>{
+  if(!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','approve'))return res.status(403).json({ok:false,error:'Only someone who can decide approvals can ask for clarification.'});
+  const parsed=z.object({question:z.string().trim().min(5).max(1000)}).strict().safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Write the question (at least 5 characters).'});
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='pending'`).get(req.params.id,req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'Pending approval not found.'});
+  db.prepare(`UPDATE workspace_approvals SET status='clarification_requested',clarification_question=?,clarification_answer=NULL,updated_at=? WHERE id=? AND organisation_id=?`).run(parsed.data.question,new Date().toISOString(),row.id,req.saas.organisation_id);
+  addWorkspaceApprovalEvent(req,row.id,'clarification_requested',{question:parsed.data.question});
+  const requester=row.requested_by_user_id;
+  if(requester&&requester!==req.saas.user_id)notifications.notifyUser(req.saas.organisation_id,requester,{kind:'approval_question',title:'Question about your approval request',body:parsed.data.question.slice(0,200),link:'#b01/approvals',dedupe:'clarify:'+row.id+':'+Date.now()}).catch(()=>{});
+  res.json({ok:true,status:'clarification_requested'});
+});
+app.post('/api/saas/approvals/:id/clarification',requireSaasUser,(req,res)=>{
+  const parsed=z.object({answer:z.string().trim().min(2).max(2000)}).strict().safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({ok:false,error:'Write the answer.'});
+  const row=db.prepare(`SELECT * FROM workspace_approvals WHERE id=? AND organisation_id=? AND status='clarification_requested'`).get(req.params.id,req.saas.organisation_id);
+  if(!row)return res.status(404).json({ok:false,error:'No question is waiting on this approval.'});
+  if(row.requested_by_user_id!==req.saas.user_id&&!approvalCanDecide(req.saas.role)&&!staffAccess.can(req,'approvals','edit'))return res.status(403).json({ok:false,error:'Only the requester or an approver can answer.'});
+  db.prepare(`UPDATE workspace_approvals SET status='pending',clarification_answer=?,updated_at=? WHERE id=? AND organisation_id=?`).run(parsed.data.answer,new Date().toISOString(),row.id,req.saas.organisation_id);
+  addWorkspaceApprovalEvent(req,row.id,'clarified',{answer:parsed.data.answer});
+  res.json({ok:true,status:'pending'});
 });
 
 app.put('/api/saas/approvals/policy',requireSaasUser,requireSaasRole('owner','admin','manager','super_admin','director'),(req,res)=>{
@@ -3861,25 +3921,34 @@ app.post('/api/saas/work-orders',requireSaasUser,requireSaasRole('owner', 'admin
   res.status(201).json({ok:true,id});
 });
 
-app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole('owner', 'admin', 'manager', 'super_admin'),(req,res)=>{
-  const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
-  if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
+// Eligibility for a job (skills, compliance, work rights, availability; offshore staff excluded). Shared by the offer
+// route and the automation engine (staff recommendations and rule-based offers).
+function evaluateWorkOrder(org,job){
   const skills=safeJson(job.required_skills,[]),today=new Date().toISOString().slice(0,10);
   // Offshore team members work remotely and are never offered on-site jobs (Phase 04).
-  const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=? AND COALESCE(work_location,'onshore')<>'offshore'`).all(req.saas.organisation_id,job.required_level);
+  const workers=db.prepare(`SELECT * FROM workers WHERE organisation_id=? AND approved_for_scheduling=1 AND status='active' AND availability_status='available' AND worker_level>=? AND COALESCE(work_location,'onshore')<>'offshore'`).all(org,job.required_level);
   const evaluated=workers.map(w=>{
     const missingSkills=skills.filter(skill=>{
       const r=db.prepare(`SELECT competency,verification_status,expiry_date FROM worker_skills WHERE worker_id=? AND lower(skill_name)=lower(?) AND competency IN ('competent','advanced','expert')`).get(w.id,skill);
       return !r||r.verification_status!=='verified'||(r.expiry_date&&r.expiry_date<today);
     });
-    const compliance=workerComplianceState(req.saas.organisation_id,w.id);
+    const compliance=workerComplianceState(org,w.id);
     return {worker:w,missing_skills:missingSkills,compliance,eligible:missingSkills.length===0&&compliance.blocking_count===0&&compliance.work_rights_verified};
   });
-  const eligible=evaluated.filter(x=>x.eligible).map(x=>x.worker),now=new Date().toISOString();
+  return {skills,evaluated,eligible:evaluated.filter(x=>x.eligible).map(x=>x.worker)};
+}
+function offerWorkOrder(org,actorId,job){
+  const {skills,evaluated,eligible}=evaluateWorkOrder(org,job),now=new Date().toISOString();
   const ins=db.prepare(`INSERT OR IGNORE INTO job_offers (id,organisation_id,work_order_id,worker_id,status,offered_at,offered_by_user_id,work_rights_status_at_offer,vevo_status_at_offer) VALUES (?,?,?,?, 'offered',?,?,?,?)`);
-  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),req.saas.organisation_id,job.id,w.id,now,req.saas.user_id,w.work_rights_status||null,w.vevo_status||null);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
+  db.transaction(()=>{for(const w of eligible)ins.run(crypto.randomUUID(),org,job.id,w.id,now,actorId,w.work_rights_status||null,w.vevo_status||null);db.prepare(`UPDATE work_orders SET status=?,updated_at=? WHERE id=?`).run(eligible.length?'offered':'awaiting_allocation',now,job.id)})();
+  for(const w of eligible){const workerUser=db.prepare(`SELECT user_id FROM workers WHERE id=? AND organisation_id=?`).get(w.id,org)?.user_id;if(workerUser)notifications.notifyUser(org,workerUser,{kind:'job_offered',title:`New job offered: ${job.title}`,body:'Open Super Pro to accept or decline.',link:'#jobs',urgent:true,dedupe:`offer:${job.id}:${w.id}`}).catch(()=>{})}
+  return {skills,evaluated,eligible};
+}
+app.post('/api/saas/work-orders/:id/offer',requireSaasUser,requireSaasRole('owner', 'admin', 'manager', 'super_admin'),(req,res)=>{
+  const job=db.prepare(`SELECT * FROM work_orders WHERE id=? AND organisation_id=?`).get(req.params.id,req.saas.organisation_id);
+  if(!job)return res.status(404).json({ok:false,error:'Work order not found'});
+  const {skills,evaluated,eligible}=offerWorkOrder(req.saas.organisation_id,req.saas.user_id,job);
   saasAudit(req,'work_order.offered','work_order',job.id,{eligible_workers:eligible.length,required_skills:skills});
-  for(const w of eligible){const workerUser=db.prepare(`SELECT user_id FROM workers WHERE id=? AND organisation_id=?`).get(w.id,req.saas.organisation_id)?.user_id;if(workerUser)notifications.notifyUser(req.saas.organisation_id,workerUser,{kind:'job_offered',title:`New job offered: ${job.title}`,body:'Open Super Pro to accept or decline.',link:'#jobs',urgent:true,dedupe:`offer:${job.id}:${w.id}`}).catch(()=>{})}
   res.json({
     ok:true,eligible_workers:eligible.map(w=>({id:w.id,full_name:w.full_name,level:w.worker_level})),offered:eligible.length,
     evaluated:evaluated.map(x=>({id:x.worker.id,full_name:x.worker.full_name,eligible:x.eligible,missing_skills:x.missing_skills,blocking_compliance:x.compliance.blocking_count,work_rights_verified:x.compliance.work_rights_verified}))
@@ -5696,7 +5765,9 @@ createAutomation({db,runtime:integrationRuntime,notify:notifications,decrypt:loa
 const seoCluster=installSeoCluster(app,{db,env,requireSaasUser,requireSaasRole,requireAdmin,saasAudit,generateAiText,notify:notifications,entitlements,timers:process.env.NODE_ENV!=='test'||process.env.SEO_TIMERS==='1'});
 installHiring(app,{db,env,uploadRoot,requireSaasUser,requireSaasRole,saasAudit,generateAiText,notify:notifications});
 const billingSetup=createBillingSetup({db});billingSetup.install(app,{requireSaasUser,requireSaasRole,saasAudit});
-installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised});
+// Phase 05: business events reach the automation engine through this object once the engine is created below.
+const automationEvents={emit(){return []}};
+installPayments(app,{db,env,runtime:integrationRuntime,requireSaasUser,requireSaasRole,saasAudit,financeRoles,syncJobFinance:saasPlatform.syncJobFinance,uploadRoot,notify:notifications,isAuthorised:billingSetup.isAuthorised,events:automationEvents});
 
 // Team accounts: owner-managed staff invitations, member revocation and invitation acceptance.
 staffAccess.install(app,{requireSaasUser,requireSaasRole});
@@ -5727,10 +5798,29 @@ if(!/^(1|true|yes)$/i.test(String(env.JOBS_DISABLED||''))){
 const businessHubHooks={};
 installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess,hooks:businessHubHooks});
 // Phase 04: connects enquiries, quotes, bookings and invoices to jobs, allocation, completion and payments.
-Object.assign(businessHubHooks,installPipeline(app,{db,requireSaasUser,saasAudit,staffAccess,syncJobFinance:saasPlatform.syncJobFinance}));
+Object.assign(businessHubHooks,installPipeline(app,{db,requireSaasUser,saasAudit,staffAccess,syncJobFinance:saasPlatform.syncJobFinance,events:automationEvents}));
+businessHubHooks.emit=(...a)=>automationEvents.emit(...a);
 // Phase 04: offshore staff and the automation overview.
 installBusinessOps(app,{db,env,requireSaasUser,requireSaasRole,saasAudit,staffAccess,aiConfigured:()=>aiProviderStatus().configured});
-installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
+const mailCentre=installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
+// Phase 05: the automation engine (workflows, policy levels, approvals, execution through the job queue, audit).
+const automationEngine=createAutomationEngine({db,queue:jobQueue,generateAiText,aiStatus:aiProviderStatus,timers:env.NODE_ENV!=='test',deps:{
+  appendAuditLog,
+  notifyRoles:(org,roles,opts)=>notifications.notifyRoles(org,roles,opts).catch(()=>{}),
+  mail:mailCentre,
+  pipeline:businessHubHooks,
+  offers:{evaluate:evaluateWorkOrder,offer:offerWorkOrder},
+  syncJobFinance:saasPlatform.syncJobFinance,
+  docs:{create:(org,kind,title,body)=>{const id=crypto.randomUUID(),now=new Date().toISOString();db.prepare("INSERT INTO tenant_documents(id,organisation_id,kind,title,body,created_by,created_at,updated_at) VALUES (?,?,?,?,?,'automation',?,?)").run(id,org,kind,title,body,now,now);return id}},
+  health:()=>{const st=jobQueue.stats(),problems=[],facts=[];try{db.prepare('SELECT 1').get();facts.push('Database answering')}catch(e){problems.push('Database did not answer')}
+    if(st.oldest_due_seconds>900)problems.push(`Background work is ${Math.round(st.oldest_due_seconds/60)} minutes behind`);
+    const dead=db.prepare("SELECT COUNT(*) n FROM background_jobs WHERE status='dead' AND updated_at>=?").get(new Date(Date.now()-86400000).toISOString()).n;if(dead)problems.push(`${dead} background task(s) failed permanently in 24 hours`);
+    facts.push(`Background queue: ${st.counts.queued} queued, ${st.counts.running} running`);facts.push(`Uptime ${Math.round(process.uptime()/60)} minutes`);return {problems,facts}},
+  backups:()=>{const problems=[],facts=[];const bucket=automationBackupBucket(env);if(bucket)facts.push('Backup storage is configured');else problems.push('No backup storage is configured (BACKUP_S3_BUCKET)');
+    if(/^(1|true|yes)$/i.test(String(env.BACKUP_DISABLED||'')))problems.push('Backups are switched off (BACKUP_DISABLED)');return {problems,facts}}
+}});
+automationEvents.emit=(org,type,payload,opts)=>{try{return automationEngine.emit(org,type,payload,opts)}catch(e){console.warn('[automation] event not processed:',e.message);return []}};
+installAutomationRoutes(app,{db,engine:automationEngine,requireSaasUser,requireSaasRole,staffAccess,platform:platformIdentity,aiConfigured:()=>aiProviderStatus().configured});
 
 app.listen(
   port,

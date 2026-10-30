@@ -11,7 +11,7 @@ const GST_RATE = 0.1;
 
 export function gstFor(exCents, applies) { return applies ? Math.round(exCents * GST_RATE) : 0; }
 
-export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAccess, syncJobFinance }) {
+export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAccess, syncJobFinance, events = { emit() {} } }) {
   const cols = new Set(db.prepare('PRAGMA table_info(tenant_documents)').all().map((c) => c.name));
   for (const [name, type] of [['source_id', 'TEXT'], ['work_order_id', 'TEXT'], ['gst_applies', 'INTEGER NOT NULL DEFAULT 1'], ['gst_cents', 'INTEGER NOT NULL DEFAULT 0'], ['issued_at', 'TEXT'], ['due_at', 'TEXT'], ['paid_at', 'TEXT'], ['channel', 'TEXT']]) {
     if (!cols.has(name)) db.exec(`ALTER TABLE tenant_documents ADD COLUMN ${name} ${type}`);
@@ -131,6 +131,7 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
         .run(id, org, customerId, d.title, d.details, d.channel, req.saas.user_id, now, now);
     })();
     saasAudit(req, 'enquiry.created', 'enquiry', id, { channel: d.channel, new_customer: !d.customer_id });
+    events.emit(org, 'enquiry.created', { enquiry_id: id }, { key: id });
     res.status(201).json({ ok: true, id, customer_id: customerId });
   });
   app.post('/api/saas/pipeline/enquiries/:id/close', requireSaasUser, can('customers', 'edit'), (req, res) => {
@@ -144,20 +145,26 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
 
   // ---------- 2. quote from an enquiry ----------
   const quoteSchema = z.object({ amount: z.number().positive().max(10000000), gst_applies: z.boolean().default(true), details: z.string().trim().max(20000).optional(), title: z.string().trim().min(2).max(240).optional() }).strict();
+  /** Quote draft from an enquiry. Shared by the Quotes screen and the automation engine. */
+  function createQuoteFromEnquiry(org, actorId, enquiryId, { amount, gst_applies = true, details, title } = {}) {
+    const e = doc(org, enquiryId, 'enquiry');
+    if (!e) return { ok: false, status: 404, error: 'Enquiry not found.' };
+    if (!['open', 'quoted', 'draft'].includes(e.status)) return { ok: false, status: 409, error: 'This enquiry is closed.' };
+    const id = crypto.randomUUID(), now = iso(), ex = Math.round(amount * 100), gst = gstFor(ex, gst_applies);
+    db.transaction(() => {
+      db.prepare(`INSERT INTO tenant_documents (id,organisation_id,kind,customer_id,title,body,amount_cents,gst_applies,gst_cents,source_id,status,created_by,created_at,updated_at) VALUES (?,?,'quote',?,?,?,?,?,?,?,'draft',?,?,?)`)
+        .run(id, org, e.customer_id, title || e.title, details ?? e.body, ex, gst_applies ? 1 : 0, gst, e.id, actorId, now, now);
+      setStatus(org, e.id, 'quoted');
+    })();
+    return { ok: true, id, enquiry_id: e.id, amount_cents: ex, gst_cents: gst, total_cents: ex + gst };
+  }
   app.post('/api/saas/pipeline/enquiries/:id/quote', requireSaasUser, can('customers', 'create'), (req, res) => {
     const p = quoteSchema.safeParse(req.body);
     if (!p.success) return fail(res, 400, 'Enter the quote amount in dollars, excluding GST.');
-    const org = req.saas.organisation_id, e = doc(org, req.params.id, 'enquiry');
-    if (!e) return fail(res, 404, 'Enquiry not found.');
-    if (!['open', 'quoted', 'draft'].includes(e.status)) return fail(res, 409, 'This enquiry is closed.');
-    const id = crypto.randomUUID(), now = iso(), ex = Math.round(p.data.amount * 100), gst = gstFor(ex, p.data.gst_applies);
-    db.transaction(() => {
-      db.prepare(`INSERT INTO tenant_documents (id,organisation_id,kind,customer_id,title,body,amount_cents,gst_applies,gst_cents,source_id,status,created_by,created_at,updated_at) VALUES (?,?,'quote',?,?,?,?,?,?,?,'draft',?,?,?)`)
-        .run(id, org, e.customer_id, p.data.title || e.title, p.data.details ?? e.body, ex, p.data.gst_applies ? 1 : 0, gst, e.id, req.saas.user_id, now, now);
-      setStatus(org, e.id, 'quoted');
-    })();
-    saasAudit(req, 'quote.created_from_enquiry', 'quote', id, { enquiry: e.id, amount_cents: ex, gst_cents: gst });
-    res.status(201).json({ ok: true, id, amount_cents: ex, gst_cents: gst, total_cents: ex + gst });
+    const r = createQuoteFromEnquiry(req.saas.organisation_id, req.saas.user_id, req.params.id, p.data);
+    if (!r.ok) return fail(res, r.status, r.error);
+    saasAudit(req, 'quote.created_from_enquiry', 'quote', r.id, { enquiry: r.enquiry_id, amount_cents: r.amount_cents, gst_cents: r.gst_cents });
+    res.status(201).json({ ok: true, id: r.id, amount_cents: r.amount_cents, gst_cents: r.gst_cents, total_cents: r.total_cents });
   });
 
   // ---------- 3. booking from an accepted quote → job ready for allocation ----------
@@ -177,6 +184,7 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
       jobId = createJobForBooking(org, req.saas.user_id, q, id, { ...p.data, start_at: new Date(p.data.start_at).toISOString() });
     })();
     saasAudit(req, 'quote.booking_created', 'booking', id, { quote: q.id, work_order: jobId });
+    events.emit(org, 'job.booked', { booking_id: id, work_order_id: jobId }, { key: id });
     res.status(201).json({ ok: true, id, work_order_id: jobId });
   });
 
@@ -191,27 +199,34 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
     db.prepare(`UPDATE tenant_documents SET status='completed',updated_at=? WHERE organisation_id=? AND kind='booking' AND work_order_id=?`).run(now, org, j.id);
     syncJobFinance?.(org, j.id, req.saas.user_id);
     saasAudit(req, 'work_order.completed', 'work_order', j.id, {});
+    events.emit(org, 'job.completed', { work_order_id: j.id }, { key: j.id });
     res.json({ ok: true, completed_at: now });
   });
 
   // ---------- 6. invoice from a completed job ----------
-  app.post('/api/saas/pipeline/jobs/:id/invoice', requireSaasUser, can('finance', 'create'), (req, res) => {
-    const org = req.saas.organisation_id, j = job(org, req.params.id);
-    if (!j) return fail(res, 404, 'Job not found.');
-    if (!j.completed_at) return fail(res, 409, 'Mark the job complete before invoicing it.');
-    if (db.prepare(`SELECT 1 FROM tenant_documents WHERE organisation_id=? AND kind='invoice' AND work_order_id=? AND status<>'cancelled'`).get(org, j.id)) return fail(res, 409, 'This job already has an invoice.');
+  /** Invoice draft from a completed job. Shared by the Bookings screen and the automation engine. */
+  function createInvoiceFromJob(org, actorId, jobId) {
+    const j = job(org, jobId);
+    if (!j) return { ok: false, status: 404, error: 'Job not found.' };
+    if (!j.completed_at) return { ok: false, status: 409, error: 'Mark the job complete before invoicing it.' };
+    if (db.prepare(`SELECT 1 FROM tenant_documents WHERE organisation_id=? AND kind='invoice' AND work_order_id=? AND status<>'cancelled'`).get(org, j.id)) return { ok: false, status: 409, error: 'This job already has an invoice.' };
     const booking = db.prepare(`SELECT * FROM tenant_documents WHERE organisation_id=? AND kind='booking' AND work_order_id=?`).get(org, j.id);
     const gstApplies = booking ? booking.gst_applies !== 0 : j.gst_applies !== 0;
     // Amount from the booking (agreed quote); a job created directly falls back to its price, which includes GST.
     const ex = booking ? booking.amount_cents : gstApplies ? Math.round(j.price_cents / (1 + GST_RATE)) : j.price_cents;
-    if (ex <= 0) return fail(res, 409, 'Set the job price in Money before invoicing it.');
+    if (ex <= 0) return { ok: false, status: 409, error: 'Set the job price in Money before invoicing it.' };
     const gst = booking ? booking.gst_cents : j.price_cents - ex;
     const id = crypto.randomUUID(), now = iso();
     db.prepare(`INSERT INTO tenant_documents (id,organisation_id,kind,customer_id,title,body,amount_cents,gst_applies,gst_cents,source_id,work_order_id,status,created_by,created_at,updated_at) VALUES (?,?,'invoice',?,?,?,?,?,?,?,?,'draft',?,?,?)`)
-      .run(id, org, booking?.customer_id || j.customer_id, j.title, booking?.body || '', ex, gstApplies ? 1 : 0, gst, booking?.id || null, j.id, req.saas.user_id, now, now);
+      .run(id, org, booking?.customer_id || j.customer_id, j.title, booking?.body || '', ex, gstApplies ? 1 : 0, gst, booking?.id || null, j.id, actorId, now, now);
     if (booking) setStatus(org, booking.id, 'invoiced');
-    saasAudit(req, 'invoice.created_from_job', 'invoice', id, { work_order: j.id, amount_cents: ex, gst_cents: gst });
-    res.status(201).json({ ok: true, id, amount_cents: ex, gst_cents: gst, total_cents: ex + gst });
+    return { ok: true, id, work_order_id: j.id, amount_cents: ex, gst_cents: gst, total_cents: ex + gst };
+  }
+  app.post('/api/saas/pipeline/jobs/:id/invoice', requireSaasUser, can('finance', 'create'), (req, res) => {
+    const r = createInvoiceFromJob(req.saas.organisation_id, req.saas.user_id, req.params.id);
+    if (!r.ok) return fail(res, r.status, r.error);
+    saasAudit(req, 'invoice.created_from_job', 'invoice', r.id, { work_order: r.work_order_id, amount_cents: r.amount_cents, gst_cents: r.gst_cents });
+    res.status(201).json({ ok: true, id: r.id, amount_cents: r.amount_cents, gst_cents: r.gst_cents, total_cents: r.total_cents });
   });
 
   // An approved invoice is issued: it gets its due date and the job's invoice dates, so payments and reminders apply.
@@ -229,8 +244,9 @@ export function installPipeline(app, { db, requireSaasUser, saasAudit, staffAcce
     })();
     syncJobFinance?.(org, j.id, req.saas.user_id);
     saasAudit(req, 'invoice.issued', 'invoice', inv.id, { work_order: j.id, total_cents: totalCents });
+    events.emit(org, 'invoice.issued', { invoice_id: inv.id, work_order_id: j.id }, { key: inv.id });
     res.json({ ok: true, issued_at: now, due_at: due, total_cents: totalCents });
   });
 
-  return { createJobForBooking, refreshInvoice, gstFor };
+  return { createJobForBooking, refreshInvoice, gstFor, createQuoteFromEnquiry, createInvoiceFromJob };
 }

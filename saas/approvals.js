@@ -29,6 +29,9 @@
       '.approval-policy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.approval-policy-grid label{display:flex;gap:9px;align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2)}',
       '.approval-history{margin-top:10px;padding:10px;border-radius:10px;background:#0b0f15}.approval-history article{padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}.approval-history article:last-child{border-bottom:0}',
       '.approval-request-dialog{width:min(620px,calc(100vw - 24px));border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:0}.approval-request-dialog::backdrop{background:rgba(0,0,0,.62)}.approval-request-dialog form{display:grid;gap:12px;padding:20px}.approval-request-dialog header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.approval-request-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:8px}',
+      '.approval-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:10px 0}.approval-facts div{padding:9px 10px;border:1px solid var(--line);border-radius:10px;font-size:12px}.approval-facts dt{color:var(--muted);font-size:11px;margin-bottom:3px}.approval-facts dd{margin:0;color:var(--text);overflow-wrap:anywhere}',
+      '.approval-level{padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid var(--brand-line);color:var(--brand-2)}.approval-qa{margin:8px 0;padding:10px;border-left:3px solid var(--brand-line);background:var(--panel);font-size:12px}',
+      '.approval-inline{display:grid;gap:8px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.approval-inline label{display:grid;gap:4px;font-size:12px}.approval-inline input,.approval-inline textarea{width:100%;min-width:0}',
       '@media(max-width:760px){.approval-metrics,.approval-policy-grid{grid-template-columns:1fr 1fr}.approval-card header{display:grid}}',
       '@media(max-width:480px){.approval-metrics,.approval-policy-grid{grid-template-columns:1fr}}'
     ].join('');
@@ -52,14 +55,42 @@
       '<div class="approval-actions"><button type="button" class="primary-button compact" id="save-approval-policy">Save approval policy</button></div></article>';
   }
 
+  const LEVEL={1:'Level 1 · automatic',2:'Level 2 · rule-based',3:'Level 3 · needs approval',4:'Level 4 · restricted'};
+  const when=v=>v?new Date(v).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'}):'';
+  const money=c=>(Number(c)/100).toLocaleString('en-AU',{style:'currency',currency:'AUD'});
+  // Phase 05: every queue item shows who asked, what is affected, the risk, the data, the outcome, cost, timing and expiry.
+  function factsHtml(a){
+    const rows=[
+      ['Requested by',a.requested_by_name||'Workspace user'],
+      ['Workspace',window.GDS_SESSION?.organisation?.name||window.GDS_SESSION?.organisation_name||'This business'],
+      ['Risk',a.risk_level+(a.policy_level?' · '+(LEVEL[a.policy_level]||''):'')],
+      a.data_involved?.length?['Data involved',a.data_involved.join(', ')]:null,
+      a.expected_outcome?['Expected outcome',a.expected_outcome]:null,
+      ['Estimated cost',a.estimated_cost_cents===null||a.estimated_cost_cents===undefined?'No direct cost':(a.estimated_cost_cents<0?'Reduces by '+money(-a.estimated_cost_cents):money(a.estimated_cost_cents))],
+      ['Runs',a.execute_after?'Scheduled for '+when(a.execute_after):'As soon as it is approved'],
+      a.expires_at?['Expires',when(a.expires_at)]:null,
+      a.decided_by_name?['Decided by',a.decided_by_name+(a.decided_at?' · '+when(a.decided_at):'')]:null
+    ].filter(Boolean);
+    return '<dl class="approval-facts">'+rows.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>';
+  }
+  const LOCKED=['to','quote_id','enquiry_id','work_order_id','customer_id','invoice_id','category'];
+  const editableKeys=p=>Object.keys(p).filter(k=>!LOCKED.includes(k)&&['string','number'].includes(typeof p[k]));
   function cardHtml(a,canDecide){
     const payload=a.edited_payload||a.draft_payload||{};
     const payloadText=Object.keys(payload).length?JSON.stringify(payload,null,2):'No structured payload attached.';
+    const open=['pending','clarification_requested'].includes(a.status);
+    const auto=a.source_module==='automation';
     return '<article class="approval-card '+esc(a.status)+'" data-approval-id="'+esc(a.id)+'">'+
       '<header><div><div class="approval-meta"><span class="approval-ref">'+esc(a.reference_code)+'</span><span>'+esc(String(a.source_module||'workspace').replaceAll('_',' '))+'</span><span>'+esc(new Date(a.requested_at).toLocaleString())+'</span></div><h3>'+esc(a.title)+'</h3><p>'+esc(a.summary||'Approval requested for review.')+'</p></div><span class="approval-risk '+esc(a.risk_level)+'">'+esc(a.risk_level)+'</span></header>'+
+      factsHtml(a)+
+      (a.clarification_question?'<div class="approval-qa"><b>Question:</b> '+esc(a.clarification_question)+(a.clarification_answer?'<br><b>Answer:</b> '+esc(a.clarification_answer):'')+'</div>':'')+
       '<details><summary>Review action details</summary><pre class="gov-policy-detail">'+esc(payloadText)+'</pre></details>'+
-      '<div class="approval-meta"><span>Status: <b>'+esc(a.status)+'</b></span>'+(a.requested_by_name?'<span>Requested by '+esc(a.requested_by_name)+'</span>':'')+(a.decided_by_name?'<span>Decided by '+esc(a.decided_by_name)+'</span>':'')+'</div>'+
-      (a.status==='pending'&&canDecide?'<div class="approval-actions"><button type="button" class="primary-button compact" data-approval-decision="approve">Approve</button><button type="button" class="secondary-button compact" data-approval-decision="reject">Reject</button></div>':'')+
+      '<div class="approval-meta"><span>Status: <b>'+esc(String(a.status).replaceAll('_',' '))+'</b></span>'+(a.edited_payload?'<span>Edited before approval</span>':'')+'</div>'+
+      (open&&canDecide?'<div class="approval-actions"><button type="button" class="primary-button compact" data-approval-decision="approve">Approve</button><button type="button" class="secondary-button compact" data-approval-decision="reject">Reject</button>'+
+        (auto&&editableKeys(payload).length?'<button type="button" class="secondary-button compact" data-approval-edit>Edit</button>':'')+
+        '<button type="button" class="secondary-button compact" data-approval-schedule>Schedule</button>'+
+        (a.status==='pending'?'<button type="button" class="secondary-button compact" data-approval-clarify>Request clarification</button>':'')+'</div>':'')+
+      (a.status==='clarification_requested'?'<div class="approval-actions"><button type="button" class="secondary-button compact" data-approval-answer>Answer the question</button></div>':'')+
       '<button type="button" class="text-button" data-approval-history>View history</button><div class="approval-history" hidden></div>'+
       '</article>';
   }
@@ -118,8 +149,33 @@
       const note=prompt((decision==='approve'?'Approve':'Reject')+' this request. Optional decision note:','')??null;
       if(note===null)return;
       b.disabled=true;
-      try{await api('/api/saas/approvals/'+encodeURIComponent(card.dataset.approvalId)+'/decision',{method:'POST',body:JSON.stringify({decision,note})});window.GDSLive?.push?.('Approval '+(decision==='approve'?'approved':'rejected')+'.','success');await load()}
+      try{const r=await api('/api/saas/approvals/'+encodeURIComponent(card.dataset.approvalId)+'/decision',{method:'POST',body:JSON.stringify({decision,note})});window.GDSLive?.push?.(r.message||('Approval '+(decision==='approve'?'approved':'rejected')+'.'),'success');await load()}
       catch(err){window.GDSLive?.push?.(err.message,'error');b.disabled=false}
+    });
+    const inline=(card,html,submit)=>{card.querySelector('.approval-inline')?.remove();const f=document.createElement('form');f.className='approval-inline';f.innerHTML=html+'<div class="approval-actions"><button type="submit" class="primary-button compact">Save</button><button type="button" class="secondary-button compact" data-cancel>Cancel</button></div>';f.querySelector('[data-cancel]').onclick=()=>f.remove();f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('[type=submit]');btn.disabled=true;try{await submit(f);await load()}catch(err){window.GDSLive?.push?.(err.message,'error');btn.disabled=false}};card.querySelector('.approval-actions')?.after(f);f.querySelector('input,textarea')?.focus()};
+    const find=id=>(lastData?.approvals||[]).find(a=>a.id===id);
+    const post=(id,path,body,method='POST')=>api('/api/saas/approvals/'+encodeURIComponent(id)+path,{method,body:JSON.stringify(body)});
+    document.querySelectorAll('[data-approval-edit]').forEach(b=>b.onclick=()=>{
+      const card=b.closest('[data-approval-id]'),a=find(card.dataset.approvalId),p={...(a.edited_payload||a.draft_payload||{})};
+      inline(card,'<p class="approval-note">Change the wording or amounts. Who it goes to and which record it affects come from your records and cannot be changed here.</p>'+editableKeys(p).map(k=>'<label><span>'+esc(k.replaceAll('_',' '))+'</span>'+(typeof p[k]==='string'&&p[k].length>80?'<textarea rows="6" name="'+esc(k)+'">'+esc(p[k])+'</textarea>':'<input name="'+esc(k)+'" value="'+esc(p[k])+'"'+(typeof p[k]==='number'?' type="number" step="any"':'')+'>')+'</label>').join(''),async f=>{
+        for(const k of editableKeys(p))p[k]=typeof p[k]==='number'?Number(f.elements[k].value):f.elements[k].value;
+        await post(a.id,'',{edited_payload:p},'PATCH');window.GDSLive?.push?.('Changes saved. Approve when ready.','success');
+      });
+    });
+    document.querySelectorAll('[data-approval-schedule]').forEach(b=>b.onclick=()=>{
+      const card=b.closest('[data-approval-id]'),id=card.dataset.approvalId;
+      inline(card,'<label><span>Run it at (your local time)</span><input type="datetime-local" name="at" required></label><p class="approval-note">It still needs approving. Once approved it waits until this time.</p>',async f=>{
+        const at=new Date(f.elements.at.value);if(Number.isNaN(at.getTime()))throw new Error('Choose a date and time.');
+        await post(id,'/schedule',{execute_after:at.toISOString()});window.GDSLive?.push?.('Scheduled for '+when(at)+'.','success');
+      });
+    });
+    document.querySelectorAll('[data-approval-clarify]').forEach(b=>b.onclick=()=>{
+      const card=b.closest('[data-approval-id]'),id=card.dataset.approvalId;
+      inline(card,'<label><span>Your question</span><textarea name="q" rows="3" minlength="5" maxlength="1000" required></textarea></label>',async f=>{await post(id,'/clarify',{question:f.elements.q.value.trim()});window.GDSLive?.push?.('Question recorded. The request waits for an answer.','success')});
+    });
+    document.querySelectorAll('[data-approval-answer]').forEach(b=>b.onclick=()=>{
+      const card=b.closest('[data-approval-id]'),id=card.dataset.approvalId;
+      inline(card,'<label><span>Answer</span><textarea name="a" rows="3" maxlength="2000" required></textarea></label>',async f=>{await post(id,'/clarification',{answer:f.elements.a.value.trim()});window.GDSLive?.push?.('Answer saved. The request is back in the queue.','success')});
     });
     document.querySelectorAll('[data-approval-history]').forEach(b=>b.onclick=async()=>{
       const card=b.closest('[data-approval-id]'),box=card.querySelector('.approval-history');
@@ -127,7 +183,7 @@
       box.hidden=false;box.innerHTML='Loading history…';
       try{
         const d=await api('/api/saas/approvals/'+encodeURIComponent(card.dataset.approvalId)+'/events');
-        box.innerHTML=(d.events||[]).map(e=>'<article><b>'+esc(String(e.event_type).replaceAll('_',' '))+'</b> · '+esc(e.actor_name||'System')+' · '+esc(new Date(e.created_at).toLocaleString())+(e.detail?.note?'<div>'+esc(e.detail.note)+'</div>':'')+'</article>').join('')||'No history yet.';
+        box.innerHTML=(d.events||[]).map(e=>'<article><b>'+esc(String(e.event_type).replaceAll('_',' '))+'</b> · '+esc(e.actor_name||(e.detail?.by)||'System')+' · '+esc(new Date(e.created_at).toLocaleString())+(e.detail?.note?'<div>'+esc(e.detail.note)+'</div>':'')+(e.detail?.question?'<div>'+esc(e.detail.question)+'</div>':'')+(e.detail?.answer?'<div>'+esc(e.detail.answer)+'</div>':'')+(e.detail?.execute_after?'<div>Run at '+esc(when(e.detail.execute_after))+'</div>':'')+'</article>').join('')||'No history yet.';
       }catch(err){box.textContent=err.message}
     });
   }

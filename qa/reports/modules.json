@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T05:47:28.417Z",
+  "generated_at": "2026-10-30T08:35:28.969Z",
   "subscriber": [
     {
       "module": "Dashboard",
@@ -1449,13 +1449,91 @@
       "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
     },
     {
+      "module": "AI automations and approvals",
+      "routes": [
+        {
+          "390": {
+            "view": "automations-view",
+            "heading": "AI Automations",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "automations-view",
+            "heading": "AI Automations",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/automations"
+        },
+        {
+          "390": {
+            "view": "approvals-view",
+            "heading": "Review consequential actions before they happen",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "approvals-view",
+            "heading": "Review consequential actions before they happen",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/approvals"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/automation/engine",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/automation/workflows",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/automation/runs",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/automation/audit",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/approvals",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "automation.test",
+        "automation-engine.test",
+        "test:automations-ui"
+      ],
+      "provider": "AI analysis needs an AI provider (built-in rules otherwise); sending needs an email provider",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
       "module": "Automation settings",
       "routes": [
         {
           "390": {
             "view": "automation-view",
             "heading": "Automation",
-            "controls": 6,
+            "controls": 7,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1463,7 +1541,7 @@
           "1440": {
             "view": "automation-view",
             "heading": "Automation",
-            "controls": 6,
+            "controls": 7,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1503,14 +1581,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing a76c4b80-4e62-4c15-a222-49984ea59c2cAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing a76c4b80-4e62-4c15-a222-49984ea59c2cAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1538,14 +1616,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing a76c4b80-4e62-4c15-a222-49984ea59c2cAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing a76c4b80-4e62-4c15-a222-49984ea59c2cAccount details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1590,14 +1668,14 @@
         },
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1718,14 +1796,14 @@
       "routes": [
         {
           "390": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 25 MB Database size 2 MB Background jobs waiting 0 None",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 26 MB Database size 2.1 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 24 MB Database size 2 MB Background jobs waiting 0 None",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 25 MB Database size 2.1 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1753,6 +1831,48 @@
       "provider": null,
       "problems": [],
       "result": "VERIFIED"
+    },
+    {
+      "module": "Platform automations",
+      "routes": [
+        {
+          "390": {
+            "text": "Platform automations check health, backups and failed work, and route deployments, infrastructure changes, credential ro",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Platform automations check health, backups and failed work, and route deployments, infrastructure changes, credential ro",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f07/platform/automation"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/automation",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/automation/audit",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "automation.test",
+        "test:automations-ui",
+        "test:console-ui"
+      ],
+      "provider": "Deployments and key rotation are always done by a person",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
     },
     {
       "module": "Storage and backups",
@@ -1998,14 +2118,14 @@
       "routes": [
         {
           "390": {
-            "text": "access.read founder · security · 2026-10-30T05:49:00.554Z access.read founder · support · 2026-10-30T05:48:59.542Z acces",
+            "text": "access.read founder · security · 2026-10-30T08:37:05.518Z access.read founder · support · 2026-10-30T08:37:04.510Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "access.read founder · security · 2026-10-30T05:48:40.729Z access.read founder · support · 2026-10-30T05:48:39.720Z acces",
+            "text": "access.read founder · security · 2026-10-30T08:36:44.690Z access.read founder · support · 2026-10-30T08:36:43.684Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2034,14 +2154,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2127,14 +2247,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35371 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],

@@ -44,6 +44,7 @@ export const SUBSCRIBER = [
   ['Notifications', ['b01/home'], ['/api/saas/notifications', '/api/saas/notification-preferences'], ['test:ui', 'npm test (notifications)'], 'Push and email delivery need providers'],
   ['Help and support', ['b08/help', 'b08/support-access'], ['/api/saas/support-access'], ['test:ui', 'npm test (support cases)'], null],
   ['Integrations', ['b08/connections'], ['/api/saas/integrations/self-service'], ['integration:test', 'test:ui'], 'Each provider’s credentials'],
+  ['AI automations and approvals', ['b01/automations', 'b01/approvals'], ['/api/saas/automation/engine', '/api/saas/automation/workflows', '/api/saas/automation/runs', '/api/saas/automation/audit', '/api/saas/approvals'], ['automation.test', 'automation-engine.test', 'test:automations-ui'], 'AI analysis needs an AI provider (built-in rules otherwise); sending needs an email provider'],
   ['Automation settings', ['b08/automation'], ['/api/saas/automation', '/api/saas/approvals', '/api/saas/payments/settings'], ['business-ops.test', 'test:pipeline-ui'], 'Inbox AI drafts need an AI provider; customer reminders need email or SMS']
 ];
 export const FOUNDER = [
@@ -53,6 +54,7 @@ export const FOUNDER = [
   ['Platform billing', ['f03/invoices', 'f03/legacy:subpay'], ['/api/operator/invoices'], ['npm test (platform invoices)'], 'Stripe for platform card payments'],
   ['Revenue analytics', ['f01/platform/revenue'], ['/api/operator/platform/revenue'], ['platform-health.test', 'test:console-ui'], 'Figures are Super Pro records; reconcile with Stripe'],
   ['Infrastructure status', ['f01/system'], ['/api/operator/system', '/api/operator/jobs'], ['platform-health.test', 'test:console-ui'], null],
+  ['Platform automations', ['f07/platform/automation'], ['/api/operator/automation', '/api/operator/automation/audit'], ['automation.test', 'test:automations-ui', 'test:console-ui'], 'Deployments and key rotation are always done by a person'],
   ['Storage and backups', ['f01/platform/backups'], ['/api/operator/platform/backups'], ['platform-health.test', 'storage:verify', 'backup:restore-drill'], 'AWS S3 buckets and keys'],
   ['AI usage and costs', ['f01/platform/ai-usage'], ['/api/operator/platform/ai-usage'], ['platform-health.test'], 'Provider cost is not recorded by Super Pro'],
   ['Platform marketing', ['f06/records:prospect', 'f06/records:campaign', 'f06/records:content'], ['/api/operator/records/prospect', '/api/operator/records/campaign'], ['test:ui (founder)'], 'Records only; publishing needs providers'],

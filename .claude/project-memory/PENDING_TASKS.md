@@ -52,6 +52,27 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: not known yet
 - Acceptance: Owner approval of scope; tests added; verify:modules clean
 
+## T-046 Phase 05: autonomous AI operations with human governance
+- Status: TESTING
+- Added: 2026-10-30
+- Requirement: Owner prompt 2026-10-30 (full text in docs/phase-05/PROMPT.md). Central AI automation engine with 20 capabilities; 4-level approval policy (automatic, rule-based automatic, human approval, restricted); approval queue with full metadata and Approve/Reject/Edit/Schedule/Request clarification; server-side authorisation, structured tool schemas, idempotency keys, bounded retries, rate limits, complete audit; AI never follows instructions in untrusted content; no-code builder Trigger > Conditions > AI Analysis > Proposed Action > Approval > Execution > Verification with dry-run, versions, error recovery, emergency pause.
+- Files: src/automation/*, saas/*, office/*, scripts/*
+- Acceptance: Engine, policies, builder, queue and audit report working; level rules enforced and tested; injection and permission tests; npm test and UI suites pass; docs/phase-05/REPORT.md
+
+## T-047 Phase 05 follow-up: inbound Inbox messages as automation triggers
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: Emails, SMS and social messages recorded by recordInbound should emit an inbox.message event (untrusted text) so automations can classify and draft replies
+- Files: src/saas-platform.js, src/automation/*
+- Acceptance: Contract test: inbound email starts an automation, text treated as untrusted, injection forces approval
+
+## T-048 Phase 05 follow-up: move the automation scheduler to a worker process
+- Status: NOT_STARTED
+- Added: 2026-10-30
+- Requirement: The per-minute automation scheduler runs in the web process; move it to a worker before running more than one instance
+- Files: src/automation/engine.js, render.yaml (needs owner approval)
+- Acceptance: Owner-approved plan; schedules still run once per period
+
 ## P04 onwards
 - Status: NOT_STARTED. Waiting for the owner's next phase prompt (see MASTER_PLAN.md). Record the prompt here
   in full before starting.

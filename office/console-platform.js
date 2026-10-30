@@ -90,6 +90,61 @@
           table([['name', 'Plan'], ['monthly_fee_cents', 'Price a month', money], ['limits', 'Limits', (v) => Object.entries(v || {}).map(([k, x]) => `${label(k)}: ${typeof x === 'object' ? JSON.stringify(x) : x}`).join(' · ') || 'No limits recorded']], d.feature_access.plans),
           table([['profile', 'Complimentary profile', label], ['count', 'Businesses']], d.feature_access.complimentary_grants_by_profile, 'No complimentary grants.'))
       );
+    },
+    // Phase 05: platform automations, platform approvals (Level 3), manual completion, platform-wide pause and audit.
+    async 'platform/automation'(host, api) {
+      const d = await api('/api/operator/automation');
+      const when = (v) => (v ? new Date(v).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : '');
+      const msg = el('p', { class: 'portal-note cp-note', role: 'status', 'aria-live': 'polite' });
+      const root = host.cpRoot || host; // the container on the page, even when this render was built off-page by a reload
+      const reload = async (text, bad = false) => { const box = el('div'); box.cpRoot = root; try { await renderers['platform/automation'](box, api); root.replaceChildren(...box.childNodes); } catch (e) { bad = true; text = e.message; } const m = root.querySelector('[role=status]'); if (m) { m.textContent = text; m.dataset.tone = bad ? 'bad' : 'good'; } };
+      const btn = (text, fn, primary = false) => { const b = el('button', { type: 'button', class: 'portal-button' + (primary ? ' primary' : ''), text }); b.addEventListener('click', async () => { b.disabled = true; try { await fn(); } catch (e) { msg.textContent = e.message; msg.dataset.tone = 'bad'; b.disabled = false; } }); return b; };
+      const post = (url, body) => api(url, { method: 'POST', body: JSON.stringify(body || {}) });
+      const s = d.summary, runs = s.runs_24h.reduce((n, r) => n + r.n, 0);
+      const pause = d.pause.paused
+        ? section('Emergency pause', el('p', { class: 'cp-alert', text: `All automations on the platform are paused${d.pause.reason ? ': ' + d.pause.reason : ''}. Waiting work is kept.` }), el('div', { class: 'cp-actions' }, btn('Resume all automations', async () => { const r = await post('/api/operator/automation/pause', { paused: false }); await reload(`Resumed. ${r.resumed} held task(s) are running.`); }, true)))
+        : (() => { const reason = el('input', { maxlength: 300, placeholder: 'Reason (optional)', 'aria-label': 'Reason for pausing' }); return section('Emergency pause', note('Stops every automation for every business and the platform at once. Businesses cannot lift a platform pause.'), el('div', { class: 'cp-actions' }, reason, btn('Pause all automations', async () => { await post('/api/operator/automation/pause', { paused: true, reason: reason.value.trim() || undefined }); await reload('All automations are paused.'); }))); })();
+      const approvals = d.approvals.filter((a) => ['pending', 'clarification_requested'].includes(a.status));
+      const apCard = (a) => {
+        const c = el('article', { class: 'portal-panel cp-approval', 'data-approval': a.id },
+          el('h3', { text: a.title }),
+          el('p', { class: 'cp-meta', text: `${a.reference_code} · ${label(a.risk_level)} risk · Level ${a.policy_level} · requested ${when(a.requested_at)} · expires ${when(a.expires_at)}${a.execute_after ? ' · scheduled ' + when(a.execute_after) : ''}` }),
+          el('p', { text: a.summary || '' }),
+          a.clarification_question ? el('p', { class: 'cp-meta', text: `Question: ${a.clarification_question}${a.clarification_answer ? ' · Answer: ' + a.clarification_answer : ''}` }) : null);
+        const acts = el('div', { class: 'cp-actions' });
+        const inline = (field, placeholder, submit) => { c.querySelector('.cp-inline')?.remove(); const i = el(field === 'datetime' ? 'input' : 'textarea', field === 'datetime' ? { type: 'datetime-local', 'aria-label': placeholder } : { rows: 2, maxlength: 1000, placeholder, 'aria-label': placeholder }); c.append(el('div', { class: 'cp-inline cp-actions' }, i, btn('Save', async () => { await submit(i.value); }, true))); i.focus(); };
+        if (a.status === 'pending') {
+          acts.append(btn('Approve', async () => { await post(`/api/operator/automation/approvals/${a.id}/decision`, { decision: 'approve' }); await reload('Approved.'); }, true),
+            btn('Reject', async () => { await post(`/api/operator/automation/approvals/${a.id}/decision`, { decision: 'reject' }); await reload('Rejected. Nothing was done.'); }),
+            btn('Schedule', async () => inline('datetime', 'Run at', async (v) => { await post(`/api/operator/automation/approvals/${a.id}/schedule`, { execute_after: new Date(v).toISOString() }); await reload('Scheduled.'); })),
+            btn('Request clarification', async () => inline('text', 'Your question', async (v) => { await post(`/api/operator/automation/approvals/${a.id}/clarify`, { question: v }); await reload('Question recorded.'); })));
+        } else acts.append(btn('Answer the question', async () => inline('text', 'Answer', async (v) => { await post(`/api/operator/automation/approvals/${a.id}/clarification`, { answer: v }); await reload('Answer saved.'); })), btn('Reject', async () => { await post(`/api/operator/automation/approvals/${a.id}/decision`, { decision: 'reject' }); await reload('Rejected.'); }));
+        c.append(acts);
+        return c;
+      };
+      const newFlow = (() => {
+        const sel = el('select', { 'aria-label': 'Action' }, d.catalogue.filter((a) => !a.restricted).map((a) => el('option', { value: a.key, text: `${a.label} (Level ${a.level})` })));
+        const name = el('input', { maxlength: 120, placeholder: 'Name', 'aria-label': 'Name' });
+        const details = el('textarea', { rows: 2, maxlength: 2000, placeholder: 'For manual actions: what exactly should happen', 'aria-label': 'Details' });
+        return el('details', { class: 'cp-new' }, el('summary', { text: 'Add a platform automation' }), el('div', { class: 'cp-actions' }, name, sel, details, btn('Save', async () => {
+          const a = d.catalogue.find((x) => x.key === sel.value);
+          await post('/api/operator/automation/workflows', { name: name.value.trim() || a.label, definition: { trigger: a.triggers[0], action: a.key, params: a.params.includes('details') ? { details: details.value.trim() } : {} } });
+          await reload('Automation saved. Switch it on to run on its schedule.');
+        }, true)));
+      })();
+      host.append(
+        note('Platform automations check health, backups and failed work, and route deployments, infrastructure changes, credential rotation and security policy changes to you for approval. Automation never deploys, changes infrastructure or rotates keys itself: after approval a person does it and marks it done.'),
+        msg,
+        grid(stat('Businesses using automations', String(s.businesses_with_automations), `${s.active_workflows} active`), stat('Runs, last 24 hours', String(runs), s.runs_24h.map((r) => `${label(r.status)} ${r.n}`).join(' · ') || 'None'), stat('Business approvals waiting', String(s.waiting_approval)), stat('Suspicious text, 24 hours', String(s.suspicious_24h), `${s.paused_businesses} business(es) paused`)),
+        pause,
+        section('Waiting for your approval', approvals.length ? el('div', { class: 'cp-list' }, approvals.map(apCard)) : note('Nothing is waiting.')),
+        section('Platform automations', newFlow, table([['name', 'Name'], ['action_label', 'Action'], ['trigger_label', 'Runs'], ['status', 'Status', label], ['last_status', 'Last result', (v, r) => (v ? `${label(v)} · ${when(r.last_run_at)}` : 'Not run yet')], ['id', '', (id, r) => el('span', { class: 'cp-actions' },
+          btn(r.status === 'active' ? 'Turn off' : 'Turn on', async () => { await post(`/api/operator/automation/workflows/${id}/status`, { status: r.status === 'active' ? 'paused' : 'active' }); await reload(`${r.name}: ${r.status === 'active' ? 'off' : 'on'}.`); }),
+          btn('Run now', async () => { const x = await post(`/api/operator/automation/workflows/${id}/run`, {}); await reload(`${r.name}: ${label(x.run.status)}.`); }))]], d.workflows, 'No platform automations yet.')),
+        section('Recent runs', table([['created_at', 'When', when], ['action_label', 'Action'], ['status', 'Result', label], ['result', 'Detail', (v, r) => r.error || r.verification?.detail || v?.summary || ''], ['id', '', (id, r) => (r.status === 'awaiting_manual' ? btn('Mark done', async () => { await post(`/api/operator/automation/runs/${id}/manual-done`, { note: 'Done by the founder' }); await reload('Marked done.'); }, true) : '')]], d.runs, 'No runs yet.')),
+        section('Reports and alerts', d.outputs.length ? el('div', { class: 'cp-list' }, d.outputs.map((o) => el('article', { class: 'portal-panel' }, el('h3', { text: o.title }), el('p', { class: 'cp-pre', text: o.body }), el('p', { class: 'cp-meta', text: when(o.created_at) })))) : note('No open reports.')));
+      const audit = await api('/api/operator/automation/audit?days=30');
+      host.append(section('Platform automation audit, last 30 days', table([['created_at', 'When', when], ['action', 'Event', (v) => label(String(v).replace('automation.', ''))], ['user_name', 'By']], audit.report.events.slice(0, 50), 'No events yet.')));
     }
   };
   window.SuperProPlatformConsole = { handles: (route) => Object.prototype.hasOwnProperty.call(renderers, route), render: (route, host, api) => renderers[route](host, api) };

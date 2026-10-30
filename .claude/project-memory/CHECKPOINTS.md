@@ -395,3 +395,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T092100Z (fa18486)
 - Known errors: none
 - Next exact action: Look at screenshots, then run all suites
+
+## CP-029 2026-10-30T17:42:13+08:00 T-049 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (COMPLETED)
+- Completed steps: Phase 06 delivered and verified
+- Incomplete steps: Owner: merge #33, #34, #35, Phase 06 PR; deploy with Google credentials then T-053; decide T-050..T-052
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md
+- Tests executed: npm test; test:unit; test:seo-ui; test:ui; test:console-ui; test:automations-ui; verify:modules; test:visual
+- Test results: 73/73; 169/169; 11/11; 34/34; 16/16; 11/11; 54/0; 51 same
+- Git branch: phase-06-seo-platform
+- Commit: 426b472 (Phase 06: SEO, Google and website intelligence platform); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner

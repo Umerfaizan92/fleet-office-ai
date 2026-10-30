@@ -66,13 +66,6 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: src/automation/engine.js, render.yaml (needs owner approval)
 - Acceptance: Owner-approved plan; schedules still run once per period
 
-## T-049 Phase 06: autonomous SEO, Google and website intelligence platform
-- Status: IN_PROGRESS
-- Added: 2026-10-30
-- Requirement: docs/phase-06/PROMPT.md (verbatim): modules A-H, deliverables 1-10, strict account separation, no fabricated search data, no ranking guarantees, human approval for public claims and production releases
-- Files: src/seo/*, src/server.js, saas/workspace-seo-*.js, office/console-platform.js, scripts/*seo*.test.mjs, docs/phase-06/*
-- Acceptance: Contract and browser tests for every module; real crawler/audit tested against the running server; Google clients tested against documented response formats and a live self-test recorded when credentials and network exist; report lists anything not verified
-
 ## T-050 Phase 06 follow-up: fix the public-site SEO findings
 - Status: NOT_STARTED
 - Added: 2026-10-30

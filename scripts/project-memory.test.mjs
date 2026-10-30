@@ -140,7 +140,8 @@ test('resume check reports a branch mismatch and an interrupted merge', { skip: 
   gitc('merge', 'other'); // conflicts and stays in progress
   const report = JSON.parse(sh(process.execPath, [path.join(dir, 'scripts/memory/resume.mjs'), '--json']).stdout);
   assert.ok(report.warnings.some((w) => /git merge is in progress/.test(w)), report.warnings.join('\n'));
-  assert.ok(report.warnings.some((w) => /Handover was written on branch "phase-03-cinematic-design" but you are on "main"/.test(w)));
+  const recorded = report.handover['CURRENT BRANCH'].split(/\s/)[0];
+  assert.ok(report.warnings.some((w) => w.includes(`Handover was written on branch "${recorded}" but you are on "main"`)), report.warnings.join('\n'));
   assert.ok(report.warnings.some((w) => /does not exist here/.test(w)), 'recorded commit from another clone is flagged');
 });
 

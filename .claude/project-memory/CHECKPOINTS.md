@@ -129,3 +129,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner: review/merge PR #33, decide T-037, send the next phase prompt
+
+## CP-010 2026-10-30T12:57:12+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: branch phase-04-business-os created from phase-03-cinematic-design
+- Incomplete steps: save prompt; build feature inventory from code; map pipeline; test end to end
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: c5d9d90 (Project memory: PR #33 opened (T-038 completed)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: save prompt to docs/phase-04/PROMPT.md, then inventory routes and UI modules

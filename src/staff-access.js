@@ -38,7 +38,10 @@ export function accessRoute(req){
  let feature=area[first]||'restricted';
  if(first==='business-hub')feature=({enquiry:'customers',quote:'customers',booking:'jobs',invoice:'finance',campaign:'growth'})[parts[1]]||'restricted';
  if(first==='ai'&&parts[1]==='auto-draft')feature='inbox';
- const action=first==='mail'&&/\/send$/.test(path)?'send':req.method==='GET'||req.method==='HEAD'?'read':req.method==='DELETE'?'delete':/\/(approve|decision|decide|reject|capture|charge|record|send|publish|execute|run-cycle|offer)(\/|$)/.test(path)?'approve':['PUT','PATCH'].includes(req.method)?'edit':'create';
+ // Phase 04 pipeline: enquiries, quotes and trails are customer work; bookings and job completion are jobs; invoices are money.
+ if(first==='pipeline')feature=/^(booking|quotes)$/.test(parts[1])||parts[1]==='jobs'&&parts[3]==='complete'?'jobs':/^(invoice|invoices)$/.test(parts[1])||parts[1]==='jobs'&&parts[3]==='invoice'?'finance':'customers';
+ let action=first==='mail'&&/\/send$/.test(path)?'send':req.method==='GET'||req.method==='HEAD'?'read':req.method==='DELETE'?'delete':/\/(approve|decision|decide|reject|capture|charge|record|send|publish|execute|run-cycle|offer)(\/|$)/.test(path)?'approve':['PUT','PATCH'].includes(req.method)?'edit':'create';
+ if(first==='pipeline'&&req.method==='POST'&&/\/(complete|issue|close)$/.test(path))action='edit';
  return {feature,action,path};
 }
 function ownerOnlyPath(path){return /^\/api\/saas\/(support-access|team-accounts|data-export|migration|privacy|referrals|message-delivery|activity)(\/|$)/.test(path)||/\/(approvals\/policy|payments\/settings|billing\/setup|integrations\/self-service\/[^/]+\/authorise)(\/|$)/.test(path)}

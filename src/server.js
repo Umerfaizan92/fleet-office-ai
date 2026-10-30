@@ -1,5 +1,6 @@
 import {seedIsolatedPreview} from './preview-seed.js';
 import {installBusinessHub} from './business-hub.js';
+import { installPipeline } from './pipeline.js';
 import {createSubscriptionPolicy} from './subscription-policy.js';
 import {createPlatformIdentity} from './platform-identity.js';
 import {installOperatorConsole} from './operator-console.js';
@@ -5717,7 +5718,10 @@ if(!/^(1|true|yes)$/i.test(String(env.JOBS_DISABLED||''))){
   const dailyAuditCheck=()=>{try{jobQueue.enqueue('audit.verify_chain',{},{idempotencyKey:'audit.verify_chain:'+new Date().toISOString().slice(0,10)})}catch(e){console.warn('[jobs] could not schedule the audit check:',e.message)}};
   dailyAuditCheck();setInterval(dailyAuditCheck,3600000).unref();
 }
-installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess});
+const businessHubHooks={};
+installBusinessHub(app,{db,requireSaasUser,requireSaasRole,saasAudit,staffAccess,hooks:businessHubHooks});
+// Phase 04: connects enquiries, quotes, bookings and invoices to jobs, allocation, completion and payments.
+Object.assign(businessHubHooks,installPipeline(app,{db,requireSaasUser,saasAudit,staffAccess,syncJobFinance:saasPlatform.syncJobFinance}));
 installMailCentre(app,{db,env,uploadRoot,platform:platformIdentity,requireSaasUser,requireSaasRole,staffAccess,saasAudit,generateAiText,entitlements,timers:env.NODE_ENV!=='test'});
 
 app.listen(

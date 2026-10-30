@@ -213,3 +213,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner: review PR for phase-04-business-os; choose which remaining gap (T-040..T-045) to do next
+
+## CP-016 2026-10-30T13:56:52+08:00 T-039
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-039
+- Completed steps: manifest fix committed (69d11c0)
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: 69d11c0 (Manifest: exclude project memory and generated reports (E-012)); 3 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: review the Phase 04 pull request; choose which remaining gap (T-040..T-045) to do next

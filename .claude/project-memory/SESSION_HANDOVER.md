@@ -8,15 +8,15 @@ CURRENT BRANCH: phase-04-business-os
 LATEST VERIFIED COMMIT: 55d009e (Phase 04: record search in the workspace, verification report)
 CURRENT PHASE: P04 completed; waiting for the owner's review of PR and next prompt
 CURRENT TASK: T-039
-LAST COMPLETED STEP: manifest fix committed (69d11c0)
-FILES MODIFIED: none
+LAST COMPLETED STEP: PR #34 opened
+FILES MODIFIED: .claude/project-memory/PROGRESS.md
 TESTS PASSED: none
 TESTS FAILED: none
-UNCOMMITTED CHANGES: none
+UNCOMMITTED CHANGES: 1 file(s)
 KNOWN BLOCKERS: none
-NEXT EXACT ACTION: wait for the owner: review the Phase 04 pull request; choose which remaining gap (T-040..T-045) to do next
-APPROVALS REQUIRED: owner: merge PRs; approve T-037; choose next tasks; any deploy
-LAST CHECKPOINT: CP-016 at 2026-10-30T13:56:52+08:00
+NEXT EXACT ACTION: wait for the owner: merge #33 then #34; choose the next task (T-040..T-045) or send the next phase prompt
+APPROVALS REQUIRED: owner: merge PRs #33 and #34; approve T-037; choose next tasks; any deploy
+LAST CHECKPOINT: CP-017 at 2026-10-30T13:58:49+08:00
 <!-- handover:end -->
 
 ## Notes

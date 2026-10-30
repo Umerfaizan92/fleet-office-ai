@@ -227,3 +227,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: wait for the owner: review the Phase 04 pull request; choose which remaining gap (T-040..T-045) to do next
+
+## CP-017 2026-10-30T13:58:49+08:00 T-039
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-039
+- Completed steps: PR #34 opened
+- Incomplete steps: none
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PROGRESS.md
+- Tests executed: none
+- Test results: none
+- Git branch: phase-04-business-os
+- Commit: 113eea1 (Checkpoint: manifest fix verified)
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner: merge #33 then #34; choose the next task (T-040..T-045) or send the next phase prompt

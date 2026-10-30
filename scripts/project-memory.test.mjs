@@ -178,3 +178,9 @@ test('memory:task adds, updates and completes tasks and logs notes without hand 
   const { validate: v } = await import(path.join(dir, 'scripts/memory/validate.mjs'));
   assert.deepEqual(v(dir).filter((p) => !/SESSION_HANDOVER|CLAUDE/.test(p)), []);
 });
+
+test('project memory and generated reports are not in the release manifest (checkpoint commits must not break npm test)', () => {
+  const manifest = fs.readFileSync(path.join(ROOT, 'SHA256SUMS.txt'), 'utf8');
+  assert.ok(!/\s\.claude\/project-memory\//.test(manifest), 'memory files listed in SHA256SUMS.txt');
+  assert.ok(!/\sqa\/reports\//.test(manifest), 'generated reports listed in SHA256SUMS.txt');
+});

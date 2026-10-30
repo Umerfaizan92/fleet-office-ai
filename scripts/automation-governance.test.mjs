@@ -303,7 +303,7 @@ test('every business action runs end to end through the real pipeline without fa
   for (const k of ['routine_acknowledgements', 'appointment_reminders', 'approved_follow_ups', 'internal_transitions']) await O('PUT', `/api/saas/automation/rules/${k}`, { enabled: true });
   const params = { draft_quote: { default_amount: 300 } };
   const wfs = {};
-  for (const a of cat.filter((x) => !x.restricted && !x.manual && !['change_job_price', 'publish_site_page', 'reply_to_review', 'submit_sitemap'].includes(x.key))) {
+  for (const a of cat.filter((x) => !x.restricted && !x.manual && !['change_job_price', 'publish_site_page', 'reply_to_review', 'submit_sitemap', 'send_campaign'].includes(x.key))) {
     wfs[a.key] = await flow(a.label, { trigger: a.triggers[0], action: a.key, params: params[a.key] || {} });
   }
   // Drive the whole pipeline so every event trigger fires.

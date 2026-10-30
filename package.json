@@ -58,7 +58,8 @@
     "test:console-ui": "node scripts/test-console-platform.mjs",
     "verify:modules": "node scripts/verify-modules.mjs",
     "test:automations-ui": "node scripts/test-automations-ui.mjs",
-    "test:seo-ui": "node scripts/test-seo-ui.mjs"
+    "test:seo-ui": "node scripts/test-seo-ui.mjs",
+    "test:comms-ui": "node scripts/test-comms-ui.mjs"
   },
   "engines": {
     "node": "22.x"

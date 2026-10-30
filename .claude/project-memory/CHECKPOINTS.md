@@ -409,3 +409,87 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Wait for the owner
+
+## CP-030 2026-10-30T18:14:18+08:00 T-054 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (IN_PROGRESS)
+- Completed steps: Prompt saved; audited comms (comms_threads/messages, recordInbound, webhooks, dispatch, message-delivery tracking, mail-centre, growth calendar, newsletter) and Telnyx voice (single assistant, no tenant routing, no transfer/voicemail/transcript, silent after fallback, in-memory dedupe)
+- Incomplete steps: src/comms/ai.js, voice.js, campaigns+consent, inbox service, routes, UI, founder, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; docs/phase-07/PROMPT.md
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Write src/comms/ai.js
+
+## CP-031 2026-10-30T18:17:27+08:00 T-054 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (IN_PROGRESS)
+- Completed steps: src/comms/ai.js (10 AI functions, rules-based), src/comms/voice.js (per-number Telnyx call state machine: routing, parallel start, transcription, transfer, voicemail, fallback chain, persistent dedupe)
+- Incomplete steps: service.js (inbox folders/views, analysis hook, linking, replies+scheduling, contact form, consent, suppression, unsubscribe, segments, campaigns with approval+sending+tracking+recommendations, founder campaigns), routes, server wiring, UI, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; docs/phase-07/PROMPT.md; src/comms/ai.js; src/comms/voice.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-07-communications/20261030T101727Z (b8262a9)
+- Known errors: none
+- Next exact action: Write src/comms/service.js
+
+## CP-032 2026-10-30T18:22:18+08:00 T-054 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (IN_PROGRESS)
+- Completed steps: service.js, routes.js, send_campaign catalogue action, pipeline createEnquiry export, recordInbound hooks, dispatch export
+- Incomplete steps: server wiring (comms+voice+jobs+telnyx webhook+CSP form-action), builder contact form block, UI, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; src/automation/catalogue.js; src/pipeline.js; src/saas-platform.js; docs/phase-07/PROMPT.md; src/comms/ai.js; src/comms/routes.js; src/comms/service.js; src/comms/voice.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-07-communications/20261030T102218Z (003829d)
+- Known errors: none
+- Next exact action: Wire comms into server.js
+
+## CP-033 2026-10-30T18:24:52+08:00 T-054 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (IN_PROGRESS)
+- Completed steps: Server wiring done (comms service, voice flow in Telnyx webhook, campaign.send job, inbound hook, builder contact form); existing pipeline/seo/automation tests pass
+- Incomplete steps: comms e2e tests with mock Telnyx/Resend, UI (inbox, campaigns, consent, voice settings), founder tab, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/pipeline.js; src/saas-platform.js; src/seo/builder.js; src/seo/routes.js; src/seo/service.js; src/server.js; docs/phase-07/PROMPT.md; src/comms/ai.js; src/comms/routes.js; src/comms/service.js; src/comms/voice.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-07-communications/20261030T102452Z (ba4f452)
+- Known errors: none
+- Next exact action: Write scripts/comms.test.mjs
+
+## CP-034 2026-10-30T18:31:05+08:00 T-054 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (IN_PROGRESS)
+- Completed steps: comms backend + voice flow + campaigns; comms.test 5/5
+- Incomplete steps: UI, browser test, full suites, report, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/pipeline.js; src/saas-platform.js; src/seo/builder.js; src/seo/routes.js; src/seo/service.js; src/server.js; docs/phase-07/PROMPT.md; scripts/comms.test.mjs; src/comms/ai.js; src/comms/routes.js; src/comms/service.js; src/comms/voice.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-07-communications/20261030T103105Z (047adb2)
+- Known errors: none
+- Next exact action: Build unified inbox/campaign/voice UI
+
+## CP-035 2026-10-30T18:47:08+08:00 T-054 TESTING
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-054 (TESTING)
+- Completed steps: Backend, voice, campaigns, UI (4 views + founder tab), contact form option, comms.test 6/6, test:comms-ui 10/10, report; fixed rawBody bug on communications webhooks
+- Incomplete steps: Full suites, manifest, commit, push, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/ERROR_LOG.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.js; office/console.html; office/console.js; package.json; saas/workspace-nav.js; saas/workspace-seo-platform.css; saas/workspace-seo-platform.js; saas/workspace.html; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/message-delivery.js; src/pipeline.js; src/saas-platform.js; src/seo/builder.js; src/seo/routes.js; src/seo/service.js; src/server.js; docs/phase-07/PROMPT.md; docs/phase-07/REPORT.md; saas/workspace-comms-platform.css; saas/workspace-comms-platform.js; scripts/comms.test.mjs; scripts/test-comms-ui.mjs; src/comms/ai.js; src/comms/routes.js; src/comms/service.js; src/comms/voice.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-07-communications
+- Commit: 56086ac (Progress: PR #36 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-07-communications/20261030T104708Z (503e889)
+- Known errors: none
+- Next exact action: Check suite summary in scratchpad/suite/summary.txt, rerun npm test + test:unit after late edits, then commit and PR

@@ -81,7 +81,7 @@ export function recordInbound(db, { organisation_id, channel, contact_address, c
   const now = isoNow();
   const address = normaliseAddress(channel, contact_address);
   if (!address) throw new Error('Missing contact address.');
-  return db.transaction(() => {
+  const result = db.transaction(() => {
     if (external_message_id) {
       const dup = db.prepare(`SELECT id,thread_id FROM comms_messages WHERE organisation_id=? AND provider=? AND external_message_id=?`).get(organisation_id, provider, external_message_id);
       if (dup) return { id: dup.id, thread_id: dup.thread_id, duplicate: true };
@@ -101,7 +101,11 @@ export function recordInbound(db, { organisation_id, channel, contact_address, c
     communicationInbound({organisation_id,channel,contact_address,contact_name,id});
     return { id, thread_id: thread.id, duplicate: false };
   })();
+  // Phase 07: conversation analysis and automation triggers run after the message is safely stored.
+  if (!result.duplicate) for (const hook of inboundHooks) { try { hook({ ...result, organisation_id, channel, contact_address: address, contact_name, subject, body, kind }); } catch (e) { console.warn('[comms] inbound hook failed:', e.message); } }
+  return result;
 }
+export const inboundHooks = new Set();
 
 function organisationForAddress(db, channel, address) {
   const row = db.prepare(`SELECT organisation_id FROM comms_channels WHERE channel=? AND address=? AND status='active'`).get(channel, normaliseAddress(channel, address));
@@ -947,7 +951,7 @@ export function installSaasPlatform(app, deps) {
     if (msg.channel === 'sms') {
       const from = env.TELNYX_FROM_NUMBER || env.TELNYX_PHONE_NUMBER;
       if (!set(env.TELNYX_API_KEY) || !set(from)) throw notConfigured('SMS');
-      const r = await fetch('https://api.telnyx.com/v2/messages', { method: 'POST', headers: { authorization: `Bearer ${env.TELNYX_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from, to: msg.contact_address, text: msg.body }) });
+      const r = await fetch(`${String(env.TELNYX_API_BASE_URL || 'https://api.telnyx.com/v2').replace(/\/$/, '')}/messages`, { method: 'POST', headers: { authorization: `Bearer ${env.TELNYX_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from, to: msg.contact_address, text: msg.body }) });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error('sms failed');
       return data?.data?.id || null;
@@ -963,7 +967,7 @@ export function installSaasPlatform(app, deps) {
       if (!set(env.RESEND_API_KEY) || !set(env.SAAS_VERIFY_FROM)) throw notConfigured('Email');
       const brand=tenantBrandFor(db,uploadRoot,msg.organisation_id),rendered=renderEmail(brand,{heading:msg.subject||'Message from '+brand.name,paragraphs:[msg.body]});
       const replyTo=db.prepare("SELECT address FROM comms_channels WHERE organisation_id=? AND channel='email' AND status='active' LIMIT 1").get(msg.organisation_id)?.address;
-      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.SAAS_VERIFY_FROM, to: [msg.contact_address], subject: msg.subject ? `Re: ${msg.subject}` : 'Reply from us', text: rendered.text,html:rendered.html,...(replyTo?{reply_to:replyTo}:{}) }) });
+      const r = await fetch(`${String(env.RESEND_API_BASE_URL || 'https://api.resend.com').replace(/\/$/, '')}/emails`, { method: 'POST', headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.SAAS_VERIFY_FROM, to: [msg.contact_address], subject: msg.subject ? `Re: ${msg.subject}` : 'Reply from us', text: rendered.text,html:rendered.html,...(replyTo?{reply_to:replyTo}:{}) }) });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error('email failed');
       return data?.id || null;
@@ -971,7 +975,7 @@ export function installSaasPlatform(app, deps) {
     if (SOCIAL_CHANNELS.includes(msg.channel)) throw notConfigured(`Sending replies directly on ${msg.channel} (the reply is approved and saved; copy it into the ${msg.channel} app for now)`);
     throw notConfigured('Voice replies are not sent as messages; the channel');
   }
-  return { syncJobFinance };
+  return { syncJobFinance, dispatch };
 }
 
 // Called inside the approval decision transaction so message state can never drift from the approval.

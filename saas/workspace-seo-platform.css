@@ -37,3 +37,5 @@
 .sx-report{display:grid;gap:8px}
 .sx-report h3{margin:10px 0 2px;font-size:16px}
 @media print{.sx-founder-nav,.pl-actions,.sx-form,.pl-newwrap{display:none!important}}
+.sx-check{display:flex;gap:8px;align-items:center}
+.sx-check input{width:18px;height:18px;flex:0 0 auto;margin:0}

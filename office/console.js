@@ -71,6 +71,7 @@
         ["records:announcement_draft", "Announcement drafts"],
         ["legacy:searchvisibility", "Website visibility"],
         ["platform/seo", "SEO & website"],
+        ["platform/campaigns", "Newsletter campaigns"],
       ],
     ],
     [

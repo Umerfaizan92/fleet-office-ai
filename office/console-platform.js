@@ -96,6 +96,11 @@
       if (!window.SuperProSeo) { host.append(note('The SEO module did not load. Reload the page.')); return; }
       await window.SuperProSeo.mount(host, '/api/operator/seo', api).render('seocentre');
     },
+    // Phase 07: Super Pro newsletter campaigns (platform subscribers only) and a counts-only communications overview.
+    async 'platform/campaigns'(host, api) {
+      if (!window.SuperProComms) { host.append(note('The campaigns module did not load. Reload the page.')); return; }
+      await window.SuperProComms.mountFounder(host, api).render('campaignstudio');
+    },
     // Phase 05: platform automations, platform approvals (Level 3), manual completion, platform-wide pause and audit.
     async 'platform/automation'(host, api) {
       const d = await api('/api/operator/automation');

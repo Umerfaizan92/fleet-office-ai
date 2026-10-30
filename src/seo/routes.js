@@ -116,9 +116,9 @@ export function installSeoRoutes(app, { db, service, engine, requireSaasUser, re
   });
 
   // ---------- published websites built with the Website Builder ----------
-  const send = (res, r) => { if (!r) return res.status(404).type('html').send('<!doctype html><title>Not found</title><h1>Page not found</h1>'); if (r.status === 403) return res.status(403).type('text').send('This preview link is not valid or has expired.'); res.set('Cache-Control', r.preview ? 'no-store' : 'public, max-age=300'); if (r.preview) res.set('X-Robots-Tag', 'noindex, nofollow'); res.set('Content-Security-Policy', "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"); res.type('html').send(r.html); };
+  const send = (res, r) => { if (!r) return res.status(404).type('html').send('<!doctype html><title>Not found</title><h1>Page not found</h1>'); if (r.status === 403) return res.status(403).type('text').send('This preview link is not valid or has expired.'); res.set('Cache-Control', r.preview ? 'no-store' : 'public, max-age=300'); if (r.preview) res.set('X-Robots-Tag', 'noindex, nofollow'); res.set('Content-Security-Policy', "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'"); res.type('html').send(r.html); };
   app.get('/sites/:site/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /sites/${req.params.site}/\nSitemap: ${service.siteBase()}/sites/${req.params.site}/sitemap.xml\n`));
   app.get('/sites/:site/sitemap.xml', (req, res) => { const x = service.siteSitemap(req.params.site); if (!x) return res.status(404).end(); res.type('application/xml').send(x); });
-  app.get('/sites/:site', (req, res) => { if (!req.originalUrl.split('?')[0].endsWith('/')) return res.redirect(301, `/sites/${encodeURIComponent(req.params.site)}/`); send(res, service.renderPublic(req.params.site, 'home', req.query.preview)); });
-  app.get('/sites/:site/:page', (req, res) => send(res, service.renderPublic(req.params.site, req.params.page, req.query.preview)));
+  app.get('/sites/:site', (req, res) => { if (!req.originalUrl.split('?')[0].endsWith('/')) return res.redirect(301, `/sites/${encodeURIComponent(req.params.site)}/`); send(res, service.renderPublic(req.params.site, 'home', req.query.preview, req.query.form)); });
+  app.get('/sites/:site/:page', (req, res) => send(res, service.renderPublic(req.params.site, req.params.page, req.query.preview, req.query.form)));
 }

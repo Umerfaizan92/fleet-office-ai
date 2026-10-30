@@ -294,7 +294,7 @@ export function createSeoService({ db, env = {}, fetchImpl = globalThis.fetch, r
     if (!saved.ok) return saved;
     return { ...requestPublish(ownerKey, pageId, {}, actor), rolled_back_to: v };
   }
-  function renderPublic(siteSlug, pageSlug, previewTok) {
+  function renderPublic(siteSlug, pageSlug, previewTok, formStatus = null) {
     publishDue();
     const s = db.prepare('SELECT * FROM seo_sites WHERE slug=?').get(siteSlug); if (!s) return null;
     const p = db.prepare('SELECT * FROM seo_site_pages WHERE site_id=? AND slug=?').get(s.id, pageSlug || 'home'); if (!p) return null;
@@ -303,7 +303,7 @@ export function createSeoService({ db, env = {}, fetchImpl = globalThis.fetch, r
     if (!v) return null;
     const c = version(p.id, v), brand = J(s.brand_json, {});
     const nav = db.prepare("SELECT slug,title FROM seo_site_pages WHERE site_id=? AND published_version IS NOT NULL ORDER BY created_at").all(s.id).map((x) => ({ href: `/sites/${s.slug}/${x.slug === 'home' ? '' : x.slug}`, label: x.title, current: x.slug === p.slug }));
-    const html = renderPage(c, { site: { name: s.name, lang: s.lang, brand, abn: facts(s.owner_key).abn }, canonical: `${ownBase()}/sites/${s.slug}/${p.slug === 'home' ? '' : p.slug}`, nav, preview, reviews: c.blocks?.some((b) => b.type === 'reviews') ? approvedReviews(s.owner_key) : [] });
+    const html = renderPage({ ...c, slug: p.slug }, { formStatus: ['sent', 'error'].includes(formStatus) ? formStatus : null, site: { name: s.name, slug: s.slug, lang: s.lang, brand, abn: facts(s.owner_key).abn }, canonical: `${ownBase()}/sites/${s.slug}/${p.slug === 'home' ? '' : p.slug}`, nav, preview, reviews: c.blocks?.some((b) => b.type === 'reviews') ? approvedReviews(s.owner_key) : [] });
     return { status: 200, html, preview };
   }
   function siteSitemap(siteSlug) {

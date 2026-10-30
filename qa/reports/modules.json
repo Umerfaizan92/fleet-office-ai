@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T08:35:28.969Z",
+  "generated_at": "2026-10-30T09:28:04.090Z",
   "subscriber": [
     {
       "module": "Dashboard",
@@ -835,7 +835,7 @@
           "390": {
             "view": "integrations-view",
             "heading": "Connect your operating channels",
-            "controls": 12,
+            "controls": 13,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -843,7 +843,7 @@
           "1440": {
             "view": "integrations-view",
             "heading": "Connect your operating channels",
-            "controls": 12,
+            "controls": 13,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1417,7 +1417,7 @@
           "390": {
             "view": "integrations-view",
             "heading": "Connect your operating channels",
-            "controls": 12,
+            "controls": 13,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1425,7 +1425,7 @@
           "1440": {
             "view": "integrations-view",
             "heading": "Connect your operating channels",
-            "controls": 12,
+            "controls": 13,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1445,6 +1445,280 @@
         "test:ui"
       ],
       "provider": "Each provider’s credentials",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "SEO Command Centre and reports",
+      "routes": [
+        {
+          "390": {
+            "view": "seocentre-view",
+            "heading": "SEO Command Centre",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seocentre-view",
+            "heading": "SEO Command Centre",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/seo"
+        },
+        {
+          "390": {
+            "view": "seoreports-view",
+            "heading": "SEO Reports",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seoreports-view",
+            "heading": "SEO Reports",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/reports"
+        },
+        {
+          "390": {
+            "view": "seoanalytics-view",
+            "heading": "SEO Analytics",
+            "controls": 1,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seoanalytics-view",
+            "heading": "SEO Analytics",
+            "controls": 1,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/analytics"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/seo/command",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/seo/dashboard",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/seo/reports",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "seo-platform.test",
+        "test:seo-ui"
+      ],
+      "provider": "Search Console and Analytics data need a Google connection",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Technical SEO audit and keyword clusters",
+      "routes": [
+        {
+          "390": {
+            "view": "seoaudit-view",
+            "heading": "Technical Audit",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seoaudit-view",
+            "heading": "Technical Audit",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/audit"
+        },
+        {
+          "390": {
+            "view": "seoclusters-view",
+            "heading": "Keyword Clusters",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seoclusters-view",
+            "heading": "Keyword Clusters",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/keywords"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/seo/audit",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/seo/keywords",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "seo-audit.test",
+        "seo-units.test",
+        "seo-platform.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Google Integration Centre and local SEO",
+      "routes": [
+        {
+          "390": {
+            "view": "seogoogle-view",
+            "heading": "Google",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seogoogle-view",
+            "heading": "Google",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/google"
+        },
+        {
+          "390": {
+            "view": "seolocal-view",
+            "heading": "Local SEO",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seolocal-view",
+            "heading": "Local SEO",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/local"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/seo/google",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/seo/local",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "seo-units.test",
+        "seo-platform.test",
+        "test:seo-ui"
+      ],
+      "provider": "Google OAuth client, Business Profile API access, PageSpeed key; not yet verified against live Google",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Content Studio and Website Builder",
+      "routes": [
+        {
+          "390": {
+            "view": "seostudio-view",
+            "heading": "Content Studio",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seostudio-view",
+            "heading": "Content Studio",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/studio"
+        },
+        {
+          "390": {
+            "view": "seobuilder-view",
+            "heading": "Website Builder",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "seobuilder-view",
+            "heading": "Website Builder",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/builder"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/seo/studio",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/seo/sites",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "seo-platform.test",
+        "test:seo-ui"
+      ],
+      "provider": "AI drafts need an AI provider (templates otherwise)",
       "problems": [],
       "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
     },
@@ -1518,7 +1792,7 @@
         }
       ],
       "tests": [
-        "automation.test",
+        "automation-governance.test",
         "automation-engine.test",
         "test:automations-ui"
       ],
@@ -1581,14 +1855,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing a1905379-d8ba-4433-bc91-f7810ea93ce1Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing a1905379-d8ba-4433-bc91-f7810ea93ce1Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1616,14 +1890,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing a1905379-d8ba-4433-bc91-f7810ea93ce1Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c9cb3c43-b7d2-42b4-b084-e9afab95c8d9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing a1905379-d8ba-4433-bc91-f7810ea93ce1Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1668,14 +1942,14 @@
         },
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1796,14 +2070,14 @@
       "routes": [
         {
           "390": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 26 MB Database size 2.1 MB Background jobs waiting 0 No",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 110 MB Heap 28 MB Database size 2.3 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 25 MB Database size 2.1 MB Background jobs waiting 0 No",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 109 MB Heap 27 MB Database size 2.3 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -1831,6 +2105,47 @@
       "provider": null,
       "problems": [],
       "result": "VERIFIED"
+    },
+    {
+      "module": "Platform SEO and website",
+      "routes": [
+        {
+          "390": {
+            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Not run Technica",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Not run Technica",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f06/platform/seo"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/seo/command",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/seo/audit",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "seo-platform.test",
+        "test:seo-ui"
+      ],
+      "provider": "Google service account for Search Console and GA4",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
     },
     {
       "module": "Platform automations",
@@ -1866,7 +2181,7 @@
         }
       ],
       "tests": [
-        "automation.test",
+        "automation-governance.test",
         "test:automations-ui",
         "test:console-ui"
       ],
@@ -2118,14 +2433,14 @@
       "routes": [
         {
           "390": {
-            "text": "access.read founder · security · 2026-10-30T08:37:05.518Z access.read founder · support · 2026-10-30T08:37:04.510Z acces",
+            "text": "access.read founder · security · 2026-10-30T09:29:59.352Z access.read founder · support · 2026-10-30T09:29:58.344Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "access.read founder · security · 2026-10-30T08:36:44.690Z access.read founder · support · 2026-10-30T08:36:43.684Z acces",
+            "text": "access.read founder · security · 2026-10-30T09:29:37.563Z access.read founder · support · 2026-10-30T09:29:36.550Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2154,14 +2469,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2247,14 +2562,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37279 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:36615 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],

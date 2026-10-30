@@ -311,3 +311,101 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Wait for the owner's next phase prompt or task choice
+
+## CP-023 2026-10-30T16:55:46+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: Module A: src/seo/audit.js crawler + auditor (19 categories), scripts/seo-audit.test.mjs 5/5 incl. real public-site crawl
+- Incomplete steps: Module B keywords, C content, D Google, E local, F builder, G ops jobs, H measurement, UI, founder tab, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; docs/phase-06/PROMPT.md; scripts/seo-audit.test.mjs; src/seo/audit.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T085546Z (9c1c62a)
+- Known errors: none
+- Next exact action: Write src/seo/keywords.js (cluster engine)
+
+## CP-024 2026-10-30T16:59:16+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: Modules A (audit.js, tested), B (keywords.js), C (content.js), D clients (google.js) written
+- Incomplete steps: local.js, builder.js, routes/store, OAuth provider google_seo, SEO ops automation actions, measurement, UI, founder tab, tests, report
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; docs/phase-06/PROMPT.md; scripts/seo-audit.test.mjs; src/seo/audit.js; src/seo/content.js; src/seo/google.js; src/seo/keywords.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T085916Z (f763ed2)
+- Known errors: none
+- Next exact action: Write src/seo/local.js and src/seo/builder.js
+
+## CP-025 2026-10-30T17:09:16+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: Modules A-F engines (audit, keywords, content, google, local, builder), service.js, routes.js, server wiring, google_seo OAuth provider, Phase 05 catalogue actions publish_site_page/reply_to_review/submit_sitemap/seo ops + low_risk_site_updates rule; seo-audit 5/5, seo-units 5/5
+- Incomplete steps: HTTP contract test seo-platform.test, UI (b06 views), founder tab, full suites, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; saas/app.js; saas/integration-manager.js; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/automation/engine.js; src/integration-runtime.js; src/server.js; docs/phase-06/PROMPT.md; scripts/seo-audit.test.mjs; scripts/seo-units.test.mjs; src/seo/audit.js; src/seo/builder.js; src/seo/content.js; src/seo/google.js; src/seo/keywords.js; src/seo/local.js; src/seo/routes.js; src/seo/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T090916Z (f8a7df8)
+- Known errors: none
+- Next exact action: Write scripts/seo-platform.test.mjs and fix what it finds
+
+## CP-026 2026-10-30T17:12:21+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: Backend for all modules done; seo-audit 5/5, seo-units 5/5, seo-platform 4/4, automation tests 15/15
+- Incomplete steps: UI: b06 SEO views (command centre, audit, clusters, google, studio, builder, local, analytics, reports), founder tab, browser test, full suites, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; saas/app.js; saas/integration-manager.js; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/automation/engine.js; src/integration-runtime.js; src/server.js; docs/phase-06/PROMPT.md; scripts/seo-audit.test.mjs; scripts/seo-platform.test.mjs; scripts/seo-units.test.mjs; src/seo/audit.js; src/seo/builder.js; src/seo/content.js; src/seo/google.js; src/seo/keywords.js; src/seo/local.js; src/seo/routes.js; src/seo/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T091221Z (88fb7da)
+- Known errors: none
+- Next exact action: Build saas/workspace-seo.js (b06 views)
+
+## CP-027 2026-10-30T17:16:05+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: UI written: saas/workspace-seo-platform.{js,css} (9 b06 views), nav entries; E-014 recorded and fixed
+- Incomplete steps: founder tab, browser test + screenshots, full suites, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/ERROR_LOG.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; saas/app.js; saas/integration-manager.js; saas/workspace-nav.js; saas/workspace.html; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/automation/engine.js; src/integration-runtime.js; src/server.js; docs/phase-06/PROMPT.md; saas/workspace-seo-platform.css; saas/workspace-seo-platform.js; scripts/seo-audit.test.mjs; scripts/seo-platform.test.mjs; scripts/seo-units.test.mjs; src/seo/audit.js; src/seo/builder.js; src/seo/content.js; src/seo/google.js; src/seo/keywords.js; src/seo/local.js; src/seo/routes.js; src/seo/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T091605Z (1b6fc2e)
+- Known errors: none
+- Next exact action: Add the founder Marketing > SEO tab then write scripts/test-seo-ui.mjs
+
+## CP-028 2026-10-30T17:21:00+08:00 T-049 IN_PROGRESS
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (IN_PROGRESS)
+- Completed steps: UI done; test:seo-ui 11/11 incl axe + phone/iPad + founder tab
+- Incomplete steps: review screenshots, full suites, verify-modules entries, report, commit, PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/ERROR_LOG.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-platform.js; office/console.html; office/console.js; package.json; saas/app.js; saas/integration-manager.js; saas/workspace-nav.js; saas/workspace.html; scripts/automation-governance.test.mjs; src/automation/catalogue.js; src/automation/engine.js; src/integration-runtime.js; src/server.js; docs/phase-06/PROMPT.md; saas/workspace-seo-platform.css; saas/workspace-seo-platform.js; scripts/seo-audit.test.mjs; scripts/seo-platform.test.mjs; scripts/seo-units.test.mjs; scripts/test-seo-ui.mjs; src/seo/audit.js; src/seo/builder.js; src/seo/content.js; src/seo/google.js; src/seo/keywords.js; src/seo/local.js; src/seo/routes.js; src/seo/service.js
+- Tests executed: none
+- Test results: none
+- Git branch: phase-06-seo-platform
+- Commit: 0484dbd (Checkpoint: PR #35 opened); branch not on remote
+- Recovery snapshot: refs/recovery/phase-06-seo-platform/20261030T092100Z (fa18486)
+- Known errors: none
+- Next exact action: Look at screenshots, then run all suites
+
+## CP-029 2026-10-30T17:42:13+08:00 T-049 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-049 (COMPLETED)
+- Completed steps: Phase 06 delivered and verified
+- Incomplete steps: Owner: merge #33, #34, #35, Phase 06 PR; deploy with Google credentials then T-053; decide T-050..T-052
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md
+- Tests executed: npm test; test:unit; test:seo-ui; test:ui; test:console-ui; test:automations-ui; verify:modules; test:visual
+- Test results: 73/73; 169/169; 11/11; 34/34; 16/16; 11/11; 54/0; 51 same
+- Git branch: phase-06-seo-platform
+- Commit: 426b472 (Phase 06: SEO, Google and website intelligence platform); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for the owner

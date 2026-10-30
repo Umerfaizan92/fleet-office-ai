@@ -70,6 +70,7 @@
         ["records:content", "Content drafts"],
         ["records:announcement_draft", "Announcement drafts"],
         ["legacy:searchvisibility", "Website visibility"],
+        ["platform/seo", "SEO & website"],
       ],
     ],
     [

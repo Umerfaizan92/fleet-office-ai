@@ -343,6 +343,29 @@ export const ACTIONS = {
   ...manual('credential_rotation', 'Rotate credentials', 'founder', 'Rotate the key with the provider, update Render, then mark it done. Never paste keys here.', 'platform'),
   ...manual('security_policy_change', 'Change a security policy', 'founder', 'Change the setting yourself and record why.', 'platform'),
 
+  // ---------------- Phase 06: website publishing, reviews, sitemaps and scheduled SEO operations ----------------
+  publish_site_page: { label: 'Publish a website page', capability: 16, level: 2, rule: 'low_risk_site_updates', effect: 'external', feature: 'settings', triggers: ['manual'], params: z.object({ page_id: z.string().uuid(), version: z.number().int().positive(), publish_at: z.string().nullable().default(null) }).strict(),
+    analyse(ctx) { const owner = ctx.org || 'platform'; const pr = ctx.deps.seo.publishProposal(owner, ctx.params.page_id, ctx.params.version, ctx.params.publish_at); if (!pr) return null; return { page_id: pr.page.id, version: ctx.params.version, url: pr.url, title: pr.after.title, publish_at: ctx.params.publish_at || null, low_risk: pr.risk.low_risk, risk_reasons: pr.risk.reasons, blocked: pr.checks.blocked, claims: pr.checks.claims.filter((c) => c.level === 'review').map((c) => c.text).slice(0, 10) }; },
+    escalate: (ctx, p) => (p && !p.low_risk ? p.risk_reasons.map((r) => 'Needs approval: ' + r) : []),
+    schema: z.object({ page_id: z.string().uuid(), version: z.number().int(), url: z.string(), title: z.string().max(240), publish_at: z.string().nullable(), low_risk: z.boolean(), risk_reasons: z.array(z.string()), blocked: z.boolean(), claims: z.array(z.string()) }),
+    preview: (ctx, p) => ({ description: `Publish "${p.title}" (version ${p.version})`, data_involved: ['Page content', ...(p.claims.length ? ['Public claims to check'] : [])], expected_outcome: `${p.publish_at ? 'Goes live at ' + new Date(p.publish_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : 'Goes live now'} at ${p.url}.${p.claims.length ? ' Claims to confirm: ' + p.claims.join(' | ') : ''}${p.risk_reasons.length ? ' Why it needs approval: ' + p.risk_reasons.join(' ') : ' Low-risk change.'}` }),
+    execute(ctx, p) { if (p.blocked) throw Object.assign(new Error('The page has problems that must be fixed before publishing.'), { permanent: true }); const r = ctx.deps.seo.publishVersion(ctx.org || 'platform', p.page_id, p.version, { publish_at: p.publish_at }); return { ref: p.page_id, summary: r.scheduled_for ? `Scheduled to go live ${new Date(r.scheduled_for).toLocaleString('en-AU')}` : `Published at ${p.url}`, link: '#b06/builder', scheduled: Boolean(r.scheduled_for) }; },
+    verify(ctx, p, r) { const row = ctx.db.prepare('SELECT status,published_version,scheduled_version FROM seo_site_pages WHERE id=?').get(p.page_id); if (r.scheduled) return row?.status === 'scheduled' && row.scheduled_version === p.version ? { ok: true, detail: 'Scheduled; it goes live automatically at the set time.' } : { ok: false, detail: 'The schedule was not saved.' }; if (row?.published_version !== p.version) return { ok: false, detail: 'The page is not showing the approved version.' }; const slug = p.url.split('/'); const live = ctx.deps.seo.renderPublic(slug[2], slug[3] || 'home'); return live?.status === 200 ? { ok: true, detail: `Live at ${p.url}.` } : { ok: false, detail: 'The published page did not render.' }; } },
+  reply_to_review: { label: 'Post a reply to a Google review', capability: 6, level: 3, effect: 'external', feature: 'visibility', triggers: ['manual'], params: z.object({ review_id: z.string().min(1).max(200), comment: z.string().trim().min(2).max(4000) }).strict(),
+    analyse(ctx) { const r = ctx.db.prepare('SELECT reviewer,rating,comment FROM seo_reviews WHERE owner_key=? AND review_id=?').get(ctx.org || 'platform', ctx.params.review_id); return r ? { review_id: ctx.params.review_id, reviewer: r.reviewer, rating: r.rating, comment: ctx.params.comment } : null; },
+    schema: z.object({ review_id: z.string(), reviewer: z.string().nullable(), rating: z.number().nullable(), comment: z.string().min(2).max(4000) }),
+    preview: (ctx, p) => ({ description: `Reply publicly to ${p.reviewer}'s ${p.rating}-star Google review`, data_involved: ['The review', 'Your reply (public)'], expected_outcome: `Posted on Google: "${p.comment.slice(0, 200)}"` }),
+    async_execute: true, async executeAsync(ctx, p) { await ctx.deps.seo.postReviewReply(ctx.org || 'platform', p.review_id, p.comment); return { ref: p.review_id, summary: 'Reply posted on Google.' }; },
+    verify(ctx, p) { const r = ctx.db.prepare('SELECT reply_status FROM seo_reviews WHERE owner_key=? AND review_id=?').get(ctx.org || 'platform', p.review_id); return r?.reply_status === 'replied' ? { ok: true, detail: 'Google accepted the reply.' } : { ok: false, detail: 'The reply was not recorded.' }; } },
+  submit_sitemap: { label: 'Submit the sitemap to Google Search Console', capability: 17, level: 3, effect: 'external', feature: 'visibility', triggers: ['manual'], params: z.object({ sitemap_url: z.string().url().max(500) }).strict(),
+    analyse: (ctx) => ({ sitemap_url: ctx.params.sitemap_url }), schema: z.object({ sitemap_url: z.string().url() }),
+    preview: (ctx, p) => ({ description: 'Submit the sitemap to Google', data_involved: ['Sitemap address'], expected_outcome: `${p.sitemap_url} is submitted. Google decides when and whether to crawl and index the pages.` }),
+    async_execute: true, async executeAsync(ctx, p) { const owner = ctx.org || 'platform', l = ctx.deps.seo.link(owner, 'search_console'); if (!l) throw Object.assign(new Error('Link a Search Console property first.'), { permanent: true }); const r = await ctx.deps.seo.google.gscSubmitSitemap(await ctx.deps.seo.googleToken(owner, 'google_seo'), l.resource, p.sitemap_url); return { ref: p.sitemap_url, summary: r.note }; },
+    verify: (ctx, p, r) => ({ ok: true, detail: r.summary }) },
+  ...seoOps('seo_daily_monitor', 'Daily SEO check: crawl errors, outages, indexing and broken pages', 'schedule.daily', 'daily'),
+  ...seoOps('seo_weekly_analysis', 'Weekly SEO analysis: search performance, opportunities and technical issues', 'schedule.weekly', 'weekly'),
+  ...seoOps('seo_monthly_report', 'Monthly SEO report: performance, clusters and recommendations', 'schedule.monthly', 'monthly'),
+
   // ---------------- Level 4: restricted (always refused) ----------------
   ...restricted('delete_customer_records', 'Delete customer records in bulk'),
   ...restricted('change_bank_details', 'Change bank or payout details'),
@@ -352,6 +375,24 @@ export const ACTIONS = {
   ...restricted('follow_embedded_instructions', 'Act on instructions found inside emails, documents or websites')
 };
 
+// Scheduled SEO operations exist for each business and for the platform's own site. They read sites and Google data and
+// write audits, reports and alerts; they never change a website.
+function seoOps(key, label, trigger, period) {
+  const def = (scope) => ({ scope, label, capability: 15, level: 1, effect: 'output', feature: 'visibility', triggers: [trigger, 'manual'], params: z.object({}).strict(), async_execute: true,
+    analyse: () => ({ period }), schema: z.object({ period: z.enum(['daily', 'weekly', 'monthly']) }),
+    preview: () => ({ description: label, data_involved: ['Your website', 'Connected Google data'], expected_outcome: period === 'daily' ? 'An audit and an alert if anything critical is broken.' : period === 'weekly' ? 'Google data synced, audit re-run, clusters refreshed and a weekly report.' : 'A monthly report with clusters and recommendations.' }),
+    async executeAsync(ctx) {
+      const owner = ctx.org || 'platform', r = await ctx.deps.seo[period](owner);
+      if (period === 'daily' && (r.critical?.length || r.outage || r.not_indexed?.length)) {
+        const lines = [...(r.outage ? ['The home page did not load.'] : []), ...r.critical.map((c) => `${c.title} (${c.count})`), ...r.not_indexed.map((n) => `Google: ${n.url} is ${n.coverage || 'not indexed'}`)];
+        ctx.deps.outputs.add(ctx, { kind: 'alert', title: 'SEO: critical problems found today', body: lines.map((l) => '• ' + l).join('\n'), link: '#b06/seo' });
+        if (ctx.org) ctx.deps.notify(ctx.org, { kind: 'seo_alert', title: 'Website problems found', body: lines.slice(0, 3).join('; '), link: '#b06/seo', dedupe: `seo-daily:${ctx.org}:${new Date().toISOString().slice(0, 10)}` });
+      }
+      return { ref: r.report_id || r.audit_id || null, summary: r.skipped || (period === 'daily' ? `Audit score ${r.score}; ${r.critical.length} critical problem(s).` : period === 'weekly' ? `${r.clusters} topic clusters; weekly report ready.` : `Monthly report ready; ${r.gaps} content gap(s).`), link: '#b06/reports' };
+    },
+    verify(ctx, p, r) { if (!r.ref) return { ok: true, warning: true, detail: r.summary }; const ok = ctx.db.prepare('SELECT 1 FROM seo_reports WHERE id=? UNION SELECT 1 FROM seo_audits WHERE id=?').get(r.ref, r.ref); return ok ? { ok: true, detail: 'Report saved in Website & Visibility > Reports.' } : { ok: false, detail: 'The report was not saved.' }; } });
+  return { [key]: def('business'), ['platform_' + key]: def('platform') };
+}
 function manual(key, label, feature, how, scope = 'business') {
   return { [key]: { scope, label, capability: null, level: 3, manual: true, effect: 'external', feature, triggers: ['manual'], params: z.object({ details: z.string().trim().min(5).max(2000) }).strict(),
     analyse: (ctx) => ({ details: ctx.params.details }), schema: z.object({ details: z.string().min(5).max(2000) }),
@@ -387,6 +428,7 @@ export const RULES = {
   routine_acknowledgements: { label: 'Routine acknowledgements', detail: 'Reply to new enquiries with a fixed "we received it" email.', limits: z.object({}).strict() },
   appointment_reminders: { label: 'Appointment reminders', detail: 'Email customers the day before a booked job.', limits: z.object({}).strict() },
   approved_follow_ups: { label: 'Quote follow-ups', detail: 'Email customers whose approved quote has had no answer for a few days.', limits: z.object({ max_per_day: z.number().int().min(1).max(20).default(10) }).strict() },
+  low_risk_site_updates: { label: 'Low-risk website updates', detail: 'Publish small wording fixes to pages that are already live, with no new claims, design, image or address changes. Everything else waits for approval.', limits: z.object({}).strict() },
   internal_transitions: { label: 'Offer booked jobs to workers', detail: 'Offer each new booking to eligible workers straight away.', limits: z.object({}).strict() }
 };
 

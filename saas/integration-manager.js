@@ -29,6 +29,7 @@
     whatsapp:'Super Pro must be configured for Meta/WhatsApp Business. Each subscriber authorises their own Meta business, WhatsApp Business Account and phone number.',
     tiktok:'Super Pro needs an approved TikTok developer app. Subscribers sign in on TikTok itself. Publishing appears only when the app is approved for the required publishing scope.',
     youtube:'Super Pro needs a Google OAuth client. Subscribers sign in on Google itself and authorise their own YouTube channel.',
+    google_seo:'Super Pro needs a Google OAuth client with the Search Console, Analytics Admin, Analytics Data and Tag Manager APIs enabled. Subscribers authorise their own Google account; Super Pro reads search and analytics data and never changes your Google settings without approval.',
     google_business:'Super Pro needs a Google OAuth client and Business Profile API access. Subscribers authorise their own Google Business Profile account and locations.',
     x:'Super Pro needs its X OAuth application credentials. Subscribers sign in on X itself; Super Pro never receives their X password.',
     snapchat:'Super Pro needs an approved Snapchat OAuth application. Subscribers sign in with Snapchat and authorise the resources granted by Snapchat.',

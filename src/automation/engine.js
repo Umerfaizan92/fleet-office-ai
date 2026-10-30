@@ -233,7 +233,7 @@ export function createAutomationEngine({ db, queue, deps, generateAiText = null,
   }
 
   // ---------------- policy ----------------
-  function policy(ctx, def, suspicious) {
+  function policy(ctx, def, suspicious, proposal = null) {
     const a = ctx.action, reasons = [];
     if (a.restricted) return { level: 4, reasons: ['Restricted: automation never does this.'] };
     let level = a.level;
@@ -243,6 +243,7 @@ export function createAutomationEngine({ db, queue, deps, generateAiText = null,
       if (ctx.rule?.enabled) reasons.push(`Allowed by your rule "${RULES[a.rule].label}".`);
       else { level = 3; reasons.push(`Your rule "${RULES[a.rule].label}" is off, so this needs approval.`); }
     }
+    if (a.escalate) { const why = a.escalate(ctx, proposal) || []; if (why.length) { level = Math.max(level, 3); reasons.push(...why); } }
     if (suspicious && a.effect !== 'output' && level < 3) { level = 3; reasons.push('The message contains text that looks like instructions to the system, so a person must check it.'); }
     if (def.always_approve && level < 3) { level = 3; reasons.push('This automation is set to always ask first.'); }
     if (level === 1 && !reasons.length) reasons.push('Internal and low risk: runs automatically.');
@@ -297,7 +298,7 @@ export function createAutomationEngine({ db, queue, deps, generateAiText = null,
     proposal = parsed.data;
     const suspicious = looksInjected(ctx.untrusted) || looksInjected(analysis.ai_text);
     delete analysis.ai_text;
-    const pol = policy(ctx, def, suspicious);
+    const pol = policy(ctx, def, suspicious, proposal);
     const preview = { cost_cents: null, ...a.preview(ctx, proposal) };
     run = runRow(id);
     setRun(id, { analysis_json: analysis, proposal_json: proposal, preview_json: preview, policy_json: pol, level: pol.level, suspicious: suspicious ? 1 : 0 });
@@ -359,7 +360,12 @@ export function createAutomationEngine({ db, queue, deps, generateAiText = null,
     if (!result) {
       try {
         // Executor and its record are one transaction: a retry after a crash never repeats a side effect.
-        result = db.transaction(() => { const r = a.execute(ctx, proposal) || {}; db.prepare('UPDATE automation_runs SET result_json=?,updated_at=? WHERE id=?').run(JSON.stringify(r), iso(clock()), run.id); return r; })();
+        if (a.async_execute) {
+          // Actions that call another service (Google, a crawl) cannot share a database transaction; their result is
+          // recorded straight after. The external calls used this way are idempotent (a reply or sitemap PUT replaces).
+          result = (await a.executeAsync(ctx, proposal)) || {};
+          db.prepare('UPDATE automation_runs SET result_json=?,updated_at=? WHERE id=?').run(JSON.stringify(result), iso(clock()), run.id);
+        } else result = db.transaction(() => { const r = a.execute(ctx, proposal) || {}; db.prepare('UPDATE automation_runs SET result_json=?,updated_at=? WHERE id=?').run(JSON.stringify(r), iso(clock()), run.id); return r; })();
       } catch (e) {
         const last = e.permanent || (job?.attempts || 1) >= (job?.max_attempts || LIMITS.maxAttempts);
         audit(run.organisation_id, 'run.attempt_failed', run.id, { attempt: job?.attempts || 1, error: String(e.message).slice(0, 300), final: last });

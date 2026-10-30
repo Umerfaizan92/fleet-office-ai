@@ -17,7 +17,8 @@ const PUBLIC_OK = new Set([
 const ID = '00000000-0000-4000-8000-000000000000';
 
 function sourceRoutes() {
-  const src = fs.readdirSync('src').filter((f) => f.endsWith('.js')).map((f) => fs.readFileSync('src/' + f, 'utf8')).join('\n');
+  // Phase 10: include the module folders (automation, seo, comms, finance, reliability), not only top-level files.
+  const src = fs.readdirSync('src', { recursive: true }).filter((f) => String(f).endsWith('.js')).map((f) => fs.readFileSync('src/' + f, 'utf8')).join('\n');
   const re = /\.(get|post|put|patch|delete)\(\s*\[?\s*["'`](\/api\/[^"'`]+)["'`]/g, out = new Set();
   let m; while ((m = re.exec(src))) out.add(m[1].toUpperCase() + ' ' + m[2]);
   return [...out].sort();

@@ -62,7 +62,8 @@
     "test:seo-ui": "node scripts/test-seo-ui.mjs",
     "test:comms-ui": "node scripts/test-comms-ui.mjs",
     "test:finance-ui": "node scripts/test-finance-ui.mjs",
-    "test:reliability-ui": "node scripts/test-reliability-ui.mjs"
+    "test:reliability-ui": "node scripts/test-reliability-ui.mjs",
+    "release:audit": "node scripts/release-audit.mjs"
   },
   "engines": {
     "node": "22.x"

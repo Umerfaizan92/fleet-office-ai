@@ -591,3 +591,31 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Wait for the owner's next phase prompt
+
+## CP-043 2026-10-30T23:02:17+08:00 T-061 TESTING
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-061 (TESTING)
+- Completed steps: Inventory diff (no removals except intentional GET /), security test (new), route-guards now scans module folders, catalogue duplicate fixed, sitemap/no-index and long titles fixed, SEO release check, deploy check, verify:modules 54/0, npm audit 0, RC doc
+- Incomplete steps: Full suites, report, commit, push, PR to main
+- Files modified (uncommitted at checkpoint): .claude/project-memory/ERROR_LOG.md; .claude/project-memory/PENDING_TASKS.md; office/console-reliability.js; package.json; qa/reports/modules.json; saas/site/for-agencies.html; saas/site/for-cleaning.html; saas/site/for-clinics.html; saas/site/for-retail.html; saas/site/for-trades.html; scripts/reliability.test.mjs; scripts/route-guards.test.mjs; scripts/site/templates.mjs; src/automation/catalogue.js; src/reliability/heal.js; src/server.js; docs/phase-10/PROMPT.md; docs/phase-10/RELEASE_CANDIDATE.md; qa/reports/release-audit.json; qa/reports/release-seo.json; scripts/release-audit.mjs; scripts/release-security.test.mjs; scripts/release-seo-check.mjs
+- Tests executed: none
+- Test results: none
+- Git branch: phase-10-release
+- Commit: 96bf844 (Phase 09: automated backup and reliability engine); branch not on remote
+- Recovery snapshot: refs/recovery/phase-10-release/20261030T150217Z (9b40ef8)
+- Known errors: none
+- Next exact action: Check scratchpad/suite10/summary.txt
+
+## CP-044 2026-10-30T23:18:40+08:00 T-061 COMPLETED
+- Phase: P04 completed; waiting for the owner's review of PR and next prompt
+- Task: T-061 (COMPLETED)
+- Completed steps: Phase 10 release candidate ready; PR into main
+- Incomplete steps: Owner: review PR into main, CI, approve deploy; AUDIT items; T-053, T-055, T-057, T-059, T-060
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/ERROR_LOG.md; .claude/project-memory/SESSION_HANDOVER.md; office/console-reliability.js; package.json; qa/reports/A11Y-PERF.md; qa/reports/modules.json; qa/reports/performance.json; saas/site/for-agencies.html; saas/site/for-cleaning.html; saas/site/for-clinics.html; saas/site/for-retail.html; saas/site/for-trades.html; scripts/reliability.test.mjs; scripts/route-guards.test.mjs; scripts/site/templates.mjs; src/automation/catalogue.js; src/reliability/heal.js; src/server.js; docs/phase-10/PROMPT.md; docs/phase-10/RELEASE_CANDIDATE.md; docs/phase-10/REPORT.md; qa/reports/release-audit.json; qa/reports/release-seo.json; scripts/release-audit.mjs; scripts/release-security.test.mjs; scripts/release-seo-check.mjs
+- Tests executed: all suites (see docs/phase-10/REPORT.md)
+- Test results: all pass
+- Git branch: phase-10-release
+- Commit: 96bf844 (Phase 09: automated backup and reliability engine); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Wait for owner approval of production deploy; do not deploy without it

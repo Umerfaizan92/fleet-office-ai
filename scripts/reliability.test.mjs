@@ -188,5 +188,5 @@ test('approval-only recovery: requests need a named approver, nothing runs autom
   p = await go(['--approval', pa.reference_code, '--out', out + '.2']); assert.notEqual(p.status, 0); assert.match(p.stderr, /already been used/);
   p = await go(['--approval', pa.reference_code, '--out', out]); assert.notEqual(p.status, 0); assert.match(p.stderr, /already exists|already been used/);
   const dash = (await F('GET', '/api/operator/reliability')).json;
-  assert.ok(dash.approval_only.length === 6); assert.ok(dash.requests.some((x) => x.action === 'restore_database'));
+  assert.equal(dash.approval_only.length, 7); assert.ok(dash.requests.some((x) => x.action === 'restore_database'));
 });

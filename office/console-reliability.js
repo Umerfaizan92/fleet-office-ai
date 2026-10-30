@@ -61,7 +61,7 @@
     const how = note(d.approval_only[0]?.how || '');
     act.addEventListener('change', () => { how.textContent = d.approval_only.find((a) => a.key === act.value)?.how || ''; });
     const details = el('textarea', { id: 'rl-details', rows: '3', maxlength: '2000', 'aria-label': 'What should be done and why' });
-    host.append(section('Needs approval: rollback, restore, migration, credentials, deletion, major changes',
+    host.append(section('Needs approval: deploy, rollback, restore, infrastructure, credentials, deletion, major changes',
       note('These are never done automatically. Request approval here; an approver decides under Operations > AI automations; then a person carries it out and marks it done.'),
       el('div', { class: 'rl-form' }, el('label', { for: 'rl-action', text: 'Action' }), act, how, el('label', { for: 'rl-details', text: 'What should be done and why' }), details, el('div', { class: 'cp-actions' }, btn('Request approval', async () => { const r = await post('/api/operator/reliability/requests', { action: act.value, details: details.value.trim() }); await reload(r.message); }))),
       table([['created_at', 'Requested', when], ['action', 'Action', (v) => d.approval_only.find((a) => a.key === v)?.label || v], ['reference_code', 'Reference'], ['approval_status', 'Approval', (v) => chip(v || 'pending')], ['status', 'Run', (v) => String(v).replace(/_/g, ' ')]], d.requests, 'No requests yet.')));

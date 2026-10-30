@@ -1040,7 +1040,7 @@ app.get('/robots.txt', (req,res)=>{
 });
 app.get('/sitemap.xml',(req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  const pages=[...publicSitemapEntries(),...['/saas/','/saas/answers.html','/saas/trust-center.html','/saas/privacy.html','/saas/terms.html'].map(route=>({route,priority:0.5}))];
+  const pages=[...publicSitemapEntries(),...['/saas/','/saas/answers.html'] /* Phase 10: trust, privacy and terms pages are noindex, so they are not listed */.map(route=>({route,priority:0.5}))];
   const now=new Date().toISOString().slice(0,10);
   const urls=pages.map(x=>`<url><loc>${base}${x.route}</loc><lastmod>${now}</lastmod><priority>${x.priority.toFixed(1)}</priority></url>`).join('');
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);

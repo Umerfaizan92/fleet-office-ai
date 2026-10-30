@@ -22,12 +22,15 @@ export const HEAL_POLICY = Object.freeze({
   // Never requeued automatically, whatever the error.
   never: /(delete|purge|restore|rollback|migrat|credential|rotate|refund|transfer|payout|charge|erase)/i
 });
+// Keys match src/automation/catalogue.js. Deploying, infrastructure changes and credential rotation reuse the
+// platform actions that existed before Phase 09.
 export const APPROVAL_ONLY = Object.freeze([
+  ['production_deployment', 'Deploy to production', 'Deploy from Render yourself after the tests pass and the release checklist is done. Automation never deploys.'],
   ['production_rollback', 'Roll back production to an earlier deploy', 'In Render, open the service, choose Events, pick the last good deploy and press Rollback. Then check /healthz and Founder Console > Reliability.'],
   ['restore_database', 'Restore the production database from a backup', 'Follow RUNBOOKS.md "Database restore": restore to a new file with npm run backup:restore (it needs this approval reference), check it, then switch the server to it during a maintenance window.'],
-  ['infrastructure_migration', 'Migrate infrastructure (hosting, database, storage)', 'Follow the tested migration plan; keep the current Render deployment until the new one has passed its checks.'],
-  ['credential_change', 'Change or rotate a credential', 'Create the new key at the provider, update it in Render, redeploy, check the integration, then revoke the old key.'],
-  ['data_deletion', 'Delete data permanently', 'Confirm the records, legal hold and retention rules first. Delete only what was approved and record what was removed.'],
+  ['infrastructure_change', 'Change or migrate infrastructure (hosting, database, storage)', 'Follow the tested migration plan; keep the current Render deployment until the new one has passed its checks.'],
+  ['credential_rotation', 'Change or rotate a credential', 'Create the new key at the provider, update it in Render, redeploy, check the integration, then revoke the old key.'],
+  ['platform_data_deletion', 'Delete data permanently', 'Confirm the records, legal hold and retention rules first. Delete only what was approved and record what was removed.'],
   ['major_config_change', 'Make a major configuration change', 'Change one setting at a time in Render, redeploy, and watch Reliability for 30 minutes before the next change.']
 ]);
 

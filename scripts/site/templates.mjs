@@ -388,7 +388,7 @@ export function industryPage(i) {
   <ul class="sp-domain-list">${DOMAINS.slice(0, 5).map((d) => `<li><a class="sp-domain" href="/features/${d.slug}"><span class="sp-domain__icon">${icon(d.icon, 'sp-icon sp-icon--lg')}</span><span><strong>${esc(d.name)}</strong><span class="sp-muted">${esc(d.title)}</span></span>${icon('arrow')}</a></li>`).join('')}</ul>
 </div></section>
 ${cta(`Try it on your own ${i.name.toLowerCase()} business`)}`;
-  return page({ path: `/for/${i.slug}`, current: '/for', title: `Super Pro for ${i.name.toLowerCase()}`, description: i.lede, body, graph: [crumbs([['Home', '/'], ['Industries', '/for'], [i.name, `/for/${i.slug}`]])] });
+  return page({ path: `/for/${i.slug}`, current: '/for', title: i.name, description: i.lede, body, graph: [crumbs([['Home', '/'], ['Industries', '/for'], [i.name, `/for/${i.slug}`]])] });
 }
 
 export function pricing() {

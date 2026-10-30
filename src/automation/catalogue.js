@@ -396,9 +396,7 @@ export const ACTIONS = {
   // Manual actions run zero automatic attempts, so nothing destructive is ever retried by an agent.
   ...manual('production_rollback', 'Roll back production to an earlier deploy', 'operations', 'Roll back in Render (Events > last good deploy > Rollback), then check /healthz and Reliability.', 'platform'),
   ...manual('restore_database', 'Restore the production database from a backup', 'operations', 'Restore to a new file with npm run backup:restore and this approval reference, check it, then switch over in a maintenance window (RUNBOOKS.md).', 'platform'),
-  ...manual('infrastructure_migration', 'Migrate infrastructure (hosting, database, storage)', 'operations', 'Follow the tested migration plan; keep the current Render deployment until the new one passes its checks.', 'platform'),
-  ...manual('credential_change', 'Change or rotate a credential', 'operations', 'Create the new key at the provider, update Render, redeploy, check, then revoke the old key.', 'platform'),
-  ...manual('data_deletion', 'Delete data permanently', 'operations', 'Check legal hold and retention first; delete only what was approved and record it.', 'platform'),
+  ...manual('platform_data_deletion', 'Delete data permanently', 'operations', 'Check legal hold and retention first; delete only what was approved and record it.', 'platform'),
   ...manual('major_config_change', 'Make a major configuration change', 'operations', 'Change one setting at a time in Render, redeploy, and watch Reliability for 30 minutes.', 'platform'),
 
   // ---------------- Level 4: restricted (always refused) ----------------

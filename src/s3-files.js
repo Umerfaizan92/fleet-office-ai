@@ -56,7 +56,8 @@ export async function restoreUploads({ client, bucket, prefix, dir, seen = new M
 // Server-side encryption for backup copies: SSE-KMS with BACKUP_S3_KMS_KEY_ID, otherwise AES-256.
 // Skipped for custom S3-compatible endpoints (BACKUP_S3_ENDPOINT), which may not accept the header, and with BACKUP_S3_SSE=none.
 export function backupEncryption(env = process.env) {
-  if (env.BACKUP_S3_ENDPOINT || /^none$/i.test(String(env.BACKUP_S3_SSE || ''))) return {};
+  // A custom endpoint may not accept the header, so it is sent there only when BACKUP_S3_SSE asks for it explicitly.
+  if ((env.BACKUP_S3_ENDPOINT && !/^(AES256|aws:kms)$/i.test(String(env.BACKUP_S3_SSE || ''))) || /^none$/i.test(String(env.BACKUP_S3_SSE || ''))) return {};
   const kms = String(env.BACKUP_S3_KMS_KEY_ID || '').trim();
   return kms ? { ServerSideEncryption: 'aws:kms', SSEKMSKeyId: kms } : { ServerSideEncryption: 'AES256' };
 }
@@ -83,13 +84,18 @@ export function startUploadSync({ env = process.env, uploadRoot, log = console.l
   const prefix = env.BACKUP_S3_UPLOADS_PREFIX || 'super-pro/uploads';
   const seen = new Map();
   let running = false, timer;
+  // Phase 09: the reliability monitor reads this to report upload copy failures.
+  const status = (globalThis.__superProUploadSync = { bucket, last_pass_at: null, last_ok_at: null, last_error: null, last_error_at: null, uploaded: 0, failed: 0 });
   const pass = async () => {
     if (running) return; running = true;
+    status.last_pass_at = new Date().toISOString();
     try {
       const client = await makeClient(env);
       const r = await syncUploads({ client, bucket, prefix, dir: uploadRoot, seen, log, encryption: backupEncryption(env) });
       if (r.uploaded) log(`[backup] saved ${r.uploaded} uploaded file(s) to S3`);
-    } catch (err) { log(`[backup] upload sync failed: ${err.message}`); } finally { running = false; }
+      status.uploaded += r.uploaded; status.failed += r.failed;
+      if (r.failed) { status.last_error = `${r.failed} file(s) could not be uploaded`; status.last_error_at = new Date().toISOString(); } else status.last_ok_at = new Date().toISOString();
+    } catch (err) { log(`[backup] upload sync failed: ${err.message}`); status.last_error = err.message; status.last_error_at = new Date().toISOString(); } finally { running = false; }
   };
   // Files that were just restored are already in the bucket; this primes the "seen" list without re-uploading them.
   (async () => { try { const client = await makeClient(env); await restoreUploads({ client, bucket, prefix, dir: uploadRoot, seen, log }); } catch {} timer = setInterval(pass, intervalMs); timer.unref?.(); setTimeout(pass, 15000).unref?.(); })();

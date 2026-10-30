@@ -12,3 +12,21 @@
 .cp-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .cp-table th,.cp-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--sp-line,var(--line));vertical-align:top;overflow-wrap:anywhere}
 .cp-table th{font-size:12px;font-weight:600;color:var(--sp-fg-muted,var(--muted))}
+/* Phase 09: Reliability tab. */
+.rl-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--sp-line,var(--line))}
+.rl-banner[data-status="fail"]{border-color:color-mix(in srgb,var(--sp-bad,#e5484d) 60%,transparent)}
+.rl-banner[data-status="warn"]{border-color:color-mix(in srgb,var(--sp-gold,#e6b455) 55%,transparent)}
+.rl-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:10px}
+.rl-card{display:grid;gap:6px;padding:10px 12px;border:1px solid var(--sp-line,var(--line));border-radius:12px;background:var(--sp-graphite-1,var(--panel))}
+.rl-card[data-status="fail"]{border-color:color-mix(in srgb,var(--sp-bad,#e5484d) 60%,transparent)}
+.rl-card[data-status="warn"]{border-color:color-mix(in srgb,var(--sp-gold,#e6b455) 50%,transparent)}
+.rl-card p{margin:0;font-size:14px;overflow-wrap:anywhere}
+.rl-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.rl-chip.good{color:var(--sp-good,#46a758);border-color:var(--sp-good,#46a758)}
+.rl-chip.warn{color:var(--sp-gold,#e6b455);border-color:var(--sp-gold,#e6b455)}
+.rl-chip.bad{color:var(--sp-bad,#ff6b6b);border-color:var(--sp-bad,#ff6b6b)}
+.rl-list{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.rl-inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rl-inline input{min-width:0;flex:1 1 140px}
+.rl-form{display:grid;gap:6px;max-width:720px}
+.rl-form select,.rl-form textarea{width:100%;box-sizing:border-box}

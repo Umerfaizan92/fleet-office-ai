@@ -86,6 +86,7 @@
         ["records:cost", "Operating costs"],
         ["legacy:connections", "Provider readiness"],
         ["platform/automation", "AI automations"],
+        ["platform/reliability", "Reliability & backups"],
       ],
     ],
     [

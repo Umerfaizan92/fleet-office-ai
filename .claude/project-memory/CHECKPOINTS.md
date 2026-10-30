@@ -185,3 +185,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: write scripts/verify-modules.mjs and docs/phase-04/VERIFICATION.md
+
+## CP-014 2026-10-30T13:42:32+08:00 T-039
+- Phase: P04 Business OS integration
+- Task: T-039
+- Completed steps: offshore staff, automation, module harness committed (a7f632c); 47/47 modules clean
+- Incomplete steps: unified experience review (navigation, search, filters, notifications, activity, AI, attachments, permissions, mobile); write docs/phase-04/VERIFICATION.md; final full test run; PR
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: business-ops.test; test:pipeline-ui; test:ui; verify:modules; npm test
+- Test results: 2/2; 14/14; 34/34; 47/47; 73/73
+- Git branch: phase-04-business-os
+- Commit: a7f632c (Phase 04: Offshore Staff, Automation overview, module inventory and harness); 1 commit(s) not on origin/phase-04-business-os
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: review unified experience items and write docs/phase-04/VERIFICATION.md

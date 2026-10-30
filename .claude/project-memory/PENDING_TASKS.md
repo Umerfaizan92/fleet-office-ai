@@ -20,7 +20,7 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Remaining: see SESSION_HANDOVER.md.
 
 ## T-036 Fix "Live update" notice sliding under the folded rail on phones (P03 follow-up)
-- Status: NOT_STARTED
+- Status: IN_PROGRESS
 - Requirement: on 390 px the Business OS "Live update" notice is partly hidden behind the folded navigation rail.
   It must sit fully inside the content area. Existed before P03.
 - Files: likely `saas/ds/retheme.css` (no layout changes to other elements).

@@ -52,13 +52,6 @@ BLOCKED, TESTING, COMPLETED. When a task is verified, move it to COMPLETED_TASKS
 - Files: not known yet
 - Acceptance: Owner approval of scope; tests added; verify:modules clean
 
-## T-046 Phase 05: autonomous AI operations with human governance
-- Status: TESTING
-- Added: 2026-10-30
-- Requirement: Owner prompt 2026-10-30 (full text in docs/phase-05/PROMPT.md). Central AI automation engine with 20 capabilities; 4-level approval policy (automatic, rule-based automatic, human approval, restricted); approval queue with full metadata and Approve/Reject/Edit/Schedule/Request clarification; server-side authorisation, structured tool schemas, idempotency keys, bounded retries, rate limits, complete audit; AI never follows instructions in untrusted content; no-code builder Trigger > Conditions > AI Analysis > Proposed Action > Approval > Execution > Verification with dry-run, versions, error recovery, emergency pause.
-- Files: src/automation/*, saas/*, office/*, scripts/*
-- Acceptance: Engine, policies, builder, queue and audit report working; level rules enforced and tested; injection and permission tests; npm test and UI suites pass; docs/phase-05/REPORT.md
-
 ## T-047 Phase 05 follow-up: inbound Inbox messages as automation triggers
 - Status: NOT_STARTED
 - Added: 2026-10-30

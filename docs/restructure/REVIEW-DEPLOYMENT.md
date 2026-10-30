@@ -1,5 +1,7 @@
 # Isolated Render review service
 
+> **31 October safety hold:** The last hosted deployment failed after contacting shared production S3 before the old seed check. The storage description below is the intended configuration, not verified current isolation. Do not redeploy until PR #41 passes on its final commit and preview credentials/storage are replaced or inspected. See [security continuation](SECURITY-CONTINUATION-2026-10-31.md).
+
 This service is for testing the restructuring branch. It is not the production release of the complete master plan.
 
 - Pull request: https://github.com/Umerfaizan92/fleet-office-ai/pull/32

@@ -41,6 +41,8 @@ See [`docs/DEPLOY.md`](docs/DEPLOY.md). Short version: Render blueprint (`render
 | `scripts/verify-all.mjs` | the single verification entry point |
 | `scripts/purge-legacy.ps1`, `.sh` | archive-then-delete cleanup of superseded files (`legacy-files.txt` is the list) |
 | `docs/reference/` | security checklist, key control, comms architecture, user manual |
+| `docs/infrastructure/` | Phase 02 changes, database migration plan, storage, deployment and recovery |
+| `infra/aws/` | least-privilege IAM, bucket and lifecycle policies for the backup and primary buckets |
 
 ## Security
 

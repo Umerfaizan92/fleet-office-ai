@@ -6,13 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { prepareStorage } from '../src/diagnostics.js';
-import { makeClient, restoreUploads } from '../src/s3-files.js';
-import { backupBucket, applyBackupEnv, awsVariableNames } from '../src/backup-env.js';
+import { assertIsolatedPreview } from '../src/preview-preflight.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const env = process.env;
+assertIsolatedPreview(env);
+const { prepareStorage } = await import('../src/diagnostics.js');
+const { makeClient, restoreUploads } = await import('../src/s3-files.js');
+const { backupBucket, applyBackupEnv, awsVariableNames } = await import('../src/backup-env.js');
 const bucket = backupBucket(env), fileDir = env.BACKUP_FILE_DIR;
 const creds = applyBackupEnv(env); // trims stray spaces, finds keys saved under another name, and gives every part the standard names
 if (bucket && (!creds.id || !creds.secret)) {
@@ -44,6 +46,8 @@ if (!bucket && !fileDir) {
   }
   const r = spawnSync(bin, ['restore', '-config', cfg, '-if-db-not-exists', '-if-replica-exists', plan.databasePath], { stdio: 'inherit' });
   if (r.status !== 0) { console.error('[backup] Could not restore the database from the backup. Not starting, so nothing is overwritten.'); process.exit(r.status || 1); }
+  // Phase 09: tells the reliability monitor that continuous replication wraps this server process.
+  env.SUPER_PRO_LITESTREAM = '1';
   const child = spawn(bin, ['replicate', '-config', cfg, '-exec', `${process.execPath} src/server.js`], { stdio: 'inherit', env });
   for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => child.kill(sig));
   child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

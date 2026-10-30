@@ -1,0 +1,74 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListBackupPrefixes",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws:s3:::BACKUP_BUCKET",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "super-pro/*",
+            "super-pro/"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadBucketSafetySettings",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketVersioning",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetBucketPublicAccessBlock"
+      ],
+      "Resource": "arn:aws:s3:::BACKUP_BUCKET"
+    },
+    {
+      "Sid": "DatabaseReplicaLitestreamManagesRetention",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::BACKUP_BUCKET/super-pro/db/*"
+    },
+    {
+      "Sid": "UploadCopiesWriteOnlyNeverDelete",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::BACKUP_BUCKET/super-pro/uploads/*"
+    },
+    {
+      "Sid": "SnapshotsAndConfigWriteOnlyNeverDelete",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::BACKUP_BUCKET/super-pro/snapshots/*",
+        "arn:aws:s3:::BACKUP_BUCKET/super-pro/config/*",
+        "arn:aws:s3:::BACKUP_BUCKET/super-pro/monthly/*"
+      ]
+    },
+    {
+      "Sid": "UseOnlyTheBackupKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:ACCOUNT_ID:key/BACKUP_KMS_KEY_ID"
+    }
+  ]
+}

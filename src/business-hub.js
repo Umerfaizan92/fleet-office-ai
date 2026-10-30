@@ -4,7 +4,7 @@ import { z } from "zod";
 const at = () => new Date().toISOString();
 export function installBusinessHub(
   app,
-  { db, requireSaasUser, requireSaasRole, saasAudit, staffAccess },
+  { db, requireSaasUser, requireSaasRole, saasAudit, staffAccess, hooks = {} },
 ) {
   db.exec(`CREATE TABLE IF NOT EXISTS tenant_documents(id TEXT PRIMARY KEY,organisation_id TEXT NOT NULL REFERENCES organisations(id),kind TEXT NOT NULL,customer_id TEXT,title TEXT NOT NULL,body TEXT NOT NULL DEFAULT '',amount_cents INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'draft',revision INTEGER NOT NULL DEFAULT 1,approved_revision INTEGER,approved_by TEXT,start_at TEXT,acceptance_evidence TEXT,created_by TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
  CREATE INDEX IF NOT EXISTS tenant_documents_org ON tenant_documents(organisation_id,kind,created_at);
@@ -98,6 +98,15 @@ export function installBusinessHub(
       now,
       now,
     );
+    // Phase 04: quotes and invoices carry GST (10%) unless marked GST-free later; enquiries start open.
+    if (["quote", "invoice"].includes(req.params.kind) && hooks.gstFor)
+      db.prepare(
+        "UPDATE tenant_documents SET gst_cents=? WHERE id=? AND organisation_id=?",
+      ).run(hooks.gstFor(p.data.amount_cents, true), id, req.saas.organisation_id);
+    if (req.params.kind === "enquiry" && hooks.gstFor)
+      db.prepare(
+        "UPDATE tenant_documents SET status='open' WHERE id=? AND organisation_id=?",
+      ).run(id, req.saas.organisation_id);
     saasAudit(req, "business_document.created", req.params.kind, id, {});
     res.status(201).json({ ok: true, id });
   });
@@ -122,6 +131,7 @@ export function installBusinessHub(
       saasAudit(req, "business_document.approved", m.kind, m.id, {
         revision: m.revision,
       });
+      if (m.kind === "quote") hooks.emit?.(req.saas.organisation_id, "quote.approved", { quote_id: m.id }, { key: `${m.id}:r${m.revision}` });
       res.json({ ok: true });
     },
   );
@@ -156,6 +166,7 @@ export function installBusinessHub(
         "UPDATE tenant_documents SET status='accepted',acceptance_evidence=?,updated_at=? WHERE id=? AND organisation_id=?",
       ).run(p.data.evidence, at(), m.id, req.saas.organisation_id);
       saasAudit(req, "quote.acceptance_recorded", "quote", m.id, {});
+      hooks.emit?.(req.saas.organisation_id, "quote.accepted", { quote_id: m.id }, { key: m.id });
       res.json({ ok: true });
     },
   );
@@ -195,6 +206,7 @@ export function installBusinessHub(
           });
       const id = crypto.randomUUID(),
         now = at();
+      let jobId = null;
       db.transaction(() => {
         db.prepare(
           "INSERT INTO tenant_documents(id,organisation_id,kind,customer_id,title,body,amount_cents,start_at,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -214,9 +226,17 @@ export function installBusinessHub(
         db.prepare(
           "UPDATE tenant_documents SET status='booked',updated_at=? WHERE id=? AND organisation_id=? AND status='accepted'",
         ).run(now, m.id, req.saas.organisation_id);
-        saasAudit(req, "quote.booking_created", "booking", id, { quote: m.id });
+        // Phase 04: link the booking to its quote and create the job so it can be allocated to workers.
+        if (hooks.createJobForBooking) {
+          db.prepare(
+            "UPDATE tenant_documents SET source_id=?,gst_applies=?,gst_cents=?,status='booked' WHERE id=? AND organisation_id=?",
+          ).run(m.id, m.gst_applies ?? 1, m.gst_cents || 0, id, req.saas.organisation_id);
+          jobId = hooks.createJobForBooking(req.saas.organisation_id, req.saas.user_id, m, id, { start_at: p.data.start_at });
+        }
+        saasAudit(req, "quote.booking_created", "booking", id, { quote: m.id, work_order: jobId || null });
       })();
-      res.status(201).json({ ok: true, id });
+      if (jobId) hooks.emit?.(req.saas.organisation_id, "job.booked", { booking_id: id, work_order_id: jobId }, { key: id });
+      res.status(201).json({ ok: true, id, work_order_id: jobId });
     },
   );
   app.get(

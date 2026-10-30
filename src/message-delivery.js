@@ -5,7 +5,7 @@ import {z} from 'zod';
 let active=null;
 export function trackCommunication(context,result){try{return active?.record(context,result)}catch{ return null }}
 export function communicationInbound(data){try{active?.inbound(data)}catch{}}
-export function installCommunicationTracking(app,{db,env,requireSaasUser,requireSaasRole,notify,verifyTelnyx,sendFollowUp,receiveEmail,timers=true}){
+export function installCommunicationTracking(app,{db,env,requireSaasUser,requireSaasRole,notify,verifyTelnyx,sendFollowUp,receiveEmail,onProviderEvent,timers=true}){
  db.exec(`CREATE TABLE IF NOT EXISTS communication_deliveries(
  id TEXT PRIMARY KEY,organisation_id TEXT NOT NULL,user_id TEXT,channel TEXT NOT NULL,recipient TEXT NOT NULL,provider TEXT NOT NULL,provider_id TEXT,status TEXT NOT NULL,category TEXT NOT NULL,subject TEXT,created_at TEXT NOT NULL,delivered_at TEXT,opened_at TEXT,replied_at TEXT,detail TEXT,follow_up_at TEXT,follow_up_state TEXT,follow_up_json TEXT);
  CREATE UNIQUE INDEX IF NOT EXISTS delivery_provider_id ON communication_deliveries(provider,provider_id) WHERE provider_id IS NOT NULL;
@@ -57,7 +57,10 @@ export function installCommunicationTracking(app,{db,env,requireSaasUser,require
    try{const result=await new Resend(env.RESEND_API_KEY).emails.receiving.get(emailId);if(result.error||!result.data)return res.status(503).json({ok:false,error:'Inbound email could not be retrieved. Retry later.'});const mail=result.data,from=String(mail.from||'').match(/<([^>]+)>/)?.[1]||mail.from;if(platformRoute){portalMailInbound({scope:'platform',owner_id:'superpro',provider_id:emailId,from,subject:mail.subject,body:mail.text||'HTML-only email; view through your verified mail provider.'});return res.json({ok:true,routed:true});}receiveEmail({organisation_id:[...organisations][0],channel:'email',contact_address:from,subject:mail.subject||null,body:mail.text||'Email received; open the provider inbox for HTML-only content.',provider:'resend',external_message_id:emailId});return res.json({ok:true,routed:true})}catch{return res.status(503).json({ok:false,error:'Inbound email retrieval is temporarily unavailable.'})}
   }
   const state={'email.sent':'sent','email.delivered':'delivered','email.opened':'opened','email.bounced':'failed','email.failed':'failed','email.complained':'failed','email.suppressed':'failed'}[event.type];
-  receipt('resend',req.get('svix-id'),event.data?.email_id,state);res.json({ok:true});
+  receipt('resend',req.get('svix-id'),event.data?.email_id,state);
+  // Phase 07: hard bounces and spam complaints suppress the address for marketing.
+  if(['email.bounced','email.complained'].includes(event.type)&&event.data?.email_id){try{onProviderEvent?.(event.data.email_id,event.type==='email.bounced'?'bounce':'complaint')}catch{}}
+  res.json({ok:true});
  });
  app.post('/api/webhooks/communications/telnyx',(req,res)=>{
   if(!verifyTelnyx(req))return res.status(401).json({ok:false,error:'Invalid webhook signature.'});

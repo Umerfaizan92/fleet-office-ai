@@ -1,0 +1,15 @@
+# Deployment plan — actual Claude source
+
+1. Source: recover from consolidated-improvements-2026 (24dd8c7), not the older codex preview baseline. Preserve every Claude phase commit and frontend. The recovery branch fix/claude-release-recovery-20261031 combines the safety fixes; review its exact commit/tree.
+2. Run the complete unit, UI, public site, module, accessibility/performance, visual/layout, release-audit, integration, smoke, configuration, secret and dependency checks. Validate project memory and regenerate/verify the manifest. Describe unmeasured live-provider cases separately.
+3. Open a dedicated PR into main. Require green final-commit CI; do not reuse the old security-only CI result as evidence for the phase implementation.
+4. Keep production main/disk/database/upload paths and existing credentials unchanged. Retain the verified S3 restore evidence, then obtain a fresh backup immediately before an approved production release. Check schema migration and rollback compatibility; do not reset a database.
+5. Point only the existing isolated preview at the verified recovery source. Preserve its independent synthetic auth/vault secrets, temporary storage, no S3/primary storage/provider keys, manual deployments and /healthz checks. A configuration update may trigger a deploy even if automatic Git deploys are off; make the source safe before changing settings.
+6. Monitor the exact deployment ID to live. Verify the NEW homepage at /, its Phase 03 design assets, clean routes, signup links, responsive layout and the business/founder modules—not merely /healthz. Test synthetic tenant boundaries, approvals, finance restrictions, logout, operator separation and corrected diagnostics. Inspect startup logs for unintended storage/provider access.
+7. Report the actual source SHA, CI run, preview URL and screenshots. Production promotion is a separate explicit action under the owner's deployment instruction after all required checks. Render's disk-backed production restart may cause downtime; preserve rollback and all external side-effect records.
+
+No new AWS resources, provider activation, paid services, credential rotation, database reset or backup deletion is required by this source recovery.
+
+## Backup evidence already collected
+
+2026-10-30 18:00:03.889Z: a read-only production restore drill downloaded the existing `super-pro-v2/db` chain into a temporary SQLite database. SQLite integrity checks passed, and schema plus row-content hash multisets matched all 146 production tables; production was unchanged during verification. Upload backup reconciliation at 17:58:57Z found zero local files and zero objects under `super-pro-v2/uploads/`. This verifies the current backup chain, not a write to an empty uploads store or Claude's not-yet-deployed new reliability scheduler. The latest WAL observed predates the IAM repair, so fresh replication remains an operational follow-up before production promotion. No production rows or backup objects were changed by the drill.

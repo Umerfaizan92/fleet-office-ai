@@ -1,0 +1,52 @@
+/* Phase 04 pipeline views (Enquiries, Quotes, Bookings, Invoices). Uses the Phase 03 tokens; no fixed colours. */
+.pl-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 16px}
+.pl-stage{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--sp-line,var(--line));border-radius:12px;background:var(--sp-graphite-1,var(--panel));color:var(--sp-fg-muted,var(--muted));text-decoration:none;min-width:0}
+.pl-stage b{font-size:22px;line-height:1.1;color:var(--sp-fg,var(--text));font-variant-numeric:tabular-nums}
+.pl-stage span{font-size:12px;line-height:1.3}
+.pl-stage small{font-size:12px;color:var(--sp-fg-2,var(--text-2));font-variant-numeric:tabular-nums}
+.pl-stage.has{border-color:color-mix(in srgb,var(--sp-gold,#e6b455) 40%,var(--sp-line,#26314a))}
+.pl-stage:hover,.pl-stage:focus-visible{border-color:var(--sp-gold,#e6b455);color:var(--sp-fg,var(--text))}
+.pl-status:empty{display:none}
+.pl-status[data-tone="bad"],[data-tone="bad"].portal-note{color:var(--sp-bad,var(--red))}
+.pl-status[data-tone="good"]{color:var(--sp-good,var(--green))}
+.pl-newwrap{margin:0 0 16px}
+.pl-newwrap>summary{cursor:pointer;font-weight:700;margin:0 0 8px;color:var(--sp-fg,var(--text))}
+.pl-new{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pl-new>h2,.pl-new>label:first-of-type,.pl-new>label:nth-of-type(2),.pl-new>button{grid-column:1/-1}
+.pl-newcust{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:1px solid var(--sp-line,var(--line));border-radius:12px;padding:10px 12px;margin:0}
+.pl-newcust[hidden]{display:none}
+.pl-newcust label{display:grid!important;gap:5px;align-items:start}
+.pl-newcust legend{padding:0 6px;color:var(--sp-fg-muted,var(--muted));font-size:13px}
+.pl-toolbar .portal-search{flex:1 1 220px}
+.pl-toolbar .pl-filter{flex:0 1 200px}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px}
+.pl-card{display:grid;gap:6px;align-content:start}
+.pl-card-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.pl-card-head h2{margin:0;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.pl-card .portal-status{white-space:nowrap;flex:none}
+.pl-who{color:var(--sp-fg-2,var(--text-2))!important;margin:0!important;overflow-wrap:anywhere}
+.pl-body{margin:0!important;white-space:pre-wrap;overflow-wrap:anywhere}
+.pl-meta{font-size:13px;margin:0!important;overflow-wrap:anywhere}
+.pl-money{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:4px 0;font-variant-numeric:tabular-nums}
+.pl-money dt{color:var(--sp-fg-muted,var(--muted));font-size:13px}
+.pl-money dd{margin:0;text-align:right;color:var(--sp-fg,var(--text))}
+.pl-money dt:nth-last-of-type(1),.pl-money dd:last-of-type{font-weight:700}
+.pl-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pl-actions .portal-button{min-height:40px}
+.pl-actions a.portal-button{display:inline-flex;align-items:center;text-decoration:none}
+.pl-inline{margin-top:8px;padding:12px;border:1px solid var(--sp-line,var(--line));border-radius:12px;background:var(--sp-graphite-2,var(--panel-2))}
+.pl-check{display:flex!important;align-items:center;gap:8px}
+.pl-check input{width:auto!important;min-height:0!important}
+.pl-card .portal-status.pl-paid,.pl-card .portal-status.pl-completed{color:var(--sp-good,var(--green))}
+.pl-card .portal-status.pl-issued,.pl-card .portal-status.pl-part_paid,.pl-card .portal-status.pl-draft{color:var(--sp-warn,var(--amber))}
+.pl-card .portal-status.pl-lost,.pl-card .portal-status.pl-cancelled{color:var(--sp-fg-muted,var(--muted))}
+.pl-trail{margin-top:16px}
+.pl-trail-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pl-chain{margin:8px 0;padding-left:20px;display:grid;gap:6px}
+.pl-chain small{display:block;color:var(--sp-fg-muted,var(--muted))}
+.pl-events{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--sp-fg-muted,var(--muted))}
+@media (max-width:1100px){.pl-strip{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:640px){.pl-strip{display:flex;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px}.pl-stage{flex:0 0 132px;scroll-snap-align:start}.pl-new,.pl-newcust{grid-template-columns:1fr}}
+/* Workspace search: record results group (workspace-ops.js). */
+.finder-records{display:grid;gap:6px;margin:10px 0}
+.finder-records h3{margin:4px 0 2px;font-size:13px;font-weight:600;color:var(--sp-fg-muted,var(--muted))}

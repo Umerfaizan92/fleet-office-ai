@@ -1,0 +1,84 @@
+{
+  "Rules": [
+    {
+      "ID": "database-replica-history",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "super-pro/db/"
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 35
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "upload-copies-history",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "super-pro/uploads/"
+      },
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "STANDARD_IA"
+        }
+      ],
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 90
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "daily-snapshots-35-days",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "super-pro/snapshots/"
+      },
+      "Expiration": {
+        "Days": 35
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 30
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "monthly-snapshots-12-months",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "super-pro/monthly/"
+      },
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "STANDARD_IA"
+        }
+      ],
+      "Expiration": {
+        "Days": 400
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 30
+      }
+    },
+    {
+      "ID": "config-backups-90-days",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "super-pro/config/"
+      },
+      "Expiration": {
+        "Days": 90
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 30
+      }
+    }
+  ]
+}

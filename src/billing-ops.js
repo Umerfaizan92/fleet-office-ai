@@ -15,7 +15,7 @@ const gstOf = (subtotal) => Math.round(subtotal * 0.1);
 const monthStart = (y, m) => new Date(Date.UTC(y, m, 1, 0, 0, 0)); // 1st of the month, UTC
 const TIMELINE = ['account.', 'subscription.', 'billing.', 'team.invitation_created', 'integration.connected', 'integration.disconnected'];
 
-export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e) => appendAuditLog(db, e), timers = true, policy = null, extraAttention = () => [], payUrl = () => null }) {
+export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e) => appendAuditLog(db, e), timers = true, policy = null, extraAttention = () => [], payUrl = () => null, prorations = null }) {
   db.exec(`CREATE TABLE IF NOT EXISTS platform_invoices (
       id TEXT PRIMARY KEY, organisation_id TEXT NOT NULL, number TEXT NOT NULL UNIQUE, period_start TEXT NOT NULL, period_end TEXT NOT NULL,
       lines_json TEXT NOT NULL, subtotal_cents INTEGER NOT NULL, gst_cents INTEGER NOT NULL, total_cents INTEGER NOT NULL, note TEXT,
@@ -41,11 +41,14 @@ export function createBillingOps({ db, env, lifecycle, entitlements, audit = (e)
     if(policy?.active(org))return null;
     const start = new Date(periodStart), end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1) - 1000);
     if (db.prepare(`SELECT 1 FROM platform_invoices WHERE organisation_id=? AND period_start=?`).get(org, iso(start))) return null;
-    const lines = linesFor(org), subtotal = lines.reduce((n, l) => n + l.cents, 0);
+    // Phase 08: upgrades part-way through a month are charged on the next invoice, once.
+    const extra = prorations ? prorations.lines(org) : [];
+    const lines = [...linesFor(org), ...extra.map((l) => ({ description: l.description, cents: l.cents }))], subtotal = lines.reduce((n, l) => n + l.cents, 0);
     if (subtotal <= 0) return null;
     const id = crypto.randomUUID();
     db.prepare(`INSERT INTO platform_invoices (id,organisation_id,number,period_start,period_end,lines_json,subtotal_cents,gst_cents,total_cents,note,due_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(id, org, nextNumber(), iso(start), iso(end), JSON.stringify(lines), subtotal, gstOf(subtotal), subtotal + gstOf(subtotal), note, iso(new Date(start.getTime() + 7 * DAY)), iso());
+    if (extra.length) prorations.invoiced(extra.map((l) => l.id), id);
     return id;
   }
   // Drafts for the next month are prepared `leadDays` before it starts, for paying subscribers only.

@@ -1,16 +1,16 @@
 // One place that decides which S3 bucket (if any) the backups use.
 // BACKUP_S3_BUCKET is the primary configured bucket; AWS_S3_BUCKET is the Render fallback.
 // BACKUP_DISABLED=1 remains the explicit override to disable all backup replication.
+const clean = (v) => String(v ?? '').replace(/^[\s"']+|[\s"']+$/g, '');
 export function backupBucket(env = process.env) {
-  if (/^(1|true|yes)$/i.test(String(env.BACKUP_DISABLED || ''))) return '';
-  return env.BACKUP_S3_BUCKET || (env.RENDER ? env.AWS_S3_BUCKET : '') || '';
+  if (/^(1|true|yes|on)$/i.test(String(env.BACKUP_DISABLED || '').trim())) return '';
+  return clean(env.BACKUP_S3_BUCKET) || (env.RENDER ? clean(env.AWS_S3_BUCKET) : '') || '';
 }
 
 // Finds the AWS keys even when they were saved under a slightly different name, and trims stray spaces or line breaks
 // that often come along when a key is pasted. Only names are ever reported, never values.
 const ID_NAMES = ['AWS_ACCESS_KEY_ID', 'AWS_S3_ACCESS_KEY_ID', 'AWS_S3_ACCESS_KEY', 'AWS_ACCESS_KEY', 'S3_ACCESS_KEY_ID', 'S3_ACCESS_KEY', 'BACKUP_S3_ACCESS_KEY_ID'];
 const SECRET_NAMES = ['AWS_SECRET_ACCESS_KEY', 'AWS_S3_SECRET_ACCESS_KEY', 'AWS_S3_SECRET_KEY', 'AWS_S3_SECRET', 'AWS_SECRET_KEY', 'AWS_SECRET', 'S3_SECRET_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_SECRET', 'BACKUP_S3_SECRET_ACCESS_KEY'];
-const clean = (v) => String(v ?? '').replace(/^[\s"']+|[\s"']+$/g, '');
 export function backupCredentials(env = process.env) {
   const pick = (names, fuzzy) => {
     for (const n of names) if (clean(env[n])) return { name: n, value: clean(env[n]) };

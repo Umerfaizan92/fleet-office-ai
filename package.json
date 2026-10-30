@@ -36,17 +36,45 @@
     "manifest:update": "node scripts/update-manifest.mjs",
     "verify:manifest": "node scripts/verify-manifest.mjs",
     "postinstall": "node scripts/install-litestream.mjs",
-    "test:ui": "node scripts/test-ui.mjs"
+    "test:ui": "node scripts/test-ui.mjs",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "storage:verify": "node scripts/verify-storage.mjs",
+    "backup:restore-drill": "node scripts/restore-drill.mjs",
+    "backup:restore": "node scripts/restore-database.mjs",
+    "deploy:check": "node scripts/post-deploy-check.mjs",
+    "build:ds": "node scripts/build-ds.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "check:site": "node scripts/build-site.mjs --check",
+    "test:site-ui": "node scripts/test-site-ui.mjs",
+    "test:visual": "node scripts/test-visual.mjs",
+    "test:visual:update": "node scripts/test-visual.mjs --update",
+    "report:a11y-perf": "node scripts/report-a11y-perf.mjs",
+    "memory:resume": "node scripts/memory/resume.mjs",
+    "memory:checkpoint": "node scripts/memory/checkpoint.mjs",
+    "memory:snapshot": "node scripts/memory/snapshot.mjs",
+    "memory:restore": "node scripts/memory/restore.mjs",
+    "memory:validate": "node scripts/memory/validate.mjs",
+    "memory:task": "node scripts/memory/task.mjs",
+    "test:pipeline-ui": "node scripts/test-pipeline-ui.mjs",
+    "test:console-ui": "node scripts/test-console-platform.mjs",
+    "verify:modules": "node scripts/verify-modules.mjs",
+    "test:automations-ui": "node scripts/test-automations-ui.mjs",
+    "test:seo-ui": "node scripts/test-seo-ui.mjs",
+    "test:comms-ui": "node scripts/test-comms-ui.mjs",
+    "test:finance-ui": "node scripts/test-finance-ui.mjs",
+    "test:reliability-ui": "node scripts/test-reliability-ui.mjs",
+    "release:audit": "node scripts/release-audit.mjs"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1156.0",
+    "@aws-sdk/s3-request-presigner": "3.1156.0",
     "better-sqlite3": "12.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "multer": "^2.0.2",
@@ -56,9 +84,14 @@
     "zod": "^4.6.7"
   },
   "overrides": {
-    "qs": "^6.15.4"
+    "qs": "^6.16.1"
   },
   "devDependencies": {
-    "playwright": "1.62.1"
+    "axe-core": "4.14.0",
+    "esbuild": "0.25.12",
+    "pixelmatch": "7.2.0",
+    "playwright": "1.62.1",
+    "pngjs": "7.0.0",
+    "three": "0.186.1"
   }
 }

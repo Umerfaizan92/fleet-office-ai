@@ -12,7 +12,13 @@
       "overview",
       "Platform overview",
       "grid",
-      [["overview", "Overview"]],
+      [
+        ["overview", "Overview"],
+        ["platform/revenue", "Revenue"],
+        ["system", "Infrastructure"],
+        ["platform/backups", "Storage & backups"],
+        ["platform/ai-usage", "AI usage"],
+      ],
     ],
     [
       "f02",
@@ -30,6 +36,7 @@
         ["invoices", "Subscription invoices"],
         ["legacy:subpay", "Payment providers"],
         ["legacy:subscribers", "Plans & add-ons"],
+        ["platform/finance", "Plan prices, renewals & revenue"],
       ],
     ],
     [
@@ -64,6 +71,8 @@
         ["records:content", "Content drafts"],
         ["records:announcement_draft", "Announcement drafts"],
         ["legacy:searchvisibility", "Website visibility"],
+        ["platform/seo", "SEO & website"],
+        ["platform/campaigns", "Newsletter campaigns"],
       ],
     ],
     [
@@ -76,6 +85,8 @@
         ["records:incident", "Incidents"],
         ["records:cost", "Operating costs"],
         ["legacy:connections", "Provider readiness"],
+        ["platform/automation", "AI automations"],
+        ["platform/reliability", "Reliability & backups"],
       ],
     ],
     [
@@ -83,7 +94,10 @@
       "security",
       "Security & audit",
       "shield",
-      [["audit", "Activity log"]],
+      [
+        ["audit", "Activity log"],
+        ["platform/compliance", "Compliance"],
+      ],
     ],
     [
       "f09",
@@ -94,6 +108,7 @@
         ["complimentary", "Complimentary grants"],
         ["staff", "Operator staff & roles"],
         ["legacy-inventory", "Legacy inventory"],
+        ["platform/configuration", "Feature access & configuration"],
       ],
     ],
   ];
@@ -234,6 +249,14 @@
           can: (a) => can("support", a),
         });
         await mail.render();
+        return;
+      }
+      // Phase 04 founder tabs (office/console-platform.js): read-only revenue, infrastructure, backups, AI, compliance, configuration.
+      if (window.SuperProPlatformConsole?.handles(route)) {
+        const box = el("div", "cp-view");
+        await window.SuperProPlatformConsole.render(route, box, api);
+        if (seq !== sequence) return;
+        host.replaceChildren(box);
         return;
       }
       if (route.startsWith("legacy:")) {

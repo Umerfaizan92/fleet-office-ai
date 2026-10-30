@@ -20,11 +20,8 @@
     if (!r.ok) throw Error(d.error || "Action unavailable");
     return d;
   };
+  // Enquiries, Quotes, Bookings and Invoices moved to the connected pipeline (workspace-pipeline.js, Phase 04).
   const types = {
-    enquiries: ["Enquiries", "enquiry"],
-    quotes: ["Quotes", "quote"],
-    bookings: ["Bookings", "booking"],
-    businessinvoices: ["Invoices", "invoice"],
     businesscampaigns: ["Campaigns", "campaign"],
   };
   const services = {

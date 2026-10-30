@@ -1,0 +1,243 @@
+{
+  "generated_at": "2026-10-30T18:37:02.535Z",
+  "pages": [
+    {
+      "path": "/",
+      "status": 200,
+      "title_len": 59,
+      "desc_len": 182,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features",
+      "status": 200,
+      "title_len": 38,
+      "desc_len": 163,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/customers",
+      "status": 200,
+      "title_len": 48,
+      "desc_len": 139,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/money",
+      "status": 200,
+      "title_len": 35,
+      "desc_len": 100,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/communications",
+      "status": 200,
+      "title_len": 44,
+      "desc_len": 128,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/growth",
+      "status": 200,
+      "title_len": 48,
+      "desc_len": 118,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/people",
+      "status": 200,
+      "title_len": 51,
+      "desc_len": 121,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/features/ai",
+      "status": 200,
+      "title_len": 46,
+      "desc_len": 130,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for",
+      "status": 200,
+      "title_len": 40,
+      "desc_len": 103,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for/trades",
+      "status": 200,
+      "title_len": 36,
+      "desc_len": 159,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for/clinics",
+      "status": 200,
+      "title_len": 55,
+      "desc_len": 144,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for/retail",
+      "status": 200,
+      "title_len": 50,
+      "desc_len": 134,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for/agencies",
+      "status": 200,
+      "title_len": 50,
+      "desc_len": 129,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/for/cleaning",
+      "status": 200,
+      "title_len": 60,
+      "desc_len": 127,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/pricing",
+      "status": 200,
+      "title_len": 37,
+      "desc_len": 107,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/receptionist",
+      "status": 200,
+      "title_len": 45,
+      "desc_len": 151,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/stories",
+      "status": 200,
+      "title_len": 59,
+      "desc_len": 148,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/help",
+      "status": 200,
+      "title_len": 41,
+      "desc_len": 114,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/contact",
+      "status": 200,
+      "title_len": 37,
+      "desc_len": 119,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/saas/",
+      "status": 200,
+      "title_len": 62,
+      "desc_len": 162,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    },
+    {
+      "path": "/saas/answers.html",
+      "status": 200,
+      "title_len": 41,
+      "desc_len": 137,
+      "canonical": true,
+      "h1": 1,
+      "json_ld": 1,
+      "json_ld_valid": true,
+      "noindex": false
+    }
+  ],
+  "problems": [],
+  "founder_audit": {
+    "audit_status": 201,
+    "score": 60,
+    "categories": 19,
+    "fix": 1
+  }
+}

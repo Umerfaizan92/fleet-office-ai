@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Australia/Perth
+    open-pull-requests-limit: 5
+    groups:
+      aws-sdk:
+        patterns: ['@aws-sdk/*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

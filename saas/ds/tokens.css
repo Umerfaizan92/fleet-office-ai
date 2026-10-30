@@ -1,0 +1,109 @@
+/* Super Pro design tokens (Phase 03).
+   Midnight and graphite surfaces. Gold is the one action colour. Cyan means live or AI. Violet appears only in data.
+   Every text/background pair below passes WCAG 2.2 AA in both themes (checked in docs/design/DESIGN_SYSTEM.md). */
+@font-face{font-family:'Bodoni Moda';src:url('../fonts/bodoni-moda-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Bodoni Moda';src:url('../fonts/bodoni-moda-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Manrope';src:url('../fonts/manrope-latin-wght-normal.woff2') format('woff2');font-weight:200 800;font-style:normal;font-display:swap}
+
+:root{
+  color-scheme:dark;
+  /* surfaces */
+  --sp-midnight:#070B14;
+  --sp-graphite-1:#0F1522;
+  --sp-graphite-2:#161E2E;
+  --sp-graphite-3:#1F2940;
+  --sp-glass:rgba(22,30,46,.62);
+  --sp-glass-strong:rgba(15,21,34,.82);
+  --sp-glass-edge:rgba(237,241,248,.09);
+  --sp-glass-highlight:rgba(237,241,248,.14);
+  --sp-line:#26314A;
+  --sp-line-soft:rgba(149,161,182,.16);
+  /* text */
+  --sp-fg:#EDF1F8;
+  --sp-fg-2:#C9D1DF;
+  --sp-fg-muted:#95A1B6;
+  /* meaning */
+  --sp-gold:#E6B455;          /* actions, the approval gate */
+  --sp-gold-hover:#F0C46E;
+  --sp-gold-press:#D29E3E;
+  --sp-on-gold:#17120A;
+  --sp-gold-soft:rgba(230,180,85,.14);
+  --sp-cyan:#43D3F0;          /* live, AI working, incoming signal */
+  --sp-cyan-soft:rgba(67,211,240,.13);
+  --sp-violet:#9C8CFF;        /* data series only */
+  --sp-good:#4CC38A;
+  --sp-warn:#F0A848;
+  --sp-bad:#F2716B;
+  --sp-focus:#F0C46E;
+  /* type */
+  --sp-font-display:'Bodoni Moda','Iowan Old Style','Times New Roman',serif;
+  --sp-font-ui:'Manrope','Segoe UI',system-ui,-apple-system,sans-serif;
+  --sp-fs-xs:.75rem;   /* 12 */
+  --sp-fs-sm:.875rem;  /* 14 */
+  --sp-fs-md:1rem;     /* 16 body */
+  --sp-fs-lg:1.125rem; /* 18 */
+  --sp-fs-xl:1.25rem;  /* 20 */
+  --sp-fs-2xl:1.5rem;  /* 24 */
+  --sp-fs-3xl:1.875rem;/* 30 */
+  --sp-fs-4xl:2.375rem;/* 38 */
+  --sp-fs-5xl:clamp(2.6rem,1.6rem + 3.4vw,3.75rem);  /* 42–60 */
+  --sp-fs-6xl:clamp(3rem,1.4rem + 5.6vw,4.75rem);    /* 48–76 */
+  --sp-lh-tight:1.04;
+  --sp-lh-snug:1.25;
+  --sp-lh-body:1.6;
+  --sp-measure:68ch;
+  /* space: 4-point steps */
+  --sp-1:.25rem;--sp-2:.5rem;--sp-3:.75rem;--sp-4:1rem;--sp-5:1.5rem;--sp-6:2rem;--sp-7:3rem;--sp-8:4rem;--sp-9:6rem;--sp-10:8rem;
+  --sp-gutter:clamp(1rem,.6rem + 2vw,2rem);
+  --sp-page:min(1240px,100% - 2*var(--sp-gutter));
+  /* shape: radius follows hierarchy (controls < cards < stages) */
+  --sp-r-control:10px;
+  --sp-r-card:16px;
+  --sp-r-stage:28px;
+  --sp-r-pill:999px;
+  /* depth */
+  --sp-shadow-1:0 1px 0 rgba(237,241,248,.06) inset,0 10px 30px -12px rgba(0,0,0,.6);
+  --sp-shadow-2:0 1px 0 rgba(237,241,248,.08) inset,0 30px 60px -24px rgba(0,0,0,.75),0 0 0 1px rgba(237,241,248,.04);
+  --sp-shadow-gold:0 10px 30px -10px rgba(230,180,85,.45);
+  --sp-blur:18px;
+  /* motion */
+  --sp-ease-out:cubic-bezier(.16,1,.3,1);
+  --sp-ease-in-out:cubic-bezier(.65,0,.35,1);
+  --sp-dur-1:120ms;--sp-dur-2:220ms;--sp-dur-3:420ms;--sp-dur-4:700ms;
+  /* layers */
+  --sp-z-nav:40;--sp-z-overlay:60;--sp-z-toast:80;
+}
+:root[data-theme="light"],html[data-theme="light"]{
+  color-scheme:light;
+  --sp-midnight:#F3F5FA;
+  --sp-graphite-1:#FFFFFF;
+  --sp-graphite-2:#E9EDF5;
+  --sp-graphite-3:#DCE2EE;
+  --sp-glass:rgba(255,255,255,.72);
+  --sp-glass-strong:rgba(255,255,255,.9);
+  --sp-glass-edge:rgba(12,20,36,.08);
+  --sp-glass-highlight:rgba(255,255,255,.9);
+  --sp-line:#CDD5E3;
+  --sp-line-soft:rgba(12,20,36,.08);
+  --sp-fg:#0C1424;
+  --sp-fg-2:#26324A;
+  --sp-fg-muted:#4B566B;
+  --sp-gold:#8A6408;
+  --sp-gold-hover:#77560a;
+  --sp-gold-press:#664905;
+  --sp-on-gold:#FFFFFF;
+  --sp-gold-soft:rgba(138,100,8,.10);
+  --sp-cyan:#0B6F8C;
+  --sp-cyan-soft:rgba(11,111,140,.10);
+  --sp-violet:#5B48D6;
+  --sp-good:#1E7A4E;
+  --sp-warn:#8F5A0E;
+  --sp-bad:#B3312B;
+  --sp-focus:#8A6408;
+  --sp-shadow-1:0 1px 2px rgba(12,20,36,.06),0 10px 24px -14px rgba(12,20,36,.22);
+  --sp-shadow-2:0 2px 4px rgba(12,20,36,.06),0 30px 50px -28px rgba(12,20,36,.35);
+  --sp-shadow-gold:0 10px 24px -12px rgba(138,100,8,.45);
+}
+@media (prefers-reduced-motion:reduce){
+  :root{--sp-dur-1:0ms;--sp-dur-2:0ms;--sp-dur-3:0ms;--sp-dur-4:0ms}
+}

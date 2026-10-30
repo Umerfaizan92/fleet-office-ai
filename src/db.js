@@ -967,6 +967,7 @@ export function createDb(databasePath = resolveDatabasePath()) {
     CREATE INDEX IF NOT EXISTS idx_support_cases_org ON support_cases(organisation_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_support_cases_status ON support_cases(status,severity,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_support_case_events_case ON support_case_events(case_id,created_at);
+    CREATE INDEX IF NOT EXISTS idx_support_case_events_org ON support_case_events(organisation_id,created_at);
     CREATE INDEX IF NOT EXISTS idx_policy_ack_user ON policy_acknowledgements(organisation_id,user_id,acknowledged_at DESC);
     CREATE INDEX IF NOT EXISTS idx_security_notifications_org ON security_notifications(organisation_id,status,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_governance_ledger_org ON governance_ledger(organisation_id,created_at DESC);
@@ -1563,6 +1564,7 @@ export function createDb(databasePath = resolveDatabasePath()) {
     CREATE INDEX IF NOT EXISTS idx_worker_invites_worker ON worker_onboarding_invites(worker_id,status,expires_at);
     CREATE INDEX IF NOT EXISTS idx_worker_invites_org ON worker_onboarding_invites(organisation_id,created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_worker_onboarding_events_invite ON worker_onboarding_events(invite_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_worker_onboarding_events_org ON worker_onboarding_events(organisation_id,created_at);
   `);
 
   // Platform-wide customer notices: maintenance, incidents, releases and resolutions.
@@ -1770,6 +1772,10 @@ function applyUnifiedSchema(db) {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_job_payments_ref ON job_payments(provider,provider_ref) WHERE provider_ref IS NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_notice_dedupe ON payment_notices(organisation_id,dedupe_key,channel) WHERE dedupe_key IS NOT NULL;`);
   ensureIndex(db, 'job_payments', ['organisation_id', 'work_order_id']);
+  // Phase 02: every tenant table can be filtered by organisation through an index.
+  ensureIndex(db, 'workspace_approval_events', ['organisation_id', 'created_at']);
+  ensureIndex(db, 'payment_events', ['organisation_id', 'received_at']);
+  ensureIndex(db, 'user_notifications', ['organisation_id', 'created_at']);
   ensureIndex(db, 'job_payments', ['organisation_id', 'status']);
   ensureIndex(db, 'payment_notices', ['organisation_id', 'created_at']);
   addColumns(db, 'work_orders', [['invoice_issued_at', 'TEXT'], ['due_at', 'TEXT'], ['late_fee_cents', 'INTEGER NOT NULL DEFAULT 0'], ['late_fee_applied_at', 'TEXT']]);

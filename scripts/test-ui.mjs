@@ -125,11 +125,20 @@ try{
     await page.locator('.portal-rail [aria-label="Expand main navigation"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'false');
     const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.locator('.portal-rail [data-domain=b08]').tap();await p.locator('.portal-subtabs [data-jump=manual]').tap();await p.locator('#manual-view').waitFor({state:'visible'});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}finally{await touch.close()}
   });
+  await check('live update notice stays clear of the folded rail on phones and tablets',async()=>{
+    const p=await context.newPage();try{await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.locator('#gds-live-toasts').waitFor({state:'attached'});
+      await p.evaluate(()=>{document.querySelector('#gds-live-toasts').innerHTML='<div class="gds-live-toast success show"><span>✓</span><div><b>Live update</b><small>Notice geometry check</small></div></div>'});
+      for(const width of [390,700,768,1440]){await p.setViewportSize({width,height:844});await p.mouse.move(width-4,600);await p.waitForFunction(()=>document.querySelector('.portal-rail').getBoundingClientRect().width<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--portal-rail'))+.5);
+        const g=await p.evaluate(()=>{const n=document.querySelector('#gds-live-toasts .gds-live-toast').getBoundingClientRect(),r=document.querySelector('.portal-rail').getBoundingClientRect();return{left:n.left,right:n.right,railRight:r.right,vw:innerWidth}});
+        assert.ok(g.left>=g.railRight,'notice under rail at '+width+': '+JSON.stringify(g));assert.ok(g.right<=g.vw,'notice off screen at '+width+': '+JSON.stringify(g))}
+    }finally{await p.close()}
+  });
   await check('email centre separates folders and keeps drafts behind review',async()=>{
     await page.evaluate(()=>location.hash='b04/email');await page.locator('#mail-view').waitFor({state:'visible'});await page.mouse.move(1400,700);await page.locator('.portal-rail button:focus').evaluateAll(es=>es.forEach(e=>e.blur()));await page.waitForTimeout(220);await screenshot(page,'email-centre');await page.locator('#mail-view').getByRole('button',{name:'Compose',exact:true}).click();const dialog=page.locator('dialog.portal-modal');await dialog.locator('[name=recipient]').fill('ui-recipient@example.test');await dialog.locator('[name=subject]').fill('Review test');await dialog.locator('[name=body]').fill('An unsent draft for review.');await dialog.getByRole('button',{name:'Save draft for review'}).click();await dialog.waitFor({state:'hidden'});await page.locator('.portal-mail-row').filter({hasText:'Review test'}).click();await page.locator('dialog.portal-modal').getByRole('button',{name:'Approve reviewed version'}).waitFor();assert.equal(await page.locator('dialog.portal-modal').getByRole('button',{name:'Send approved email'}).count(),0);await page.locator('dialog.portal-modal').getByRole('button',{name:'Close',exact:true}).click();
   });
   await check('live motion is automatic, bounded and uses existing colours',async()=>{
-    assert.equal(await page.locator('html').evaluate(e=>getComputedStyle(e).getPropertyValue('--sp-accent').trim()),'#e2bd72');
+    // Phase 03: the accent is the shared design-system gold (saas/ds/tokens.css), one source for every portal.
+    const accent=await page.locator('html').evaluate(e=>{const s=getComputedStyle(e);return {accent:s.getPropertyValue('--sp-accent').trim().toLowerCase(),gold:s.getPropertyValue('--sp-gold').trim().toLowerCase()}});assert.equal(accent.accent,accent.gold);assert.equal(accent.gold,'#e6b455');
     assert.ok(await page.locator('.sp-motion-visible').count()<=12);
     assert.equal(await page.locator('.sp-motion-toggle').count(),0);
     assert.equal(await page.locator('html').evaluate(e=>e.classList.contains('sp-motion-enabled')),true);

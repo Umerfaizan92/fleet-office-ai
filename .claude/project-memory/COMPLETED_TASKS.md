@@ -41,3 +41,20 @@ Newest last. Never edit evidence after the fact; add a correcting entry instead.
 - Acceptance: notice fully visible at 390 and 768; `test:ui` 33/33; `test:visual` only the expected screens change.
 - Files changed: saas/ds/retheme.css (+ .br/.gz); scripts/test-ui.mjs
 - Evidence: test:ui 34/34 incl. new notice-vs-rail check at 390/700/768/1440 (fails without the rule); test:visual 51 same; npm test 73/73; public-site tests 11/11. Fix finished by a fresh Claude Code session in the recovery drill (recorded 2026-10-30 on phase-03-cinematic-design at 98f6389)
+
+## T-035 Persistent autosave, checkpoint and resume system (P03.5)
+- Requirement (owner prompt, 2026-10-30, summarised): persistent project memory in `CLAUDE.md` and
+  `.claude/project-memory/` (MASTER_PLAN, PROGRESS, COMPLETED_TASKS, PENDING_TASKS, DECISIONS, ERROR_LOG,
+  SESSION_HANDOVER, CHECKPOINTS); task IDs and statuses; checkpoints with timestamp, phase, task, steps, files, tests,
+  branch, commit, errors, next action; automatic resume detection that verifies git state instead of trusting notes;
+  handover before context runs out; atomic commits, no force-push, no automatic push without permission; failure
+  recovery that never blindly retries migrations, payments, emails, deploys or external APIs; Claude Code hooks for
+  startup and handover without loops; a recovery drill; no secrets in memory.
+- Files: `CLAUDE.md`, `.claude/settings.json`, `.claude/project-memory/*`, `scripts/memory/*` (incl. `task.mjs`), `docs/process/PROJECT_MEMORY.md`,
+  `scripts/project-memory.test.mjs`, `package.json`.
+- Acceptance: memory files present and validated; `npm run memory:checkpoint`, `memory:snapshot`, `memory:resume`,
+  `memory:validate` work; SessionStart hook prints state; contract test passes inside `npm test`; recovery drill
+  (start task → snapshot → lose working tree → new session → resume → finish without repeating) passes.
+- Remaining: see SESSION_HANDOVER.md.
+- Files changed: CLAUDE.md; .claude/settings.json; .claude/project-memory/*; scripts/memory/*; scripts/project-memory.test.mjs; docs/process/PROJECT_MEMORY.md; package.json
+- Evidence: commit 0af91f5; npm test 73/73; test:unit 132/132 incl. 5 project-memory tests; memory:validate, security:secrets, verify:manifest, smoke:test pass; recovery drill passed: fresh Claude Code session resumed and finished T-036 without repeating completed work (docs/process/PROJECT_MEMORY.md) (recorded 2026-10-30 on phase-03-cinematic-design at 0af91f5)

@@ -59,3 +59,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: refs/recovery/phase-03-cinematic-design/20261030T043905Z (6c3a5d8)
 - Known errors: none
 - Next exact action: get permission to edit .claude/project-memory files, make those 3 edits, run manifest:update, commit T-036 (retheme.css/.br/.gz, test-ui.mjs, SHA256SUMS.txt, memory files)
+
+## CP-005 2026-10-30T12:45:25+08:00 T-035
+- Phase: P03.5 completed; waiting for the owner's next phase prompt
+- Task: T-035
+- Completed steps: T-035 verified and committed (0af91f5)
+- Incomplete steps: owner publishes the branch to GitHub (T-038); owner decides on T-037
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md
+- Tests executed: npm test; test:unit; memory:validate; security:secrets; verify:manifest; smoke:test
+- Test results: 73/73; 132/132; valid; pass; pass; pass
+- Git branch: phase-03-cinematic-design
+- Commit: 0af91f5 (Project memory: memory:task command, recovery drill write-up (T-035)); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: wait for the owner's next phase prompt (P04 or other); record it in PENDING_TASKS.md with npm run memory:task -- add before starting

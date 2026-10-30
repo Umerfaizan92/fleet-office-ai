@@ -13,6 +13,14 @@ import { backupBucket, applyBackupEnv, awsVariableNames } from '../src/backup-en
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const env = process.env;
+// Isolated preview must never restore or replicate a production backup.
+// Check before applying credentials or starting any storage operation.
+if (env.SUPERPRO_ISOLATED_PREVIEW === '1' && (
+  env.BACKUP_S3_BUCKET || env.AWS_S3_BUCKET || env.BACKUP_FILE_DIR ||
+  env.REQUIRE_PERSISTENT_DISK === '1' || env.DATABASE_PATH?.startsWith('/var/data')
+)) {
+  throw new Error('Isolated preview storage configuration is unsafe; startup aborted before backup access.');
+}
 const bucket = backupBucket(env), fileDir = env.BACKUP_FILE_DIR;
 const creds = applyBackupEnv(env); // trims stray spaces, finds keys saved under another name, and gives every part the standard names
 if (bucket && (!creds.id || !creds.secret)) {

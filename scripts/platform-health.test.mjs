@@ -58,7 +58,9 @@ test('business and platform email stay separate', async (t) => {
   t.after(() => s.stop());
   const owner = await seedOwner(s);
   // A business owner cannot reach the platform mailbox, and the founder key does not open a business mailbox.
-  assert.ok([401, 403].includes((await s.call('GET', '/api/operator/mail/messages', { cookie: owner.cookie })).status));
-  const founderOnBusiness = await s.call('GET', '/api/saas/mail/messages', { headers: { 'x-admin-key': s.adminKey } });
+  assert.equal((await s.call('GET', '/api/saas/mail', { cookie: owner.cookie })).status, 200, 'the owner opens the business mailbox');
+  assert.equal((await s.call('GET', '/api/operator/mail', { headers: { 'x-admin-key': s.adminKey } })).status, 200, 'the founder opens the platform mailbox');
+  assert.ok([401, 403].includes((await s.call('GET', '/api/operator/mail', { cookie: owner.cookie })).status));
+  const founderOnBusiness = await s.call('GET', '/api/saas/mail', { headers: { 'x-admin-key': s.adminKey } });
   assert.ok([401, 403].includes(founderOnBusiness.status), 'the founder key is not a business session');
 });

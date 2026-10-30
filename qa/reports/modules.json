@@ -1,0 +1,2178 @@
+{
+  "generated_at": "2026-10-30T05:39:14.936Z",
+  "subscriber": [
+    {
+      "module": "Dashboard",
+      "routes": [
+        {
+          "390": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/home"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/dashboard",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/command-centre",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/pipeline/overview",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "test:visual"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Business setup",
+      "routes": [
+        {
+          "390": {
+            "view": "onboarding-view",
+            "heading": "Configure your operating workspace",
+            "controls": 78,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "onboarding-view",
+            "heading": "Configure your operating workspace",
+            "controls": 78,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/settings"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/onboarding",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "npm test (pipeline)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "CRM and customers",
+      "routes": [
+        {
+          "390": {
+            "view": "customers-view",
+            "heading": "Every customer, and every job you did for them",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "customers-view",
+            "heading": "Every customer, and every job you did for them",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/customers"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/customers",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "pipeline.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Enquiries",
+      "routes": [
+        {
+          "390": {
+            "view": "enquiries-view",
+            "heading": "Enquiries",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "enquiries-view",
+            "heading": "Enquiries",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/enquiries"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/pipeline/enquiry",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "pipeline.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Quotations",
+      "routes": [
+        {
+          "390": {
+            "view": "quotes-view",
+            "heading": "Quotes",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "quotes-view",
+            "heading": "Quotes",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/quotes"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/pipeline/quote",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "pipeline.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Bookings",
+      "routes": [
+        {
+          "390": {
+            "view": "bookings-view",
+            "heading": "Bookings",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "bookings-view",
+            "heading": "Bookings",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/bookings"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/pipeline/booking",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "pipeline.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Jobs",
+      "routes": [
+        {
+          "390": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/jobs"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/work-orders",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "workorder-runtime-auth.test",
+        "pipeline.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Work orders",
+      "routes": [
+        {
+          "390": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/jobs"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/work-orders",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/work-orders/skill-suggestions",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "workorder-rbac-contract.test",
+        "workorder-runtime-auth.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Worker allocation",
+      "routes": [
+        {
+          "390": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "jobs-view",
+            "heading": "Create work, then allocate the right people",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/jobs"
+        },
+        {
+          "390": {
+            "view": "bookings-view",
+            "heading": "Bookings",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "bookings-view",
+            "heading": "Bookings",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/bookings"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/work-orders",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "workorder-runtime-auth.test",
+        "pipeline.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Workforce compliance",
+      "routes": [
+        {
+          "390": {
+            "view": "workforce-view",
+            "heading": "Build a compliant, job-ready team",
+            "controls": 14,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "workforce-view",
+            "heading": "Build a compliant, job-ready team",
+            "controls": 14,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b03/workers"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/workers",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "saas-platform.test",
+        "test:ui"
+      ],
+      "provider": "VEVO checks are recorded from the official portal; there is no automated government API",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Offshore staff",
+      "routes": [
+        {
+          "390": {
+            "view": "offshore-view",
+            "heading": "Offshore Staff",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "offshore-view",
+            "heading": "Offshore Staff",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b03/offshore"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/workers/offshore",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "business-ops.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "AI receptionist",
+      "routes": [
+        {
+          "390": {
+            "view": "receptionist-view",
+            "heading": "AI Receptionist",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "receptionist-view",
+            "heading": "AI Receptionist",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/receptionist"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/receptionist-profile",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/service-requests/receptionist",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "Telnyx number, routing and spend caps",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Unified inbox",
+      "routes": [
+        {
+          "390": {
+            "view": "comms-view",
+            "heading": "One inbox for calls, email, SMS and WhatsApp",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "comms-view",
+            "heading": "One inbox for calls, email, SMS and WhatsApp",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/inbox"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/comms/channels",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/comms/threads",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "npm test (comms)"
+      ],
+      "provider": "Telnyx / Meta / email webhooks for live channels",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Email and messaging",
+      "routes": [
+        {
+          "390": {
+            "view": "mail-view",
+            "heading": "Email Centre",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "mail-view",
+            "heading": "Email Centre",
+            "controls": 4,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/email"
+        },
+        {
+          "390": {
+            "view": "calls-view",
+            "heading": "Calls & SMS",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "calls-view",
+            "heading": "Calls & SMS",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b04/calls"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/mail",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (email centre)"
+      ],
+      "provider": "Resend for sending; Telnyx for SMS",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Invoices",
+      "routes": [
+        {
+          "390": {
+            "view": "businessinvoices-view",
+            "heading": "Invoices",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "businessinvoices-view",
+            "heading": "Invoices",
+            "controls": 9,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/invoices"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/pipeline/invoice",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "pipeline.test",
+        "test:pipeline-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Payments",
+      "routes": [
+        {
+          "390": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/ledger"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/payments",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/payments/overview",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/payments/settings",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "payments contract tests",
+        "pipeline.test"
+      ],
+      "provider": "Stripe or PayPal keys per business for card links; bank and manual payments work without",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Accounting and GST",
+      "routes": [
+        {
+          "390": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/ledger"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/overview",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/jobs",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "npm test (finance)",
+        "pipeline.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Marketing",
+      "routes": [
+        {
+          "390": {
+            "view": "growth-view",
+            "heading": "Grow your audience and turn it into sales",
+            "controls": 32,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "growth-view",
+            "heading": "Grow your audience and turn it into sales",
+            "controls": 32,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/growth"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/growth/overview",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/growth/calendar",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "Social accounts for publishing",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Campaigns",
+      "routes": [
+        {
+          "390": {
+            "view": "businesscampaigns-view",
+            "heading": "Campaigns",
+            "controls": 3,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "businesscampaigns-view",
+            "heading": "Campaigns",
+            "controls": 3,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/campaigns"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/business-hub/campaign",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "Bulk sending requires a verified email provider and opt-outs",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Social media",
+      "routes": [
+        {
+          "390": {
+            "view": "growth-view",
+            "heading": "Grow your audience and turn it into sales",
+            "controls": 32,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "growth-view",
+            "heading": "Grow your audience and turn it into sales",
+            "controls": 32,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/growth"
+        },
+        {
+          "390": {
+            "view": "integrations-view",
+            "heading": "Connect your operating channels",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "integrations-view",
+            "heading": "Connect your operating channels",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/connections"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/integrations/self-service",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (connected TikTok)"
+      ],
+      "provider": "Each network’s own app approval",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Content studio",
+      "routes": [
+        {
+          "390": {
+            "view": "video-view",
+            "heading": "Turn field media into polished content",
+            "controls": 41,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "video-view",
+            "heading": "Turn field media into polished content",
+            "controls": 41,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/studio"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/media",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/video-renders",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "AI provider for scripts and voice",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Website management",
+      "routes": [
+        {
+          "390": {
+            "view": "website-view",
+            "heading": "Website & Domain",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "website-view",
+            "heading": "Website & Domain",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/website"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/service-requests/website",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "Domain registrar and hosting (requests only today)",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "SEO",
+      "routes": [
+        {
+          "390": {
+            "view": "visibility-view",
+            "heading": "Be found by search and by AI",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "visibility-view",
+            "heading": "Be found by search and by AI",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/search"
+        },
+        {
+          "390": {
+            "view": "searchconsole-view",
+            "heading": "Search Console",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "searchconsole-view",
+            "heading": "Search Console",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/search-console"
+        },
+        {
+          "390": {
+            "view": "backlinks-view",
+            "heading": "Backlink Suggestions",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "backlinks-view",
+            "heading": "Backlink Suggestions",
+            "controls": 2,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/backlinks"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/seo/overview",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": "Google Search Console / Bing for live data",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "AI approvals",
+      "routes": [
+        {
+          "390": {
+            "view": "approvals-view",
+            "heading": "Review consequential actions before they happen",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "approvals-view",
+            "heading": "Review consequential actions before they happen",
+            "controls": 18,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/approvals"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/approvals",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "npm test (approvals)",
+        "test:ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Files and documents",
+      "routes": [
+        {
+          "390": {
+            "view": "video-view",
+            "heading": "Turn field media into polished content",
+            "controls": 41,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "video-view",
+            "heading": "Turn field media into polished content",
+            "controls": 41,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b05/studio"
+        },
+        {
+          "390": {
+            "view": "exports-view",
+            "heading": "Print and export hub",
+            "controls": 10,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "exports-view",
+            "heading": "Print and export hub",
+            "controls": 10,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/print"
+        },
+        {
+          "390": {
+            "view": "archive-view",
+            "heading": "Records & Archive",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "archive-view",
+            "heading": "Records & Archive",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b02/archive"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/media",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/business-archive",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "npm test (file safety)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Reports",
+      "routes": [
+        {
+          "390": {
+            "view": "exports-view",
+            "heading": "Print and export hub",
+            "controls": 10,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "exports-view",
+            "heading": "Print and export hub",
+            "controls": 10,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/print"
+        },
+        {
+          "390": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/ledger"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/finance/overview",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (exports)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Analytics",
+      "routes": [
+        {
+          "390": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/home"
+        },
+        {
+          "390": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "finance-view",
+            "heading": "Profit on every job, without the spreadsheet",
+            "controls": 19,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b07/ledger"
+        },
+        {
+          "390": {
+            "view": "visibility-view",
+            "heading": "Be found by search and by AI",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "visibility-view",
+            "heading": "Be found by search and by AI",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b06/search"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/dashboard",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/finance/overview",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Branding",
+      "routes": [
+        {
+          "390": {
+            "view": "onboarding-view",
+            "heading": "Configure your operating workspace",
+            "controls": 78,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "onboarding-view",
+            "heading": "Configure your operating workspace",
+            "controls": 78,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/settings"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/branding",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Notifications",
+      "routes": [
+        {
+          "390": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "dashboard-view",
+            "heading": "What would you like done today?",
+            "controls": 25,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b01/home"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/notifications",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/notification-preferences",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "npm test (notifications)"
+      ],
+      "provider": "Push and email delivery need providers",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Help and support",
+      "routes": [
+        {
+          "390": {
+            "view": "support-view",
+            "heading": "AI-assisted support without blocking your workspace",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "support-view",
+            "heading": "AI-assisted support without blocking your workspace",
+            "controls": 7,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/help"
+        },
+        {
+          "390": {
+            "view": "supportaccess-view",
+            "heading": "Support Access",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "supportaccess-view",
+            "heading": "Support Access",
+            "controls": 0,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/support-access"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/support-access",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui",
+        "npm test (support cases)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Integrations",
+      "routes": [
+        {
+          "390": {
+            "view": "integrations-view",
+            "heading": "Connect your operating channels",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "integrations-view",
+            "heading": "Connect your operating channels",
+            "controls": 12,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/connections"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/integrations/self-service",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "integration:test",
+        "test:ui"
+      ],
+      "provider": "Each provider’s credentials",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Automation settings",
+      "routes": [
+        {
+          "390": {
+            "view": "automation-view",
+            "heading": "Automation",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "view": "automation-view",
+            "heading": "Automation",
+            "controls": 6,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "b08/automation"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/saas/automation",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/approvals",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/saas/payments/settings",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "business-ops.test",
+        "test:pipeline-ui"
+      ],
+      "provider": "Inbox AI drafts need an AI provider; customer reminders need email or SMS",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    }
+  ],
+  "founder": [
+    {
+      "module": "Subscriber administration",
+      "routes": [
+        {
+          "390": {
+            "text": "Verification Plumbing Pty Ltd operations · trialing ffe6dac2-c5f8-47e9-bb90-43aaccea6fa4Account details",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Verification Plumbing Pty Ltd operations · trialing ffe6dac2-c5f8-47e9-bb90-43aaccea6fa4Account details",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f02/subscribers"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/subscribers",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (founder)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Organisation management",
+      "routes": [
+        {
+          "390": {
+            "text": "Verification Plumbing Pty Ltd operations · trialing ffe6dac2-c5f8-47e9-bb90-43aaccea6fa4Account details",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Verification Plumbing Pty Ltd operations · trialing ffe6dac2-c5f8-47e9-bb90-43aaccea6fa4Account details",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f02/subscribers"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/subscribers",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (founder)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Subscription plans",
+      "routes": [
+        {
+          "390": {
+            "text": "Plans & add-ons Existing founder tools are retained while their separate platform replacement is reconciled. Only the fo",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Plans & add-ons Existing founder tools are retained while their separate platform replacement is reconciled. Only the fo",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f03/legacy:subscribers"
+        },
+        {
+          "390": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f09/platform/configuration"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/admin/subscription-plans",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/platform/configuration",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Platform billing",
+      "routes": [
+        {
+          "390": {
+            "text": "No subscription invoices Software waivers prevent new subscription invoices. Business customer invoices stay in the Busi",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "No subscription invoices Software waivers prevent new subscription invoices. Business customer invoices stay in the Busi",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f03/invoices"
+        },
+        {
+          "390": {
+            "text": "Payment providers Existing founder tools are retained while their separate platform replacement is reconciled. Only the ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Payment providers Existing founder tools are retained while their separate platform replacement is reconciled. Only the ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f03/legacy:subpay"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/invoices",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "npm test (platform invoices)"
+      ],
+      "provider": "Stripe for platform card payments",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Revenue analytics",
+      "routes": [
+        {
+          "390": {
+            "text": "Recorded in Super Pro from subscriptions, add-ons and platform invoices. Card payments are confirmed by the payment prov",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Recorded in Super Pro from subscriptions, add-ons and platform invoices. Card payments are confirmed by the payment prov",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f01/platform/revenue"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/revenue",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test",
+        "test:console-ui"
+      ],
+      "provider": "Figures are Super Pro records; reconcile with Stripe",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Infrastructure status",
+      "routes": [
+        {
+          "390": {
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 103 MB Heap 25 MB Database size 2 MB Background jobs waiting 0 None",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 103 MB Heap 25 MB Database size 2 MB Background jobs waiting 0 None",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f01/system"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/system",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/jobs",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test",
+        "test:console-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Storage and backups",
+      "routes": [
+        {
+          "390": {
+            "text": "Database backups Check Status Backup bucket configured No Backups disabled by setting No Encryption S3 default Uploaded ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Database backups Check Status Backup bucket configured No Backups disabled by setting No Encryption S3 default Uploaded ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f01/platform/backups"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/backups",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test",
+        "storage:verify",
+        "backup:restore-drill"
+      ],
+      "provider": "AWS S3 buckets and keys",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "AI usage and costs",
+      "routes": [
+        {
+          "390": {
+            "text": "Counts of AI requests recorded by Super Pro in the last 30 days. Provider costs are billed by the AI provider and are no",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Counts of AI requests recorded by Super Pro in the last 30 days. Provider costs are billed by the AI provider and are no",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f01/platform/ai-usage"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/ai-usage",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test"
+      ],
+      "provider": "Provider cost is not recorded by Super Pro",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Platform marketing",
+      "routes": [
+        {
+          "390": {
+            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f06/records:prospect"
+        },
+        {
+          "390": {
+            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f06/records:campaign"
+        },
+        {
+          "390": {
+            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f06/records:content"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/records/prospect",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/records/campaign",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (founder)"
+      ],
+      "provider": "Records only; publishing needs providers",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "System email",
+      "routes": [
+        {
+          "390": {
+            "text": "All mail Received Drafts & approved Sent Scheduled Marketing Campaigns Enquiries Invoices Support Refresh Compose Email ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "All mail Received Drafts & approved Sent Scheduled Marketing Campaigns Enquiries Invoices Support Refresh Compose Email ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f04/mail"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/mail",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test (separation)",
+        "test:ui (founder)"
+      ],
+      "provider": "Resend for sending",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Support tickets",
+      "routes": [
+        {
+          "390": {
+            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f04/records:ticket"
+        },
+        {
+          "390": {
+            "text": "Organisation ID Purpose (minimum 12 characters) Hours (1–24) Areas: customers, jobs, communications Request subscriber a",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Organisation ID Purpose (minimum 12 characters) Hours (1–24) Areas: customers, jobs, communications Request subscriber a",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f04/support-access"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/records/ticket",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/support-access",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (founder)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Security and audit logs",
+      "routes": [
+        {
+          "390": {
+            "text": "access.read founder · security · 2026-10-30T05:40:47.045Z access.read founder · support · 2026-10-30T05:40:46.041Z acces",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "access.read founder · security · 2026-10-30T05:40:27.288Z access.read founder · support · 2026-10-30T05:40:26.284Z acces",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f08/audit"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/audit",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "test:ui (founder)",
+        "npm test (audit chain)"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Feature flags",
+      "routes": [
+        {
+          "390": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f09/platform/configuration"
+        },
+        {
+          "390": {
+            "text": "Grant a software waiver Subscriber business Verification Plumbing Pty Ltd Feature profile (starter / operations / scale)",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Grant a software waiver Subscriber business Verification Plumbing Pty Ltd Feature profile (starter / operations / scale)",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f09/complimentary"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/configuration",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "url": "/api/operator/complimentary",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test"
+      ],
+      "provider": "Plan and grant based; no runtime on/off switches",
+      "problems": [],
+      "result": "WORKS, PROVIDER NEEDED FOR LIVE USE"
+    },
+    {
+      "module": "Compliance",
+      "routes": [
+        {
+          "390": {
+            "text": "Terms version in force terms-2026-10-28 Owners on the current terms 1 of 1 Operator MFA required No Privacy requests No ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Terms version in force terms-2026-10-28 Owners on the current terms 1 of 1 Operator MFA required No Privacy requests No ",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f08/platform/compliance"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/compliance",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test",
+        "test:console-ui"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    },
+    {
+      "module": "Platform configuration",
+      "routes": [
+        {
+          "390": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:33307 Operator MFA required No Founder key se",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f09/platform/configuration"
+        },
+        {
+          "390": {
+            "text": "Create an individual platform identity Name Email Initial password (14+ characters, transfer privately) Role custom admi",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "1440": {
+            "text": "Create an individual platform identity Name Email Initial password (14+ characters, transfer privately) Role custom admi",
+            "unavailable": false,
+            "overflow": 0,
+            "failing_calls": [],
+            "browser_errors": []
+          },
+          "route": "f09/staff"
+        }
+      ],
+      "endpoints": [
+        {
+          "url": "/api/operator/platform/configuration",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "tests": [
+        "platform-health.test"
+      ],
+      "provider": null,
+      "problems": [],
+      "result": "VERIFIED"
+    }
+  ]
+}

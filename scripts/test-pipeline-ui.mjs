@@ -159,6 +159,38 @@ try {
     await phone.close();
   });
 
+  await check('offshore staff: add a team member and record the data acknowledgement', async () => {
+    await page.evaluate(() => { location.hash = 'b03/offshore'; });
+    const v = page.locator('#offshore-view');
+    await v.locator('form.pl-new').waitFor();
+    await v.locator('[name=full_name]').fill('Maria Santos');
+    await v.locator('[name=role_title]').fill('Admin assistant');
+    await v.locator('[name=country]').fill('Philippines');
+    await v.locator('[name=timezone]').fill('Asia/Manila');
+    await v.getByRole('button', { name: 'Add team member' }).click();
+    const c = v.locator('.pl-card', { hasText: 'Maria Santos' });
+    await c.waitFor();
+    assert.match(await c.textContent(), /Data acknowledgement needed/);
+    await c.getByRole('button', { name: 'Record data acknowledgement' }).click();
+    await c.locator('textarea[name=note]').fill('Signed confidentiality and privacy agreement; view-only access');
+    await c.locator('input[name=confirm]').check();
+    await c.getByRole('button', { name: 'Save acknowledgement' }).click();
+    await page.waitForFunction(() => /Data acknowledgement recorded/.test(document.querySelector('#offshore-view [data-ops-status]').textContent));
+    assert.match(await v.locator('.pl-card', { hasText: 'Maria Santos' }).textContent(), /Data safeguards recorded/);
+  });
+
+  await check('automation: every automatic behaviour listed; owner toggles customer reminders', async () => {
+    await page.evaluate(() => { location.hash = 'b08/automation'; });
+    const v = page.locator('#automation-view');
+    const c = v.locator('.pl-card[data-key=customer_reminders]');
+    await c.waitFor();
+    assert.ok(await v.locator('.pl-card').count() >= 7);
+    assert.match(await c.textContent(), /Off/);
+    await c.getByRole('button', { name: 'Turn on' }).click();
+    await page.waitForFunction(() => /reminders to customers: on/.test(document.querySelector('#automation-view [data-ops-status]').textContent));
+    assert.match(await v.locator('.pl-card[data-key=customer_reminders]').textContent(), /On/);
+  });
+
   await check('no browser errors', async () => assert.deepEqual(errors, []));
   console.log(`PIPELINE UI CHECKS PASSED: ${passed}`);
 } finally {

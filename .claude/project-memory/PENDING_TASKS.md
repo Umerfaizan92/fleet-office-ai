@@ -149,7 +149,7 @@ T-062 historical stop-before-deploy instruction is superseded operationally by t
 - Acceptance: After explicit authorization, push only the reviewed feature branch and create a draft PR using the prepared description; verify branch contents and report the PR URL. No merge or production deploy.
 
 ## T-066 Navigation audit, unsaved-form save acknowledgement and release prep
-- Status: IN_PROGRESS
+- Status: TESTING
 - Added: 2026-10-31
 - Requirement: Owner prompts 2026-10-31: audit restored navigation (60 business, 34 founder pages), fix reproducible defects incl. superpro:form-saved never emitted, re-run checks with pinned browser, prepare release; no merge/deploy without authorisation
 - Files: saas/navigation-shell.js, scripts/test-navigation-ui.mjs

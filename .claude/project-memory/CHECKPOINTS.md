@@ -787,3 +787,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Check CI on PR #54 for the new head; then continue the open T-066 items
+
+## CP-057 2026-10-31T17:42:19+08:00 T-066 TESTING
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (TESTING)
+- Completed steps: Audit fixes: unsaved-form save acknowledgement, fail-closed section coverage (576), email-folder focus, 40px founder theme button; floating widgets checked (no covered content at 390/768/1024/1440). CI green on a75e667. Owner instructed release: merge PR #54 to main, owner deploys in Render.
+- Incomplete steps: Owner: Render Manual Deploy of merged main and post-deploy checks; per-control functional inventory remains a follow-up
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: npm test, test:navigation-ui, all UI suites, verify:modules, quality, smoke, integration, secrets, memory, manifest, npm audit; GitHub CI
+- Test results: All pass (finance-ui and console-ui each one intermittent timeout, passed on re-run)
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: a75e667 (fix(navigation): keep focus on the selected email folder; 40px founder theme button)
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Merge PR #54 into main (owner-authorised 2026-10-31 17:18), then owner deploys latest commit in Render

@@ -180,5 +180,8 @@
     // A file dropped outside the zone must not navigate the whole page away.
     for(const type of ['dragover','drop'])window.addEventListener(type,e=>{if(!e.target.closest?.('#migration-drop')&&e.dataTransfer?.types?.includes('Files'))e.preventDefault()});
   }
-  onView('migration',{enter(){wire();loadSchema().catch(e=>say('#migration-file-info',e.message))},leave(){clearTimeout(state.armed);state.armed=null}});
+  onView('migration',{enter(){wire();loadSchema().catch(e=>{
+    // A lapsed session leaves the record-type list empty: say why and offer a sign-in that returns here.
+    if(e.status===401){const info=$('#migration-file-info'),link=el('a',{href:'sign-in.html?next='+encodeURIComponent('#b08/import'),text:'Sign in'});link.className='primary-button compact';info.replaceChildren(document.createTextNode('Your session has ended, so the record types could not load. '),link);return}
+    say('#migration-file-info',e.message)})},leave(){clearTimeout(state.armed);state.armed=null}});
 })();

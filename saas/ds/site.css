@@ -39,7 +39,8 @@ html.sp-motion .sp-hero .sp-actions,html.sp-motion .sp-hero__note,html.sp-motion
 .sp-chat__head strong{display:block}
 .sp-chat__status{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--sp-fs-xs);color:var(--sp-fg-muted)}
 .sp-chat__avatar{position:relative;width:40px;height:40px;border-radius:12px;background:conic-gradient(from 210deg,var(--sp-cyan),var(--sp-violet),var(--sp-gold),var(--sp-cyan));padding:2px;flex:none}
-.sp-chat__avatar span{display:block;width:100%;height:100%;border-radius:10px;background:radial-gradient(circle at 35% 30%,var(--sp-graphite-3),var(--sp-midnight))}
+.sp-chat__avatar img{display:block;width:80%;height:80%}
+.sp-chat__avatar span{display:grid;place-items:center;width:100%;height:100%;border-radius:10px;background:radial-gradient(circle at 35% 30%,var(--sp-graphite-3),var(--sp-midnight))}
 .sp-chat[data-busy] .sp-chat__avatar{animation:sp-think 1.6s var(--sp-ease-in-out) infinite}
 @keyframes sp-think{50%{filter:hue-rotate(40deg) brightness(1.2)}}
 .sp-chat__log{overflow-y:auto;padding:var(--sp-5);display:grid;align-content:start;gap:var(--sp-3);scroll-behavior:smooth}
@@ -185,3 +186,12 @@ html.sp-motion .sp-line:not([hidden]){animation:sp-rise 420ms var(--sp-ease-out)
 @media (prefers-reduced-motion:reduce){
   .sp-call[data-playing] .sp-wave i,.sp-chat[data-busy] .sp-chat__avatar{animation:none}
 }
+
+/* Guide voice: read-aloud toggle in the header, microphone beside Send. */
+.sp-chat__head .sp-chat__speak{margin-left:auto}
+.sp-chat__speak,.sp-chat__mic{min-width:46px;min-height:46px;padding:0}
+.sp-chat__speak[aria-pressed=true],.sp-chat__mic[aria-pressed=true]{border-color:var(--sp-gold);color:var(--sp-gold);box-shadow:0 0 0 3px var(--sp-gold-soft)}
+.sp-chat__mic[aria-pressed=true] .sp-icon{animation:sp-mic 1s var(--sp-ease-in-out) 15}
+@keyframes sp-mic{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.sp-chat__mic[aria-pressed=true] .sp-icon{animation:none}}
+.sp-chat__voice-note{margin:0;padding:0 var(--sp-4) var(--sp-2);color:var(--sp-fg-muted);font-size:var(--sp-fs-sm,.85rem)}

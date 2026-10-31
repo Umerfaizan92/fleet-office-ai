@@ -18,6 +18,7 @@
   <symbol id="store" viewBox="0 0 24 24"><path d="M4 9 5.5 4h13L20 9M4 9h16v11H4zM4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M10 20v-5h4v5"/></symbol>
   <symbol id="megaphone" viewBox="0 0 24 24"><path d="M4 10v4h3l9 4V6L7 10z"/><path d="M7 14l1.5 5h2.5l-1-4.2M19 9.5a3.5 3.5 0 0 1 0 5"/></symbol>
   <symbol id="broom" viewBox="0 0 24 24"><path d="M14 3l-3.5 9M7 12h7l2 9H5z"/><path d="M9 16v5M12 16v5"/></symbol>
+  <symbol id="speaker" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
   <symbol id="play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
   <symbol id="pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
   <symbol id="menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>

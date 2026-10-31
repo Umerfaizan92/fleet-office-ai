@@ -154,7 +154,7 @@ export function home() {
       </ul>
     </div>
     <div class="sp-glass sp-chat" data-ai-demo data-reveal>
-      <div class="sp-chat__head"><span class="sp-chat__avatar" aria-hidden="true"><span></span></span><div><strong>Super Pro guide</strong><span class="sp-chat__status"><span class="sp-live" data-ai-live></span><span data-ai-state>Ready</span></span></div></div>
+      <div class="sp-chat__head"><span class="sp-chat__avatar" aria-hidden="true"><span><img src="/saas/superpro-mark.svg" alt="" width="30" height="30"></span></span><div><strong>Super Pro guide</strong><span class="sp-chat__status"><span class="sp-live" data-ai-live></span><span data-ai-state>Ready</span></span></div><button class="sp-btn sp-btn--quiet sp-chat__speak" type="button" data-ai-speak aria-pressed="false" aria-label="Read answers aloud" title="Read answers aloud">${icon('speaker')}</button></div>
       <div class="sp-chat__log" data-ai-log role="log" aria-live="polite" aria-relevant="additions">
         <div class="sp-msg sp-msg--ai"><p>Hello. Ask me how Super Pro would handle a missed call, a quote, a new worker or getting paid.</p></div>
       </div>
@@ -166,6 +166,7 @@ export function home() {
       <form class="sp-chat__form" data-ai-form>
         <label class="sp-visually-hidden" for="ai-q">Your question</label>
         <input id="ai-q" name="q" autocomplete="off" maxlength="400" placeholder="Ask about your business day" required>
+        <button class="sp-btn sp-btn--quiet sp-chat__mic" type="button" data-ai-mic aria-pressed="false" aria-label="Speak your question" title="Speak your question" hidden>${icon('mic')}</button>
         <button class="sp-btn sp-btn--primary" type="submit" aria-label="Send question">${icon('send')}</button>
       </form>
     </div>
@@ -424,7 +425,7 @@ ${cta('Hear it answer your own number', 'Tell us about your calls and we will se
 
 function callPlayer() {
   return `<div class="sp-stage sp-call" data-call>
-    <div class="sp-call__head"><span class="sp-chat__avatar" aria-hidden="true"><span></span></span><div><strong>Sample call</strong><span class="sp-muted sp-small">Harbour Plumbing is an example business</span></div>
+    <div class="sp-call__head"><span class="sp-chat__avatar" aria-hidden="true"><span><img src="/saas/superpro-mark.svg" alt="" width="30" height="30"></span></span><div><strong>Sample call</strong><span class="sp-muted sp-small">Harbour Plumbing is an example business</span></div>
       <button type="button" class="sp-btn sp-btn--primary" data-call-play aria-pressed="false">${icon('play')}<span>Play sample call</span></button></div>
     <div class="sp-wave" aria-hidden="true">${Array.from({ length: 28 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
     <ol class="sp-call__lines" data-call-lines aria-live="polite" tabindex="0" aria-label="Call transcript">

@@ -26,3 +26,45 @@ The clean checkout did not contain historical PNG baselines. Local navigation sc
 Operational findings remain separate: live daily-backup readiness, tenant channel activation, Google measured-data connections and GST-setting reconciliation need their own production verification. This navigation change does not represent those services as activated or repaired.
 
 Source publication is pending explicit authorisation after automatic approval review rejected the remote recovery push. Local commits and a recovery bundle are prepared for review; merging and deploying remain separate steps.
+
+## Claude re-verification, 2026-10-31
+
+Environment: Node 22.23.4, Playwright 1.62.1 with **its own pinned Chromium**, so the Chromium 153 limitation above no
+longer applies. GitHub CI on `f95edb6` also passed: verify, recovered-release-ui, CodeQL, dependency review.
+
+Defects found and fixed:
+1. **Unsaved-change warning never cleared.** Nothing emitted `superpro:form-saved`, so any form that keeps its values
+   after a successful save warned again on navigation.
+   - `navigation-shell.js` now ties requests started by a form submit to that form. Only when all of them succeed do the
+     submitted values become the new baseline.
+   - Failed saves keep the warning; later edits warn again; nothing goes to browser storage.
+   - Regression check added to `test:navigation-ui`.
+2. **Navigation coverage could shrink silently.** On a slower machine the suite reported 544 and then 525 checks
+   instead of 575, because sections render after content loads.
+   - The test now waits for every section listed in SECTIONS.md (46 routes, 187 sections, including nested ones).
+   - It fails if any is missing at either width.
+   - Result: 576 checks, identical on two consecutive runs.
+
+Results on the final tree:
+- `npm test`: 73/73.
+- `test:navigation-ui`: 576.
+- `test:ui`: 34. `test:pipeline-ui`: 15. `test:console-ui`: 16. `test:automations-ui`: 11. `test:seo-ui`: 11.
+  `test:comms-ui`: 10. `test:finance-ui`: 11. `test:reliability-ui`: 7.
+- `verify:modules`: 66 modules, 0 problems.
+- quality, smoke, integration, secrets, memory and manifest: pass.
+- `npm audit`: 0.
+
+`test:console-ui` failed once inside a long run and passed 16/16 when re-run, with and without the fix. It is recorded as
+an intermittent timing issue.
+
+Inspected visual changes:
+- The 12 changed portal screens against pre-navigation local baselines are the intended sidebar and section layout.
+- Pre-existing, outside this release: the floating "Office chat" and "Ask Super Pro" buttons can cover content near the
+  bottom of the viewport.
+- New follow-up: on a 390 px phone, the Founder Console header button row clips its last button.
+
+Not completed under this pass:
+- A per-item functional inventory (function, evidence, status for every control on all 94 pages).
+- Dedicated 768 and 1024 px and light-theme screenshot review of every page.
+- Email-folder focus retention.
+These remain open under T-066.

@@ -147,3 +147,10 @@ T-062 historical stop-before-deploy instruction is superseded operationally by t
 - Requirement: Automatic approval review rejected the earlier source push because export permission was not explicit. The implementation is complete locally. Ask the owner to authorize publishing this source branch to the existing public GitHub repository and opening a draft PR. Do not bypass the rejection through another connector. No deployment authorization is included.
 - Files: codex/navigation-hierarchy-20261031; docs/navigation; repository project memory
 - Acceptance: After explicit authorization, push only the reviewed feature branch and create a draft PR using the prepared description; verify branch contents and report the PR URL. No merge or production deploy.
+
+## T-066 Navigation audit, unsaved-form save acknowledgement and release prep
+- Status: IN_PROGRESS
+- Added: 2026-10-31
+- Requirement: Owner prompts 2026-10-31: audit restored navigation (60 business, 34 founder pages), fix reproducible defects incl. superpro:form-saved never emitted, re-run checks with pinned browser, prepare release; no merge/deploy without authorisation
+- Files: saas/navigation-shell.js, scripts/test-navigation-ui.mjs
+- Acceptance: Full suite incl. test:navigation-ui passes on the final commit; CI green on PR #54

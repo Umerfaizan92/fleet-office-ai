@@ -759,3 +759,31 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Ask owner to authorize publication of the completed local candidate; after authorization recheck main, push reviewed feature branch and open draft PR. Do not merge or deploy.
+
+## CP-055 2026-10-31T16:33:58+08:00 T-066 IN_PROGRESS
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (IN_PROGRESS)
+- Completed steps: Restored bundle (f95edb6), pushed branch and opened draft PR #54 (owner authorised); CI green on f95edb6. Found superpro:form-saved is never emitted; added submit/fetch save acknowledgement in navigation-shell.js and a regression check in test-navigation-ui.mjs (untested)
+- Incomplete steps: Re-run test:navigation-ui and the full suite on the fix; commit; push; update VALIDATION.md and the PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; saas/navigation-shell.js; scripts/test-navigation-ui.mjs
+- Tests executed: none
+- Test results: none
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: f95edb6 (docs(memory): save verified navigation handover and publication gate)
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T083358Z (031a21b)
+- Known errors: none
+- Next exact action: When suite b9x804bad finishes, run npm run test:navigation-ui alone and check results
+
+## CP-056 2026-10-31T17:13:49+08:00 T-066 IN_PROGRESS
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (IN_PROGRESS)
+- Completed steps: Fixed unsaved-form save acknowledgement and navigation coverage robustness; full re-verification passed (npm test 73/73, navigation 576, all UI suites, 66 modules); pushed to PR #54
+- Incomplete steps: Per-item functional inventory for 94 pages; 768/1024 px and light-theme review; email-folder focus; founder 390 px header clip; floating widgets overlap; then T-065 PR review and owner-approved merge/deploy
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; SHA256SUMS.txt; docs/navigation/VALIDATION.md; qa/reports/modules.json
+- Tests executed: npm test, test:navigation-ui, test:ui, pipeline, console, automations, seo, comms, finance, reliability, verify:modules, quality, smoke, integration, secrets, memory, manifest
+- Test results: All pass; console-ui once intermittent then 16/16
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 10e628c (fix(navigation): clear unsaved-change warning only after a successful save); 1 commit(s) not on origin/codex/navigation-hierarchy-20261031
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Check CI on PR #54 for the new head; then continue the open T-066 items

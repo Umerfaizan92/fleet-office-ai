@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T07:23:47.576Z",
+  "generated_at": "2026-10-31T09:10:55.101Z",
   "subscriber": [
     {
       "module": "Dashboard",
@@ -1455,7 +1455,7 @@
           "390": {
             "view": "seocentre-view",
             "heading": "SEO Command Centre",
-            "controls": 6,
+            "controls": 9,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1463,7 +1463,7 @@
           "1440": {
             "view": "seocentre-view",
             "heading": "SEO Command Centre",
-            "controls": 6,
+            "controls": 9,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1623,7 +1623,7 @@
           "390": {
             "view": "seolocal-view",
             "heading": "Local SEO",
-            "controls": 0,
+            "controls": 3,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1631,7 +1631,7 @@
           "1440": {
             "view": "seolocal-view",
             "heading": "Local SEO",
-            "controls": 0,
+            "controls": 3,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1898,7 +1898,7 @@
           "390": {
             "view": "voiceflow-view",
             "heading": "Call Handling",
-            "controls": 6,
+            "controls": 9,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1906,7 +1906,7 @@
           "1440": {
             "view": "voiceflow-view",
             "heading": "Call Handling",
-            "controls": 6,
+            "controls": 9,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1936,7 +1936,7 @@
           "390": {
             "view": "campaignstudio-view",
             "heading": "Campaign Studio",
-            "controls": 19,
+            "controls": 21,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1944,7 +1944,7 @@
           "1440": {
             "view": "campaignstudio-view",
             "heading": "Campaign Studio",
-            "controls": 19,
+            "controls": 21,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1955,7 +1955,7 @@
           "390": {
             "view": "consent-view",
             "heading": "Consent & Unsubscribes",
-            "controls": 9,
+            "controls": 11,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1963,7 +1963,7 @@
           "1440": {
             "view": "consent-view",
             "heading": "Consent & Unsubscribes",
-            "controls": 9,
+            "controls": 11,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1998,7 +1998,7 @@
           "390": {
             "view": "finsales-view",
             "heading": "Quotes & Invoices",
-            "controls": 14,
+            "controls": 16,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2006,7 +2006,7 @@
           "1440": {
             "view": "finsales-view",
             "heading": "Quotes & Invoices",
-            "controls": 14,
+            "controls": 16,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2046,7 +2046,7 @@
           "390": {
             "view": "finpayments-view",
             "heading": "Payments & Refunds",
-            "controls": 0,
+            "controls": 2,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2054,7 +2054,7 @@
           "1440": {
             "view": "finpayments-view",
             "heading": "Payments & Refunds",
-            "controls": 0,
+            "controls": 2,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2089,7 +2089,7 @@
           "390": {
             "view": "finreconcile-view",
             "heading": "Bank Reconciliation",
-            "controls": 2,
+            "controls": 4,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2097,7 +2097,7 @@
           "1440": {
             "view": "finreconcile-view",
             "heading": "Bank Reconciliation",
-            "controls": 2,
+            "controls": 4,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2127,7 +2127,7 @@
           "390": {
             "view": "finreports-view",
             "heading": "Reports & GST",
-            "controls": 5,
+            "controls": 10,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2135,7 +2135,7 @@
           "1440": {
             "view": "finreports-view",
             "heading": "Reports & GST",
-            "controls": 5,
+            "controls": 10,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2180,7 +2180,7 @@
           "390": {
             "view": "fincompliance-view",
             "heading": "Finance Settings & Compliance",
-            "controls": 16,
+            "controls": 20,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2188,7 +2188,7 @@
           "1440": {
             "view": "fincompliance-view",
             "heading": "Finance Settings & Compliance",
-            "controls": 16,
+            "controls": 20,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2228,7 +2228,7 @@
           "390": {
             "view": "finplan-view",
             "heading": "Change Plan",
-            "controls": 2,
+            "controls": 4,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2236,7 +2236,7 @@
           "1440": {
             "view": "finplan-view",
             "heading": "Change Plan",
-            "controls": 2,
+            "controls": 4,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2266,14 +2266,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d0ba9efd-6577-4223-b198-c6df8e63b20dAccount details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d0ba9efd-6577-4223-b198-c6df8e63b20dAccount details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2301,14 +2301,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d0ba9efd-6577-4223-b198-c6df8e63b20dAccount details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing d0ba9efd-6577-4223-b198-c6df8e63b20dAccount details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2353,14 +2353,14 @@
         },
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2481,14 +2481,14 @@
       "routes": [
         {
           "390": {
-            "text": "Server running for 2 min Node v22.23.4 Memory in use 116 MB Heap 32 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 2 min Node v22.23.4 Memory in use 122 MB Heap 32 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 115 MB Heap 31 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 121 MB Heap 31 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2522,14 +2522,14 @@
       "routes": [
         {
           "390": {
-            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Not run Technica",
+            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Google Scheduled",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Not run Technica",
+            "text": "Command Centre Technical Audit Keyword Clusters Google Content Studio Website Builder Analytics Reports Google Scheduled",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2677,14 +2677,14 @@
       "routes": [
         {
           "390": {
-            "text": "New prospect crm Title Details Save record",
+            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New prospect crm Title Details Save record",
+            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2694,14 +2694,14 @@
         },
         {
           "390": {
-            "text": "New campaign drafts Title Details Save record",
+            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New campaign drafts Title Details Save record",
+            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2711,14 +2711,14 @@
         },
         {
           "390": {
-            "text": "New content drafts Title Details Save record",
+            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New content drafts Title Details Save record",
+            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2787,14 +2787,14 @@
       "routes": [
         {
           "390": {
-            "text": "New tickets Title Details Save record",
+            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New tickets Title Details Save record",
+            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2844,14 +2844,14 @@
       "routes": [
         {
           "390": {
-            "text": "access.read founder · security · 2026-10-31T07:26:02.357Z",
+            "text": "access.read founder · security · 2026-10-31T09:13:12.853Z access.read founder · support · 2026-10-31T09:13:11.829Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "access.read founder · security · 2026-10-31T07:25:37.952Z",
+            "text": "access.read founder · security · 2026-10-31T09:12:47.806Z access.read founder · support · 2026-10-31T09:12:46.795Z acces",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2880,14 +2880,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2973,14 +2973,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:42929 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -3025,14 +3025,14 @@
       "routes": [
         {
           "390": {
-            "text": "Communications overview Business customer conversations are private to each business and are not shown here. Measure Cou",
+            "text": "Communications overview New campaign Super Pro newsletter campaigns Communications overview Business customer conversati",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Communications overview Business customer conversations are private to each business and are not shown here. Measure Cou",
+            "text": "Communications overview New campaign Super Pro newsletter campaigns Communications overview Business customer conversati",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -3066,14 +3066,14 @@
       "routes": [
         {
           "390": {
-            "text": "Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.00 Invoiced, unpaid 0 invoice(s) 0 Failed payments Month Collec",
+            "text": "Revenue Plans and prices Renewals and trials Payment problems Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.0",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.00 Invoiced, unpaid 0 invoice(s) 0 Failed payments Month Collec",
+            "text": "Revenue Plans and prices Renewals and trials Payment problems Revenue $0.00 Monthly recurring $0.00 Annual run rate $0.0",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],

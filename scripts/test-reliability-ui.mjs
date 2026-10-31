@@ -46,6 +46,7 @@ try {
 
   await check('Backups: back up now, test the restore, back up configuration', async () => {
     const v = await open();
+    await p.getByRole('tab', {name:'Backups',exact:true}).click();
     await v.getByRole('button', { name: 'Back up now' }).click(); await said(/Snapshot saved/);
     await v.getByRole('button', { name: 'Test a restore' }).click(); await said(/Restore test passed/);
     await v.getByRole('button', { name: 'Back up configuration' }).click(); await said(/Configuration backed up/);
@@ -60,16 +61,20 @@ try {
     for (let i = 0; i < 10; i++) sql("INSERT INTO background_jobs (id,type,payload_json,status,attempts,max_attempts,run_at,last_error,created_at,updated_at) VALUES (?,'demo.permanent','{}','dead',5,5,?,'Invalid record',?,?)", crypto.randomUUID(), now, now, now);
     let v = await open();
     await v.getByRole('button', { name: 'Run checks now' }).click(); await said(/Checks finished/);
+    await p.getByRole('tab', {name:/^Alerts \(/}).click();
     v = p.locator('#console-content');
     const row = v.getByRole('row', { name: /Background jobs: failing/ });
     await row.getByRole('button', { name: 'Acknowledge' }).click(); await said(/Alert acknowledged/);
     await v.getByRole('row', { name: /Background jobs: failing/ }).getByRole('button', { name: 'Resolve' }).click(); await said(/Alert resolved/);
+    await p.getByRole('tab', {name:/^Alerts \(/}).locator(':scope[aria-selected=true]').waitFor();
   });
 
   await check('Self-healing and approval-only actions', async () => {
     const v = await open();
+    await p.getByRole('tab', {name:'Self-healing',exact:true}).click();
     await v.getByRole('button', { name: 'Run self-healing now' }).click(); await said(/action\(s\) recorded/);
     await v.getByText('Left for a person').first().waitFor();
+    await p.getByRole('tab', {name:/^Needs approval:/}).click();
     await v.getByLabel('Action needing approval').selectOption('production_rollback');
     await v.getByLabel('What should be done and why').fill('Roll back to the deploy before the broken invoice change');
     await v.getByRole('button', { name: 'Request approval' }).click(); await said(/Sent for approval/);
@@ -78,6 +83,7 @@ try {
 
   await check('Daily summary is saved (and emailed when an operator email is set)', async () => {
     const v = await open();
+    await p.getByRole('tab', {name:'Daily summaries',exact:true}).click();
     await v.getByRole('button', { name: "Send today's summary now" }).click(); await said(/Summary saved/);
     assert.equal(sql('SELECT COUNT(*) n FROM reliability_summaries')[0].n, 1);
   });

@@ -113,22 +113,20 @@ try{
     }
     await page.setViewportSize({width:1440,height:900});
   });
-  await check('nine main sections use an expanding icon rail and separate top subtabs',async()=>{
-    const rail=page.locator('#workspace .portal-rail');assert.equal(await rail.locator('nav [data-domain]').count(),9);
-    await rail.locator(':focus').evaluateAll(es=>es.forEach(e=>e.blur()));await page.mouse.move(1400,700);await page.waitForFunction(()=>document.querySelector('#workspace .portal-rail').getBoundingClientRect().width<69);assert.ok((await rail.boundingBox()).width<=69,JSON.stringify(await rail.evaluate(e=>({width:e.getBoundingClientRect().width,hover:e.matches(':hover'),focus:e.matches(':focus-within'),expanded:e.dataset.expanded,active:document.activeElement?.outerHTML?.slice(0,300),computed:getComputedStyle(e).width,variable:getComputedStyle(e).getPropertyValue('--portal-rail')}))));
-    await rail.hover();await page.waitForFunction(()=>document.querySelector('#workspace .portal-rail').getBoundingClientRect().width>=250);assert.ok((await rail.boundingBox()).width>=250);
-    await rail.locator('[data-domain=b03]').click();await page.locator('#workforce-view').waitFor({state:'visible'});
-    assert.ok(await page.locator('.portal-subtabs [data-jump=team]').isVisible());await page.locator('.portal-subtabs [data-jump=team]').click();assert.ok(await page.locator('#team-view').isVisible());
-    await page.keyboard.press('Escape');await page.mouse.move(1400,700);
+  await check('nine groups contain nested submenu pages and selected state',async()=>{
+    const rail=page.locator('#business-navigation'); assert.equal(await rail.locator('[data-domain]').count(),9); assert.equal(await rail.locator('.navigation-page').count(),60);
+    await rail.locator('[data-domain=b03]').click(); await rail.locator('[data-nav-page=team]').click(); await page.locator('#team-view').waitFor({state:'visible'});
+    assert.equal(await rail.locator('[data-nav-page=team]').getAttribute('aria-current'),'page'); assert.equal(await page.locator('.portal-subtabs [data-jump]').count(),0);
   });
-  await check('rail preserves keyboard focus and supports touch without hover',async()=>{
-    await page.locator('.portal-rail [aria-label="Expand main navigation"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('#workspace .portal-rail').getAttribute('data-expanded'),'false');
-    const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.locator('.portal-rail [data-domain=b08]').tap();await p.locator('.portal-subtabs [data-jump=manual]').tap();await p.locator('#manual-view').waitFor({state:'visible'});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}finally{await touch.close()}
+  await check('nested navigation supports keyboard and a mobile drawer',async()=>{
+    await page.getByRole('button',{name:'Collapse navigation',exact:true}).click(); assert.equal(await page.locator('#business-navigation').getAttribute('data-compact'),'true');
+    await page.getByRole('button',{name:'Expand navigation',exact:true}).focus(); await page.keyboard.press('Enter'); assert.equal(await page.locator('#business-navigation').getAttribute('data-compact'),'false');
+    const touch=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844},storageState:await context.storageState()});try{const p=await touch.newPage();await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.getByRole('button',{name:'☰ Menu',exact:true}).tap();await p.locator('#business-navigation [data-domain=b08]').tap();await p.locator('[data-nav-page=manual]').tap();await p.locator('#manual-view').waitFor({state:'visible'});assert.equal(await p.locator('#business-navigation').getAttribute('data-drawer'),'false');assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}finally{await touch.close()}
   });
   await check('live update notice stays clear of the folded rail on phones and tablets',async()=>{
     const p=await context.newPage();try{await p.goto(base+'/saas/workspace.html');await p.locator('#workspace').waitFor({state:'visible'});await p.locator('#gds-live-toasts').waitFor({state:'attached'});
       await p.evaluate(()=>{document.querySelector('#gds-live-toasts').innerHTML='<div class="gds-live-toast success show"><span>✓</span><div><b>Live update</b><small>Notice geometry check</small></div></div>'});
-      for(const width of [390,700,768,1440]){await p.setViewportSize({width,height:844});await p.mouse.move(width-4,600);await p.waitForFunction(()=>document.querySelector('.portal-rail').getBoundingClientRect().width<=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--portal-rail'))+.5);
+      for(const width of [390,700,768,1440]){await p.setViewportSize({width,height:844});await p.mouse.move(width-4,600);await p.waitForFunction(()=>!document.body.classList.contains('navigation-drawer-open'));
         const g=await p.evaluate(()=>{const n=document.querySelector('#gds-live-toasts .gds-live-toast').getBoundingClientRect(),r=document.querySelector('.portal-rail').getBoundingClientRect();return{left:n.left,right:n.right,railRight:r.right,vw:innerWidth}});
         assert.ok(g.left>=g.railRight,'notice under rail at '+width+': '+JSON.stringify(g));assert.ok(g.right<=g.vw,'notice off screen at '+width+': '+JSON.stringify(g))}
     }finally{await p.close()}
@@ -191,7 +189,7 @@ try{
       await page.setViewportSize({width,height:1200});
       for(const view of ['finance','billing','onboarding','exports']){
         await page.evaluate(view=>location.hash=view,view);await page.locator('#'+view+'-view').waitFor({state:'visible'});await page.waitForTimeout(180);
-        if(view==='billing'){const select=page.locator('#billing-view .focus-navigation select');for(const label of ['Payment connections','Usage & add-ons']){await select.selectOption({label});await page.waitForTimeout(150);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'billing-'+label.replaceAll(' ','-')+'-'+width)}}
+        if(view==='billing'){for(const label of ['Payment connections','Usage & add-ons']){await page.locator('#billing-view').getByRole('tab',{name:label,exact:true}).click();await page.waitForTimeout(150);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'billing-'+label.replaceAll(' ','-')+'-'+width)}}
         if(view==='exports'){assert.ok(await page.locator('#export-backup').isVisible());const backup=await page.locator('.export-backup').boundingBox(),grid=await page.locator('.export-grid').boundingBox();assert.ok(backup.width>=grid.width-2)}
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),view+' '+width);await screenshot(page,view+'-organised-'+width);
       }
@@ -290,10 +288,10 @@ try{
   await page.emulateMedia({reducedMotion:'reduce'});await check('reduced motion disables decorative animation',async()=>assert.equal(await page.locator('.sp-logo').first().evaluate(e=>getComputedStyle(e).animationName),'none'));
   await page.setViewportSize({width:390,height:900});
   page.on('response',r=>{if(r.url().startsWith(base+'/api/admin/')&&r.status()>=400)failedFounderRequests.push(r.status()+' '+new URL(r.url()).pathname)});
-  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-link-label').waitFor({state:'visible'});await page.locator('input[name=link_workspace]').check();await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#console-nav [data-section]').first().waitFor();
-  await check('founder uses nine isolated sections and their top tabs',async()=>{
+  await page.goto(base+'/saas/sign-in.html#operator');await page.locator('#operator-form input[name=key]').fill(adminKey);await page.locator('#operator-link-label').waitFor({state:'visible'});await page.locator('input[name=link_workspace]').check();await page.locator('#operator-form button[type=submit]').click();await page.waitForURL(base+'/office/');await page.locator('#console-nav [data-section]').first().waitFor({state:'attached'});
+  await check('founder uses nine isolated groups and nested pages',async()=>{
     assert.equal(await page.locator('#console-nav [data-section]').count(),9);
-    for(const section of ['f01','f02','f03','f04','f05','f06','f07','f08','f09']){await page.evaluate(h=>location.hash=h,section);await page.waitForTimeout(120);assert.ok(await page.locator('#console-tabs button').count()>0);assert.equal(await page.locator('#console-content').getByText('Action unavailable',{exact:true}).count(),0,section)}
+    for(const section of ['f01','f02','f03','f04','f05','f06','f07','f08','f09']){await page.evaluate(h=>location.hash=h,section);await page.waitForTimeout(120);assert.ok(await page.locator('#console-nav .navigation-page').count()>0);assert.equal(await page.locator('#console-content').getByText('Action unavailable',{exact:true}).count(),0,section)}
     await page.evaluate(()=>location.hash='f01');await screenshot(page,'founder-mobile');await page.setViewportSize({width:1440,height:1000});await screenshot(page,'founder-desktop');
   });
   await check('founder API requests succeed across all sections',async()=>assert.deepEqual(failedFounderRequests,[]));

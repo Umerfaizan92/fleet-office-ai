@@ -126,7 +126,8 @@
   let me,
     current,
     tab,
-    sequence = 0;
+    sequence = 0,
+    navigation;
   const key = () => sessionStorage.getItem("fp-admin-key") || "";
   const api = async (url, opt = {}) => {
     const r = await fetch(url, {
@@ -211,7 +212,7 @@
   }
   async function show() {
     const seq = ++sequence,
-      hash = decodeURIComponent(location.hash.slice(1)).split("/"),
+      hash = decodeURIComponent(location.hash.slice(1).split("?")[0]).split("/"),
       visible = definitions.filter((d) => can(d[1]));
     current = visible.find((d) => d[0] === hash[0]) || visible[0];
     if (!current) {
@@ -221,25 +222,16 @@
     tab =
       current[4].find((t) => t[0] === hash.slice(1).join("/")) || current[4][0];
     $("#console-title").textContent = current[2];
-    $("#console-tabs").replaceChildren(
-      ...current[4].map((t) => {
-        const b = button(t[1], () => navigate(current, t[0]));
-        if (t === tab) b.setAttribute("aria-current", "page");
-        return b;
-      }),
-    );
-    $("#console-nav")
-      .querySelectorAll("[data-section]")
-      .forEach((b) => {
-        if (b.dataset.section === current[0])
-          b.setAttribute("aria-current", "page");
-        else b.removeAttribute("aria-current");
-      });
+    navigation?.setActive(current[0] + '/' + tab[0]);
+    const crumb = document.getElementById('console-breadcrumb');
+    if (crumb) crumb.textContent = current[2] + ' / ' + tab[1];
+    window.SuperProPageSections.dispose(document.getElementById('console-content'));
     const host = $("#console-content");
     host.replaceChildren(el("p", "portal-note", "Loading…"));
     notify("");
     try {
       const route = tab[0];
+      host.dataset.navigationRoute = route;
       let d;
       if (route === "mail") {
         host.replaceChildren();
@@ -704,21 +696,20 @@
     me = d.user;
     $("#console-role").textContent = me.name + " · " + me.role;
     const nav = $("#console-nav");
-    for (const def of definitions.filter((d) => can(d[1]))) {
-      const b = button("", () => navigate(def));
-      b.className = "portal-main-button";
-      b.dataset.section = def[0];
-      b.setAttribute("aria-label", def[2]);
-      b.innerHTML = `<span class="portal-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="${paths[def[3]]}"></path></svg></span>`;
-      b.append(el("span", "", def[2]));
-      nav.append(b);
-    }
-    $("#console-search").oninput = (e) => {
-      const q = e.target.value.toLowerCase();
-      nav
-        .querySelectorAll("button")
-        .forEach((b) => (b.hidden = !b.textContent.toLowerCase().includes(q)));
-    };
+    navigation = new window.SuperProNavigation.Navigation({
+      rail: document.getElementById('console-rail'), toggle: document.getElementById('rail-toggle'),
+      triggerHost: document.querySelector('.portal-topbar'), key: 'sp-nav:founder:' + (me.id || me.name),
+      background: [document.querySelector('body > div'), document.getElementById('console-main')]
+    });
+    navigation.setGroups(definitions.filter(d => can(d[1])).map(d => ({
+      id: d[0], label: d[2], attribute: 'data-section', icon: () => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), path = document.createElementNS(svg.namespaceURI, 'path');
+        svg.setAttribute('viewBox', '0 0 24 24'); path.setAttribute('d', paths[d[3]]); svg.append(path); return svg;
+      }, pages: d[4].map(t => ({ id: d[0] + '/' + t[0], path: d[0] + '/' + t[0], label: t[1] }))
+    })));
+    const crumb = el('nav', 'navigation-breadcrumb'); crumb.id = 'console-breadcrumb'; crumb.setAttribute('aria-label', 'Breadcrumb'); document.getElementById('console-title').before(crumb);
+    window.addEventListener('superpro:sectionchange', e => { crumb.textContent = current[2] + ' / ' + tab[1] + (e.detail.label ? ' / ' + e.detail.label : ''); });
+    $("#console-search").oninput = e => navigation.search(e.target.value);
     $("#console-logout").onclick = async () => {
       try {
         await api("/api/operator/logout", { method: "POST", body: "{}" });
@@ -726,10 +717,6 @@
         sessionStorage.removeItem("fp-admin-key");
         location.replace("/saas/operator-sign-in.html");
       }
-    };
-    $("#rail-toggle").onclick = () => {
-      const rail = $("#console-rail");
-      rail.dataset.expanded = String(rail.dataset.expanded !== "true");
     };
     $("#console-live").onclick = () => show();
     $("#console-update").onclick = () => {
@@ -777,7 +764,13 @@
     };
     document.documentElement.dataset.theme =
       localStorage.getItem("foai-theme") || "dark";
-    window.addEventListener("hashchange", show);
+    const restoreLocation = () => {
+      const route = location.hash.slice(1).split('?')[0];
+      if (!current || !tab || route !== current[0] + '/' + tab[0]) show();
+      else window.SuperProPageSections.restore();
+    };
+    window.addEventListener('hashchange', restoreLocation);
+    window.addEventListener('popstate', restoreLocation);
     await show();
   }
   boot().catch((e) => notify(e.message));

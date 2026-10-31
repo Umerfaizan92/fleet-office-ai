@@ -1,0 +1,130 @@
+{
+  "widths": [
+    390,
+    768,
+    1440
+  ],
+  "tolerance": 0.003,
+  "results": [
+    {
+      "name": "workspace-today-390",
+      "page": "/saas/workspace.html",
+      "width": 390,
+      "status": "same",
+      "ratio": 0.000027065527065527066,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-today-768",
+      "page": "/saas/workspace.html",
+      "width": 768,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-today-1440",
+      "page": "/saas/workspace.html",
+      "width": 1440,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-customers-390",
+      "page": "/saas/workspace.html#customers",
+      "width": 390,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-customers-768",
+      "page": "/saas/workspace.html#customers",
+      "width": 768,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-customers-1440",
+      "page": "/saas/workspace.html#customers",
+      "width": 1440,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-money-390",
+      "page": "/saas/workspace.html#money",
+      "width": 390,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-money-768",
+      "page": "/saas/workspace.html#money",
+      "width": 768,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "workspace-money-1440",
+      "page": "/saas/workspace.html#money",
+      "width": 1440,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "founder-console-390",
+      "page": "/office/",
+      "width": 390,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "founder-console-768",
+      "page": "/office/",
+      "width": 768,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    },
+    {
+      "name": "founder-console-1440",
+      "page": "/office/",
+      "width": 1440,
+      "status": "same",
+      "ratio": 0,
+      "sidewaysScroll": false,
+      "overflow": [],
+      "errors": []
+    }
+  ]
+}

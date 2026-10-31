@@ -183,6 +183,7 @@ try {
     await p.evaluate(() => { location.hash = 'f07/platform/automation'; });
     const v = p.locator('#console-content');
     await v.getByText('Emergency pause').waitFor();
+    await p.getByRole('tab', { name: 'Platform automations', exact: true }).click();
     await v.locator('.cp-new summary').click();
     await v.locator('.cp-new select').selectOption('monitor_health');
     await v.locator('.cp-new input').fill('Hourly health check');
@@ -197,12 +198,15 @@ try {
     await v.getByText('Automation saved').waitFor();
     await v.locator('tr', { hasText: 'Deploy to production' }).getByRole('button', { name: 'Run now' }).click();
     const ap = v.locator('.cp-approval', { hasText: 'Deploy to production' });
+    await p.getByRole('tab', { name: 'Waiting for your approval', exact: true }).click();
     await ap.waitFor();
     await ap.getByRole('button', { name: 'Approve' }).click();
     await v.getByText('Approved.').waitFor();
-    for (let i = 0; i < 20 && !(await v.locator('tr', { hasText: 'Approved: a person must finish it' }).count() || await v.getByRole('button', { name: 'Mark done' }).count()); i++) { await p.waitForTimeout(150); await p.evaluate(() => { location.hash = 'f07/platform/automation?' + Date.now(); location.hash = 'f07/platform/automation'; }); await v.getByText('Emergency pause').waitFor(); }
+    await p.getByRole('tab', { name: 'Recent runs', exact: true }).click();
+    for (let i = 0; i < 20 && !(await v.locator('tr', { hasText: 'Approved: a person must finish it' }).count() || await v.getByRole('button', { name: 'Mark done' }).count()); i++) { await p.waitForTimeout(150); await p.reload(); await p.getByRole('tab', { name: 'Recent runs', exact: true }).click(); }
     await v.getByRole('button', { name: 'Mark done' }).click();
     await v.getByText('Marked done.').waitFor();
+    await p.getByRole('tab', { name: 'Emergency pause', exact: true }).click();
     await v.getByRole('button', { name: 'Pause all automations' }).click();
     await v.getByText(/All automations on the platform are paused/).waitFor();
     if (shots) await p.screenshot({ path: shots + '/founder.png', fullPage: true });

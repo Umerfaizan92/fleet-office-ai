@@ -57,6 +57,13 @@
         select.append(o);
       }
       select.setAttribute("aria-label", "Email folder");
+      select.hidden = true;
+      const folders = el('div', 'context-section-tabs'); folders.setAttribute('role', 'tablist'); folders.setAttribute('aria-label', 'Email folders');
+      for (const option of select.options) {
+        const b = this.button(option.textContent, () => { this.folder = option.value; return this.render(); });
+        b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(option.value === this.folder)); b.dataset.sectionKey = option.value; folders.append(b);
+      }
+      this.host.append(folders);
       select.onchange = () => {
         this.folder = select.value;
         this.render();

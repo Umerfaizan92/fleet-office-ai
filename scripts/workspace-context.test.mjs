@@ -42,19 +42,12 @@ test('compact setup exposes one panel and reveals invalid fields with keyboard n
  assert.deepEqual(panels.map(p=>p.hidden),[true,true,true,false]);
 });
 
-test('focused sections preserve forms, expose invalid fields and respect hidden role panels',()=>{
+test('focused pages delegate original panels and configuration to the shared section controller',()=>{
  const source=readFileSync(new URL('../saas/focused-workspace.js',import.meta.url),'utf8');
- function element(tag='div'){
-  const classes=new Set();return {tag,children:[],handlers:{},attributes:{},hidden:false,textContent:'',classList:{add:x=>classes.add(x),toggle:(x,on)=>on?classes.add(x):classes.delete(x),contains:x=>classes.has(x)},
-   append(...items){for(const item of items){this.children.push(item);item.parentElement=this}},setAttribute(k,v){this.attributes[k]=v},addEventListener(k,fn){this.handlers[k]=fn},contains(item){return item===this||this.children.some(child=>child.contains(item))},get options(){return this.children},after(item){this.parentElement.append(item)},prepend(item){this.append(item)}};
- }
- const view=element(),heading=element(),container=element(),first=element(),second=element(),input=element('input');view.id='test-view';first.id='first';second.id='second';input.value='unsaved work';view.append(heading,container);container.append(first,second);first.append(input);
- first.querySelector=()=>({textContent:'Form'});second.querySelector=()=>({textContent:'Records'});view.querySelectorAll=()=>[first,second];view.querySelector=()=>heading;
- const observers=[];const context={document:{createElement:element},MutationObserver:class{constructor(callback){this.callback=callback;observers.push(this)}observe(){}}};
- vm.runInNewContext(source.slice(source.indexOf('  function installSections('),source.indexOf('  function paginate(')),context);context.installSections(view,{selector:'test',preferred:'Records'});
- const nav=view.children.at(-1),select=nav.children[0].children[0];assert.equal(first.classList.contains('focus-inactive'),true);assert.equal(second.classList.contains('focus-inactive'),false);
- view.handlers['superpro:reveal-section']({target:input});assert.equal(first.classList.contains('focus-inactive'),false);assert.equal(input.value,'unsaved work');assert.equal(first.children[0],input);
- first.hidden=true;observers[0].callback();assert.equal(select.options[0].disabled,true);assert.equal(second.classList.contains('focus-inactive'),false);
+ const panels=[{id:'first'},{id:'second'}], config={selector:'existing-panels',preferred:'Records'}, view={querySelectorAll:()=>panels};let received;
+ const context={window:{SuperProPageSections:{install:(...args)=>received=args}}};
+ vm.runInNewContext(source.slice(source.indexOf('  function installSections('),source.indexOf('  function paginate(')),context); context.installSections(view,config);
+ assert.equal(received[0],view);assert.equal(received[1][0],panels[0]);assert.equal(received[1][1],panels[1]);assert.equal(received[2],config);
 });
 
 test('record pagination preserves its page for nested controls and resets for replaced results',()=>{

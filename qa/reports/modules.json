@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T18:36:45.839Z",
+  "generated_at": "2026-10-31T07:23:47.576Z",
   "subscriber": [
     {
       "module": "Dashboard",
@@ -8,7 +8,7 @@
           "390": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -16,7 +16,7 @@
           "1440": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -547,7 +547,7 @@
           "390": {
             "view": "mail-view",
             "heading": "Email Centre",
-            "controls": 4,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -555,7 +555,7 @@
           "1440": {
             "view": "mail-view",
             "heading": "Email Centre",
-            "controls": 4,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -872,7 +872,7 @@
           "390": {
             "view": "video-view",
             "heading": "Turn field media into polished content",
-            "controls": 41,
+            "controls": 44,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -880,7 +880,7 @@
           "1440": {
             "view": "video-view",
             "heading": "Turn field media into polished content",
-            "controls": 41,
+            "controls": 44,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1064,7 +1064,7 @@
           "390": {
             "view": "video-view",
             "heading": "Turn field media into polished content",
-            "controls": 41,
+            "controls": 44,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1072,7 +1072,7 @@
           "1440": {
             "view": "video-view",
             "heading": "Turn field media into polished content",
-            "controls": 41,
+            "controls": 44,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1083,7 +1083,7 @@
           "390": {
             "view": "exports-view",
             "heading": "Print and export hub",
-            "controls": 10,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1091,7 +1091,7 @@
           "1440": {
             "view": "exports-view",
             "heading": "Print and export hub",
-            "controls": 10,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1144,7 +1144,7 @@
           "390": {
             "view": "exports-view",
             "heading": "Print and export hub",
-            "controls": 10,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1152,7 +1152,7 @@
           "1440": {
             "view": "exports-view",
             "heading": "Print and export hub",
-            "controls": 10,
+            "controls": 14,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1200,7 +1200,7 @@
           "390": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1208,7 +1208,7 @@
           "1440": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1317,7 +1317,7 @@
           "390": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -1325,7 +1325,7 @@
           "1440": {
             "view": "dashboard-view",
             "heading": "What would you like done today?",
-            "controls": 25,
+            "controls": 27,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
@@ -2266,14 +2266,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2301,14 +2301,14 @@
       "routes": [
         {
           "390": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Verification Plumbing Pty Ltd operations · trialing d4e1d24c-797c-48cd-b98b-7cf51f37fa81Account details",
+            "text": "Verification Plumbing Pty Ltd operations · trialing c8ff00fe-2d90-482f-8907-f9fc35758fb9Account details",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2353,14 +2353,14 @@
         },
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2481,14 +2481,14 @@
       "routes": [
         {
           "390": {
-            "text": "Server running for 2 min Node v22.23.4 Memory in use 120 MB Heap 33 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 2 min Node v22.23.4 Memory in use 116 MB Heap 32 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Server running for 1 min Node v22.23.4 Memory in use 118 MB Heap 31 MB Database size 2.6 MB Background jobs waiting 0 No",
+            "text": "Server running for 1 min Node v22.23.4 Memory in use 115 MB Heap 31 MB Database size 2.6 MB Background jobs waiting 0 No",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2677,14 +2677,14 @@
       "routes": [
         {
           "390": {
-            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New prospect crm Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New prospect crm Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New prospect crm Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2694,14 +2694,14 @@
         },
         {
           "390": {
-            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New campaign drafts Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New campaign drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New campaign drafts Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2711,14 +2711,14 @@
         },
         {
           "390": {
-            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New content drafts Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New content drafts Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New content drafts Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2787,14 +2787,14 @@
       "routes": [
         {
           "390": {
-            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New tickets Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "New tickets Title Details Save record No records yet Saved here only for Super Pro operations.",
+            "text": "New tickets Title Details Save record",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2844,14 +2844,14 @@
       "routes": [
         {
           "390": {
-            "text": "access.read founder · security · 2026-10-30T18:39:00.054Z access.read founder · support · 2026-10-30T18:38:59.043Z acces",
+            "text": "access.read founder · security · 2026-10-31T07:26:02.357Z",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "access.read founder · security · 2026-10-30T18:38:35.585Z access.read founder · support · 2026-10-30T18:38:34.573Z acces",
+            "text": "access.read founder · security · 2026-10-31T07:25:37.952Z",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2880,14 +2880,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -2973,14 +2973,14 @@
       "routes": [
         {
           "390": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:37331 Operator MFA required No Founder key se",
+            "text": "Environment Setting Value Environment test Public address http://127.0.0.1:35147 Operator MFA required No Founder key se",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
@@ -3117,14 +3117,14 @@
       "routes": [
         {
           "390": {
-            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet. Alerts (0 ope",
+            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],
             "browser_errors": []
           },
           "1440": {
-            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet. Alerts (0 ope",
+            "text": "Not checked yet Run the checks to see the current state. Run checks now Components No checks have run yet.",
             "unavailable": false,
             "overflow": 0,
             "failing_calls": [],

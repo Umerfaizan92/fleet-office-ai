@@ -105,4 +105,8 @@ body[data-auth-page=login] .sp-global-trust-footer{flex-shrink:0}
 .signin-feature-disclosure{display:flex;flex-direction:column;min-height:0}.signin-feature-content{display:flex;flex-direction:column;flex:1;min-height:0}.signin-feature-toggle{border:0;background:none;text-align:left;padding:0;color:inherit;font:inherit;cursor:pointer}.signin-feature-toggle:focus-visible{outline:2px solid var(--sp-accent);outline-offset:4px;border-radius:6px}
 .signin-operator-entry{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:0;font-size:11px}.signin-operator-entry a{color:var(--sp-accent);font-weight:700}.signin-operator-entry small{color:var(--sp-muted);font-size:10px}
 @media(min-width:901px) and (max-aspect-ratio:3/4){.signin-operator-entry{font-size:18px}.signin-operator-entry small{font-size:15px}.signin-feature-content .signin-features{flex:1}}
-@media(max-width:600px){.signin-operator-entry{flex-direction:column;align-items:center;text-align:center;gap:2px}.signin-operator-entry a,.signin-operator-entry small{display:block;margin:0;padding:0}}
+/* Account help links: one centred group at every size. "Forgot" links share a centred line; the operator link sits
+   centred beneath with its note directly under it (previously staggered on phones and tall portrait screens). */
+body[data-auth-page=login] .recovery-links{justify-content:center!important;text-align:center;row-gap:4px}
+body[data-auth-page=login] .signin-operator-entry{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;margin:0}
+body[data-auth-page=login] .signin-operator-entry a,body[data-auth-page=login] .signin-operator-entry small{display:block;margin:0;padding:0;line-height:1.3}

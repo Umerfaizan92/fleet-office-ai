@@ -1061,9 +1061,11 @@ function serveSeoPublicHtml(fileName){return (req,res)=>{const base=(env.PUBLIC_
 // The old introduction page at /saas/ is replaced by the public homepage at /. Redirect the bare folder address
 // (old links, bookmarks, installed shortcuts) so nobody lands on the previous version; the file stays reachable
 // only at its explicit /saas/index.html address for preservation checks.
-app.get(['/saas','/saas/'],(req,res)=>{const q=req.originalUrl.indexOf('?');res.redirect(302,'/'+(q>=0?req.originalUrl.slice(q):''));});
-app.get('/saas/index.html',serveSeoPublicHtml('index.html'));
-app.get('/saas/answers.html',serveSeoPublicHtml('answers.html'));
+app.get(['/saas','/saas/'],(req,res)=>res.redirect(302,'/'));
+// Public pages read from disk on each request: a generous per-visitor limit keeps file reads bounded.
+const publicPageLimiter=rateLimit({windowMs:60*1000,limit:300,standardHeaders:true,legacyHeaders:false});
+app.get('/saas/index.html',publicPageLimiter,serveSeoPublicHtml('index.html'));
+app.get('/saas/answers.html',publicPageLimiter,serveSeoPublicHtml('answers.html'));
 app.use('/saas', express.static(path.join(siteRoot, 'saas'), { extensions: ['html'] }));
 app.get('/api/public/preview-status',(req,res)=>res.json({ok:true,isolated_preview:env.SUPERPRO_ISOLATED_PREVIEW==='1',storage:env.SUPERPRO_ISOLATED_PREVIEW==='1'?'temporary_test_data_only':'normal',version:'20.0.0-preview'}));
 app.get(['/office/','/office/index.html'],(req,res)=>res.sendFile(path.join(siteRoot,'office','console.html')));

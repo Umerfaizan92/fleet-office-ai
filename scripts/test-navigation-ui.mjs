@@ -5,6 +5,13 @@ import { startServer } from './test-server.mjs';
 import { seedOwner, ownerContext } from './visual/session.mjs';
 import Database from 'better-sqlite3';
 const mapping = JSON.parse(fs.readFileSync(new URL('../docs/navigation/MAPPING.json', import.meta.url)));
+// Expected top sections per route, in displayed order, from the reviewed SECTIONS.md. Every one must be checked at both
+// widths: a page whose sections render late must not silently shrink the coverage.
+const expected = {};
+for (const line of fs.readFileSync(new URL('../docs/navigation/SECTIONS.md', import.meta.url), 'utf8').split('\n')) {
+  const m = line.match(/^\| [^|]+ \| `([^`]+)` \| ([^|]+) \|/); if (!m || !m[2].includes(' → ')) continue;
+  expected[m[1]] = m[2].split(' → ').map(x => x.trim());
+}
 const s = await startServer();
 let browser;
 const coverage = [], errors = [];
@@ -35,6 +42,7 @@ async function indexLinks(p, root, portal, route, width, parent = '') {
   }
 }
 async function sections(p, root, portal, route, width) {
+  if (expected[route]) await p.waitForFunction(names => { const scope = [...document.querySelectorAll('.view:not([hidden]),#console-content,#console-tabs')]; const seen = new Set(scope.flatMap(r => [...r.querySelectorAll('[role=tab],[data-section-link]')]).filter(e => e.getClientRects().length).map(e => (e.matches('[data-section-link]') ? 'Section: ' : '') + e.textContent.trim())); return names.every(n => seen.has(n)); }, expected[route], { timeout: 15000 }).catch(() => {});
   const descendants = root.locator('[role=tablist]');
   const lists = (await root.getAttribute('role') === 'tablist' ? [root] : []).concat(await descendants.all());
   for (const list of lists) {
@@ -47,6 +55,8 @@ async function sections(p, root, portal, route, width) {
       await p.waitForFunction(({ name }) => [...document.querySelectorAll('[role=tab][aria-selected=true]')].some(e => e.textContent.trim() === name.trim()), { name });
       const panel = await tab.getAttribute('aria-controls');
       if (panel) await p.locator('#' + panel).waitFor({state:'visible'});
+      const nested = (expected[route] || []).filter(n => n.startsWith(name.trim() + ' / ')).map(n => n.slice(name.trim().length + 3));
+      if (nested.length) await p.waitForFunction(names => { const seen = new Set([...document.querySelectorAll('[data-section-link]')].filter(e => e.getClientRects().length).map(e => 'Section: ' + e.textContent.trim())); return names.every(n => seen.has(n)); }, nested, { timeout: 15000 }).catch(() => {});
       checked(portal, route, name, width);
       await indexLinks(p, root, portal, route, width, name.trim());
     }
@@ -138,7 +148,19 @@ try {
   const workerContext = await ownerContext(browser, s, restricted); const worker = await workerContext.newPage(); await worker.goto(s.base + '/saas/workspace.html'); await worker.locator('#business-navigation').waitFor();
   assert.equal(await worker.locator('[data-nav-page=finance]').count(), 0); assert.equal(await worker.locator('[data-nav-page=team]').count(), 0); assert.equal(await worker.locator('#workspace-operator-link').isVisible(), false);
   const denied = await s.call('GET', '/api/saas/finance/hub', { cookie: restricted.cookie }); assert.equal(denied.status, 403);
-  checked('Business', 'restricted employee', 'Finance/staff/founder isolation', 1440); await workerContext.close();
+  checked('Business', 'restricted employee', 'Finance/staff/founder isolation', 1440);
+  // Unsaved-change warning follows the real save: failed saves keep it, successful saves clear it, later edits restore it.
+  let saveStatus = 500; await worker.route('**/__nav-save-test', r => r.fulfill({ status: saveStatus, contentType: 'application/json', body: '{}' }));
+  assert.ok(await worker.evaluate(() => { const host = document.querySelector('.view:not([hidden])'); if (!host) return false; const f = document.createElement('form'); f.id = 'nav-save-test'; f.innerHTML = '<input name="note" aria-label="Note"><button>Save</button>'; f.addEventListener('submit', async e => { e.preventDefault(); await fetch('/__nav-save-test', { method: 'POST', body: '{}' }).catch(() => {}); }); host.append(f); return true; }), 'a visible view hosts the synthetic form');
+  const note = worker.locator('#nav-save-test input'), edits = () => worker.evaluate(() => window.SuperProNavigation.hasEdits());
+  await note.click(); await note.fill('draft'); assert.equal(await edits(), true, 'typed edit is unsaved');
+  await worker.locator('#nav-save-test button').click(); await worker.waitForTimeout(1800); assert.equal(await edits(), true, 'failed save keeps the warning');
+  saveStatus = 200; await worker.locator('#nav-save-test button').click(); await worker.waitForTimeout(1800); assert.equal(await edits(), false, 'successful save clears the warning');
+  await note.fill('draft 2'); assert.equal(await edits(), true, 'edits after a save are unsaved again');
+  checked('Business', 'unsaved changes', 'Save acknowledgement: failure keeps warning, success clears it, later edits warn', 1440);
+  await workerContext.close();
+  const missing = Object.entries(expected).flatMap(([route, names]) => [1440, 390].flatMap(width => names.filter(n => !coverage.some(c => c.route === route && c.width === width && c.section === n)).map(n => `${route} ${width}px: ${n}`)));
+  assert.deepEqual(missing, [], 'every reviewed section is checked at both widths');
   assert.deepEqual(errors, []);
   fs.mkdirSync('qa/reports', { recursive: true }); fs.writeFileSync('qa/reports/navigation-coverage.json', JSON.stringify({ baseline: mapping.baseline, coverage, errors, writes: 'Synthetic form input only; no external service actions' }, null, 2) + '\n');
   console.log(`PASS navigation: ${coverage.length} route/section checks; 60 business and 34 founder pages at mobile and desktop; restricted-role and state tests`);

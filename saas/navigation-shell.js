@@ -9,6 +9,25 @@
   document.addEventListener('focusin', e => { const f = e.target.form; if (f && !dirty.has(f)) dirty.set(f, values(f)); });
   document.addEventListener('reset', e => dirty.delete(e.target));
   document.addEventListener('superpro:form-saved', e => { if (e.target.tagName === 'FORM') dirty.delete(e.target); });
+  // Save acknowledgement from the real form lifecycle: requests that a submit starts (within a short window) belong to
+  // it. Only if every one of them succeeds do the submitted values become the new baseline; any failure keeps the
+  // warning, and edits made after submitting still count. Values stay in memory only.
+  let pending = null;
+  document.addEventListener('submit', e => {
+    const form = e.target; if (form?.tagName !== 'FORM') return;
+    const job = { form, snapshot: values(form), open: 0, failed: false, used: false };
+    pending = job; setTimeout(() => { if (pending === job) pending = null; settle(job); }, 1500);
+  }, true);
+  const settle = (job) => { if (job.open || pending === job || !job.used || job.failed || !dirty.has(job.form)) return; dirty.set(job.form, job.snapshot); };
+  const nativeFetch = window.fetch?.bind(window);
+  if (nativeFetch) window.fetch = function (input, init) {
+    const job = pending, method = String(init?.method || input?.method || 'GET').toUpperCase();
+    const p = nativeFetch(input, init);
+    if (!job || method === 'GET' || method === 'HEAD') return p;
+    job.open += 1; job.used = true;
+    p.then(r => { if (!r.ok) job.failed = true; }, () => { job.failed = true; }).finally(() => { job.open -= 1; settle(job); });
+    return p;
+  };
   const hasEdits = () => { for (const [f, baseline] of dirty) { if (!f.isConnected) dirty.delete(f); else if (f.closest('.view:not([hidden]),#console-content,dialog[open]') && values(f) !== baseline) return true; } return false; };
   const canLeave = () => !hasEdits() || confirm('Leave this page? Changes you have not saved may be lost.');
   window.addEventListener('beforeunload', e => { if (hasEdits()) { e.preventDefault(); e.returnValue = ''; } });

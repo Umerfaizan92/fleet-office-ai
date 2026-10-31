@@ -4600,6 +4600,14 @@
       "width": 1440,
       "result": "PASS",
       "detail": "Screen navigation and rendered panel passed; business writes untested"
+    },
+    {
+      "portal": "Business",
+      "route": "unsaved changes",
+      "section": "Save acknowledgement: failure keeps warning, success clears it, later edits warn",
+      "width": 1440,
+      "result": "PASS",
+      "detail": "Screen navigation and rendered panel passed; business writes untested"
     }
   ],
   "errors": [],

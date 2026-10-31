@@ -47,11 +47,69 @@
           const r = guide?.answerAsync ? await guide.answerAsync(q, 'public') : null;
           const text = String(r?.text || 'I can explain enquiries, quotes, jobs, approvals, staff and payments. Try one of the suggestions.');
           pending.innerHTML = text.split(/\n{2,}/).map((p) => `<p>${esc(p)}</p>`).join('');
+          voice.say(text);
         } catch { pending.innerHTML = '<p>I could not answer just now. Try again, or see the help centre.</p>'; }
         busy = false; demo.removeAttribute('data-busy'); state.textContent = 'Ready'; window.SPMotion?.pulse(live);
       }
       form.addEventListener('submit', (e) => { e.preventDefault(); const q = input.value; input.value = ''; ask(q); });
       $$('[data-ai-prompts] button', demo).forEach((b) => b.addEventListener('click', () => ask(b.textContent)));
+      // Voice: speak a question (server transcription, else the browser's recogniser) and hear answers read aloud
+      // (server voice, else the device voice). Nothing records until the microphone is pressed.
+      const voice = (() => {
+        const mic = $('[data-ai-mic]', demo), speakBtn = $('[data-ai-speak]', demo);
+        const lang = (document.documentElement.lang || navigator.language || 'en').slice(0, 5);
+        let status = { voice: false, transcribe: false }, reading = false, audio = null, rec = null, chunks = [], timer = null, recog = null;
+        const Recog = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const note = (t) => { let n = $('.sp-chat__voice-note', demo); if (!n) { n = document.createElement('p'); n.className = 'sp-chat__voice-note'; n.setAttribute('role', 'status'); form.before(n); } n.textContent = t; n.hidden = !t; };
+        const setReading = (on) => { reading = on; speakBtn?.setAttribute('aria-pressed', String(on)); if (!on) stopAudio(); };
+        const stopAudio = () => { try { audio?.pause(); } catch {} audio = null; try { speechSynthesis.cancel(); } catch {} };
+        const browserSay = (t) => { if (!('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(t); u.lang = lang; speechSynthesis.speak(u); };
+        async function say(text) {
+          if (!reading || !text) return; stopAudio(); const t = String(text).slice(0, 1800);
+          if (status.voice) {
+            try { const r = await fetch('/api/product-guide/speech', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: t, language: lang.slice(0, 2), voice: 'auto' }) });
+              if (r.ok) { const url = URL.createObjectURL(await r.blob()); audio = new Audio(url); audio.onended = () => URL.revokeObjectURL(url); await audio.play(); return; } } catch {}
+          }
+          browserSay(t);
+        }
+        speakBtn?.addEventListener('click', () => { setReading(!reading); note(reading ? 'Answers will be read aloud.' : ''); });
+        const setMic = (on) => { mic?.setAttribute('aria-pressed', String(on)); mic?.setAttribute('aria-label', on ? 'Stop and send' : 'Speak your question'); };
+        async function sendRecording(blob) {
+          if (blob.size < 700) { note('That was too short. Press the microphone and speak again.'); return; }
+          note('Understanding what you said…');
+          try { const fd = new FormData(); fd.append('audio', blob, 'speech.webm'); fd.append('language', 'auto');
+            const r = await fetch('/api/product-guide/transcribe', { method: 'POST', credentials: 'same-origin', body: fd }); const d = await r.json().catch(() => ({}));
+            const q = String(d.text || '').trim(); if (!r.ok || !q) { note('Sorry, I did not catch that. Please try again or type your question.'); return; }
+            note(''); setReading(true); ask(q);
+          } catch { note('Voice is unavailable just now. Please type your question.'); }
+        }
+        async function toggleMic() {
+          if (rec) { rec.stop(); return; }
+          if (recog) { recog.stop(); return; }
+          stopAudio();
+          if (status.transcribe && window.MediaRecorder && navigator.mediaDevices?.getUserMedia) {
+            try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); chunks = []; rec = new MediaRecorder(stream);
+              rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+              rec.onstop = () => { clearTimeout(timer); stream.getTracks().forEach((t) => t.stop()); const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' }); rec = null; setMic(false); sendRecording(blob); };
+              rec.start(); setMic(true); note('Listening… press the microphone again when you finish.'); timer = setTimeout(() => rec?.stop(), 15000); return;
+            } catch { rec = null; setMic(false); note('Microphone access was not allowed. You can type your question instead.'); return; }
+          }
+          if (Recog) {
+            recog = new Recog(); recog.lang = lang; recog.interimResults = false; recog.maxAlternatives = 1;
+            recog.onresult = (e) => { const q = e.results?.[0]?.[0]?.transcript || ''; if (q.trim()) { note(''); setReading(true); ask(q); } };
+            recog.onerror = () => note('Sorry, I did not catch that. Please try again or type your question.');
+            recog.onend = () => { recog = null; setMic(false); };
+            recog.start(); setMic(true); note('Listening…'); return;
+          }
+          note('Voice input is not available in this browser. Please type your question.');
+        }
+        mic?.addEventListener('click', toggleMic);
+        fetch('/api/product-guide/status', { credentials: 'same-origin', cache: 'no-store' }).then((r) => r.json()).then((d) => { if (d?.ok) status = { voice: !!d.voice_server_ready, transcribe: !!d.transcription_server_ready }; }).catch(() => {}).finally(() => {
+          if (mic) mic.hidden = !((status.transcribe && window.MediaRecorder && navigator.mediaDevices?.getUserMedia) || Recog);
+          if (speakBtn) speakBtn.hidden = !(status.voice || 'speechSynthesis' in window);
+        });
+        return { say };
+      })();
     }
 
     /* ---------- scroll story: the device shows what the current step has produced ---------- */

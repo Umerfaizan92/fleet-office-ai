@@ -62,7 +62,7 @@ try {
 
   await check('Quotes & Invoices: create a tax invoice for a job, approve, issue, and create a card payment link', async () => {
     const v = await go('b07/sales', 'finsales');
-    await v.getByText('New quotation, estimate or invoice').click();
+    await v.locator('summary').filter({hasText:'New quotation, estimate or invoice'}).click();
     const f = v.locator('details.fx-panel form');
     await f.getByLabel('Job').selectOption({ label: 'Hot water service' });
     await f.getByLabel('Item description').first().fill('Replace hot water valve');

@@ -81,7 +81,7 @@
     const ap=meta.applicants||{},total=Object.values(ap).reduce((n,x)=>n+x,0);
     const head=[el('p',{class:'hire-lock',text:'Private to owners and admins. Applicants\' details and documents are stored apart from everything else, are never used for customers, jobs or search, and are deleted automatically after 12 months.'}),
       el('div',{class:'hire-chips'},el('span',{class:'hire-chip',text:`${meta.open_roles} open role${meta.open_roles===1?'':'s'}`}),el('span',{class:'hire-chip',text:`${ap.new||0} new`}),el('span',{class:'hire-chip',text:`${total} applicant${total===1?'':'s'} in total`})),
-      el('div',{class:'hire-tabs'},...[['roles','Roles and adverts'],['applicants','Applicants']].map(([k,l])=>{const b=btn(l,()=>{tab=k;render()},tab===k?'primary-button compact':'secondary-button compact');return b}))];
+      el('div',{class:'hire-tabs',role:'tablist','aria-label':'Hiring sections'},...[['roles','Roles and adverts'],['applicants','Applicants']].map(([k,l])=>{const b=btn(l,()=>{tab=k;render()},tab===k?'primary-button compact':'secondary-button compact');b.setAttribute('role','tab');b.setAttribute('aria-selected',String(tab===k));b.dataset.sectionKey=k;return b}))];
     const body=el('div',{class:'hire-grid'});host.replaceChildren(...head,body);
     if(tab==='roles'){
       const {roles}=await api('/api/saas/hiring/roles');

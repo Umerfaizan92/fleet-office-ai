@@ -172,7 +172,7 @@ try {
     await Promise.all([p.waitForURL(s.base + '/office/'), p.locator('#operator-form button[type=submit]').click()]);
     await p.evaluate(() => { location.hash = 'f06/platform/campaigns'; });
     const v = p.locator('#console-content');
-    await v.getByText('Communications overview').waitFor();
+    await v.getByRole('heading', {name:'Communications overview',exact:true}).waitFor();
     assert.match(await v.textContent(), /not shown here/);
     assert.doesNotMatch(await v.textContent(), /Riley|sam@lee/, 'no business customer data in the founder view');
     await v.getByLabel('Campaign name').fill('Super Pro product update');

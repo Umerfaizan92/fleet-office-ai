@@ -40,8 +40,8 @@ const PAGES = [
   { name: 'workspace-today', url: '/saas/workspace.html', auth: 'owner', ready: '#workspace' },
   { name: 'workspace-customers', url: '/saas/workspace.html#customers', auth: 'owner', ready: '#workspace' },
   { name: 'workspace-money', url: '/saas/workspace.html#money', auth: 'owner', ready: '#workspace' },
-  { name: 'founder-console', url: '/office/', auth: 'founder', ready: '#console-nav [data-section]' }
-].filter((p) => !ONLY || p.name.includes(ONLY));
+  { name: 'founder-console', url: '/office/', auth: 'founder', ready: '#console-main' }
+].filter((p) => !ONLY || (ONLY === 'portals' ? !!p.auth : p.name.includes(ONLY)));
 
 // Things that change by themselves (clocks, relative times, live counters) are hidden from the comparison.
 const MASK = ['[data-year]', 'time', '.gx-clock', '[data-live-value]', '.sp-typing', '.toast', '.sp-toast', '[data-relative-time]', '#workspace-clock', '.live-clock'];
@@ -142,7 +142,7 @@ try {
 
 const failed = results.filter((r) => r.status === 'changed' || r.status === 'error' || r.sidewaysScroll || r.errors.length);
 fs.mkdirSync(path.join(ROOT, 'qa', 'reports'), { recursive: true });
-fs.writeFileSync(path.join(ROOT, 'qa', 'reports', 'visual-regression.json'), JSON.stringify({ widths: WIDTHS.map(([w]) => w), tolerance: TOLERANCE, results }, null, 2) + '\n');
+fs.writeFileSync(path.join(ROOT, 'qa', 'reports', ONLY === 'portals' ? 'visual-regression-portals.json' : 'visual-regression.json'), JSON.stringify({ widths: WIDTHS.map(([w]) => w), tolerance: TOLERANCE, results }, null, 2) + '\n');
 for (const r of results) {
   const flag = r.status === 'error' ? 'ERROR' : r.sidewaysScroll ? 'OVERFLOW' : r.errors.length ? 'JS-ERROR' : r.status.toUpperCase();
   console.log(`${flag.padEnd(9)} ${r.name.padEnd(28)} ${(r.ratio * 100).toFixed(3)}%${r.note ? '  ' + r.note : ''}${r.overflow.length ? '  ' + r.overflow.join(', ') : ''}${r.errors.length ? '  ' + r.errors.join(' | ') : ''}`);

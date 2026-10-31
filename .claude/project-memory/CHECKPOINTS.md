@@ -675,3 +675,129 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: not requested
 - Known errors: none
 - Next exact action: Publish recovery tree with both Claude and security parents;require final commit CI before preview deployment
+
+## CP-049 2026-10-31T15:07:27+08:00 T-064 IN_PROGRESS
+- Phase: Claude eleven-prompt recovery
+- Task: T-064 (IN_PROGRESS)
+- Completed steps: Verified current production and main at 3edc118; read instructions and historical memory; inventory 60 business entries and 34 founder tabs available
+- Incomplete steps: Navigation mapping, implementation, responsive accessibility, complete test matrix and release candidate
+- Files modified (uncommitted at checkpoint): .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md
+- Tests executed: none
+- Test results: none
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 3edc118 (Merge pull request #44 from Umerfaizan92/consolidated-improvements-2026); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Create shared nested navigation controller and preserve all route/role configurations
+
+## CP-050 2026-10-31T15:14:35+08:00 T-064 IN_PROGRESS
+- Phase: Navigation prompts 1-3
+- Task: T-064 (IN_PROGRESS)
+- Completed steps: Mapping preserves 60 business entries and 34 founder tabs; shared nested rail and in-place section controllers implemented; responsive CSS and route compatibility implemented
+- Incomplete steps: Browser regression checks; fix failures; accessibility; release documentation and final verified commit
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; office/console.html; office/console.js; saas/app.js; saas/focused-workspace.js; saas/portal-shell.js; saas/workspace-nav.js; saas/workspace.html; docs/navigation/MAPPING.json; docs/navigation/MAPPING.md; saas/navigation-shell.css; saas/navigation-shell.js; saas/page-sections.js; scripts/navigation-inventory.mjs
+- Tests executed: none
+- Test results: none
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 3edc118 (Merge pull request #44 from Umerfaizan92/consolidated-improvements-2026); branch not on remote
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T071435Z (1f4bf46)
+- Known errors: none
+- Next exact action: Run synthetic local navigation suite across all routes, roles and mobile layouts
+
+## CP-051 2026-10-31T15:27:33+08:00 T-064 TESTING
+- Phase: Navigation implementation and workflow regression checks
+- Task: T-064 (TESTING)
+- Completed steps: Nested navigation implemented for all 60 business and 34 founder pages; initial 425 browser checks passed; 66 module checks passed; founder save refresh rebinding fixed and automation workflow passed; progress handover persisted
+- Incomplete steps: Finish expanded keyboard and accessibility browser checks; remaining finance and reliability checks; final manifest and npm test; local commit and recovery bundle; publication requires explicit authorization
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; SHA256SUMS.txt; office/console.html; office/console.js; package.json; qa/reports/modules.json; saas/app.js; saas/focused-workspace.js; saas/mail-centre.js; saas/portal-shell.js; saas/workspace-hiring.js; saas/workspace-nav.js; saas/workspace.html; scripts/test-automations-ui.mjs; scripts/test-console-platform.mjs; scripts/test-ui.mjs; scripts/workspace-context.test.mjs; docs/navigation/MAPPING.json; docs/navigation/MAPPING.md; qa/reports/navigation-coverage.json; saas/navigation-shell.css; saas/navigation-shell.js; saas/page-sections.js; scripts/navigation-inventory.mjs; scripts/test-navigation-ui.mjs
+- Tests executed: npm test; navigation browser initial; verify:modules; pipeline UI; automation UI; console UI; SEO UI; comms UI; quality and runtime checks
+- Test results: 73/73 integration checks and 45 contract files passed; 425 navigation checks passed; 66 modules with zero problems; pipeline 15; automation 11; console 16; SEO 11; comms 10; quality smoke integration secrets memory passed
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 3edc118 (Merge pull request #44 from Umerfaizan92/consolidated-improvements-2026); branch not on remote
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T072733Z (f07d4d7)
+- Known errors: none
+- Next exact action: Finish active browser suites, fix any regressions, update manifest and commit verified local release candidate
+
+## CP-052 2026-10-31T15:35:19+08:00 T-064 TESTING
+- Phase: Final navigation release candidate checks
+- Task: T-064 (TESTING)
+- Completed steps: All sidebar groups and 94 page routes preserved; shared tabs and dynamic heading indexes implemented; founder reload rebinding fixed; dashboard live widgets associated with overview; reliability 7 checks passed including local backup and restore; expanded panel visibility checks running
+- Incomplete steps: Complete strict route and section visibility coverage; final npm test and UI matrix; review visual changes; regenerate docs and manifest; commit and bundle locally
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; SHA256SUMS.txt; office/console.html; office/console.js; package.json; qa/reports/modules.json; qa/reports/visual-regression.json; saas/app.js; saas/focused-workspace.js; saas/mail-centre.js; saas/portal-shell.js; saas/workspace-hiring.js; saas/workspace-nav.js; saas/workspace.html; scripts/test-automations-ui.mjs; scripts/test-console-platform.mjs; scripts/test-reliability-ui.mjs; scripts/test-ui.mjs; scripts/test-visual.mjs; scripts/workspace-context.test.mjs; docs/navigation/IMPLEMENTATION.md; docs/navigation/MAPPING.json; docs/navigation/MAPPING.md; docs/navigation/SECTIONS.md; qa/reports/navigation-coverage.json; saas/navigation-shell.css; saas/navigation-shell.js; saas/page-sections.js; scripts/navigation-inventory.mjs; scripts/navigation-report.mjs; scripts/test-navigation-ui.mjs
+- Tests executed: none
+- Test results: none
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 3edc118 (Merge pull request #44 from Umerfaizan92/consolidated-improvements-2026); branch not on remote
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T073519Z (02b9d42)
+- Known errors: none
+- Next exact action: Inspect navigation and final suite logs, resolve failures without hiding checks, then save verified release candidate
+
+## CP-053 2026-10-31T15:41:59+08:00 T-064 TESTING
+- Phase: Verified navigation candidate, awaiting final commit
+- Task: T-064 (TESTING)
+- Completed steps: 575 strict browser checks passed for all 94 routes and visible sections at desktop/mobile; nested section indexes tested; dynamic alert-count keys fixed and verified; 12 reviewed screenshots repeat comparison passed; workflow regressions passed; final full repository run pending completion
+- Incomplete steps: Finish final npm test; stage and scan new files; final manifest validation; commit implementation; verify committed tree; save complete memory and bundle; update durable handover
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/DECISIONS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; SHA256SUMS.txt; office/console.html; office/console.js; package.json; qa/reports/modules.json; saas/app.js; saas/focused-workspace.js; saas/mail-centre.js; saas/portal-shell.js; saas/workspace-hiring.js; saas/workspace-nav.js; saas/workspace.html; scripts/test-automations-ui.mjs; scripts/test-comms-ui.mjs; scripts/test-console-platform.mjs; scripts/test-finance-ui.mjs; scripts/test-reliability-ui.mjs; scripts/test-seo-ui.mjs; scripts/test-ui.mjs; scripts/test-visual.mjs; scripts/workspace-context.test.mjs; docs/navigation/IMPLEMENTATION.md; docs/navigation/MAPPING.json; docs/navigation/MAPPING.md; docs/navigation/SECTIONS.md; docs/navigation/VALIDATION.md; qa/reports/navigation-coverage.json; qa/reports/visual-regression-portals.json; saas/navigation-shell.css; saas/navigation-shell.js; saas/page-sections.js; scripts/navigation-inventory.mjs; scripts/navigation-report.mjs; scripts/test-navigation-ui.mjs
+- Tests executed: navigation UI; reliability UI; visual portals; finance UI; SEO UI; comms UI
+- Test results: 575 passed; 7 passed including selection after changing alert count; 12 screens zero differences outside tolerance; 11 passed; 11 passed; 10 passed
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 3edc118 (Merge pull request #44 from Umerfaizan92/consolidated-improvements-2026); branch not on remote
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T074159Z (7dbaacb)
+- Known errors: none
+- Next exact action: Finish release-check log, stage all reviewed implementation files, regenerate manifest and scan, then commit locally
+
+## CP-054 2026-10-31T15:44:33+08:00 T-065 BLOCKED
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-065 (BLOCKED)
+- Completed steps: T-064 completed and committed at c10b382587ec87e9001f7c741f6f8616ee06c581; all 94 page routes and sections preserved and verified; source and ordered inventory ready for review; production and GitHub main rechecked unchanged at 3edc118
+- Incomplete steps: Publish reviewed branch and draft PR only after explicit source-publication authorization; rerun CI with pinned Playwright browser before release
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md
+- Tests executed: Committed-tree test:fast; full npm test on identical implementation tree; navigation UI; portal visual; workflow regression matrix; quality smoke integration secrets manifest memory
+- Test results: 69/69 checks; 45 contract files and 73/73 checks; 575 checks; 12 reviewed screens passed repeat comparison; main 34 pipeline 15 automation 11 founder 16 SEO 11 comms 10 finance 11 reliability 7; all repository gates passed
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: c10b382 (feat(navigation): organise business and founder portal sections); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Ask owner to authorize publication of the completed local candidate; after authorization recheck main, push reviewed feature branch and open draft PR. Do not merge or deploy.
+
+## CP-055 2026-10-31T16:33:58+08:00 T-066 IN_PROGRESS
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (IN_PROGRESS)
+- Completed steps: Restored bundle (f95edb6), pushed branch and opened draft PR #54 (owner authorised); CI green on f95edb6. Found superpro:form-saved is never emitted; added submit/fetch save acknowledgement in navigation-shell.js and a regression check in test-navigation-ui.mjs (untested)
+- Incomplete steps: Re-run test:navigation-ui and the full suite on the fix; commit; push; update VALIDATION.md and the PR
+- Files modified (uncommitted at checkpoint): .claude/project-memory/PENDING_TASKS.md; saas/navigation-shell.js; scripts/test-navigation-ui.mjs
+- Tests executed: none
+- Test results: none
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: f95edb6 (docs(memory): save verified navigation handover and publication gate)
+- Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T083358Z (031a21b)
+- Known errors: none
+- Next exact action: When suite b9x804bad finishes, run npm run test:navigation-ui alone and check results
+
+## CP-056 2026-10-31T17:13:49+08:00 T-066 IN_PROGRESS
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (IN_PROGRESS)
+- Completed steps: Fixed unsaved-form save acknowledgement and navigation coverage robustness; full re-verification passed (npm test 73/73, navigation 576, all UI suites, 66 modules); pushed to PR #54
+- Incomplete steps: Per-item functional inventory for 94 pages; 768/1024 px and light-theme review; email-folder focus; founder 390 px header clip; floating widgets overlap; then T-065 PR review and owner-approved merge/deploy
+- Files modified (uncommitted at checkpoint): .claude/project-memory/CHECKPOINTS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/SESSION_HANDOVER.md; SHA256SUMS.txt; docs/navigation/VALIDATION.md; qa/reports/modules.json
+- Tests executed: npm test, test:navigation-ui, test:ui, pipeline, console, automations, seo, comms, finance, reliability, verify:modules, quality, smoke, integration, secrets, memory, manifest
+- Test results: All pass; console-ui once intermittent then 16/16
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: 10e628c (fix(navigation): clear unsaved-change warning only after a successful save); 1 commit(s) not on origin/codex/navigation-hierarchy-20261031
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Check CI on PR #54 for the new head; then continue the open T-066 items
+
+## CP-057 2026-10-31T17:42:19+08:00 T-066 TESTING
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-066 (TESTING)
+- Completed steps: Audit fixes: unsaved-form save acknowledgement, fail-closed section coverage (576), email-folder focus, 40px founder theme button; floating widgets checked (no covered content at 390/768/1024/1440). CI green on a75e667. Owner instructed release: merge PR #54 to main, owner deploys in Render.
+- Incomplete steps: Owner: Render Manual Deploy of merged main and post-deploy checks; per-control functional inventory remains a follow-up
+- Files modified (uncommitted at checkpoint): none
+- Tests executed: npm test, test:navigation-ui, all UI suites, verify:modules, quality, smoke, integration, secrets, memory, manifest, npm audit; GitHub CI
+- Test results: All pass (finance-ui and console-ui each one intermittent timeout, passed on re-run)
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: a75e667 (fix(navigation): keep focus on the selected email folder; 40px founder theme button)
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Merge PR #54 into main (owner-authorised 2026-10-31 17:18), then owner deploys latest commit in Render

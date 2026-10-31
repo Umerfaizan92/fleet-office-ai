@@ -96,7 +96,7 @@ try {
     await v.getByRole('button', { name: 'Add keywords' }).click();
     await page.waitForFunction(() => /1 with a volume/.test(document.querySelector('#seoclusters-view [data-sx-status]')?.textContent || ''));
     await v.getByRole('button', { name: /Build clusters|Rebuild clusters/ }).click();
-    await v.getByText('Priorities (Super Pro estimates)').waitFor();
+    await v.getByRole('heading', {name:'Priorities (Super Pro estimates)',exact:true}).waitFor();
     assert.match(await v.textContent(), /Search volumes appear only/);
     if (shots) await page.screenshot({ path: shots + '/clusters.png', fullPage: true });
     await v.locator('section', { hasText: 'Content gaps' }).getByRole('button', { name: 'Draft it' }).first().click();

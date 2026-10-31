@@ -1,0 +1,1076 @@
+{
+  "baseline": "3edc118051aac8d3aa18fd76ae1da0bdc0240680",
+  "business": [
+    {
+      "id": "b01",
+      "label": "Today",
+      "kicker": "B01 · TODAY",
+      "icon": "i-grid",
+      "items": [
+        {
+          "view": "dashboard",
+          "path": "b01/home",
+          "alias": [
+            "today/home",
+            "operations/command",
+            "today"
+          ],
+          "label": "Home & AI Command",
+          "icon": "i-grid"
+        },
+        {
+          "view": "assistant",
+          "path": "b01/assistant",
+          "alias": [
+            "today/assistant",
+            "operations/receptionist"
+          ],
+          "label": "AI Assistant",
+          "icon": "i-spark",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "approvals",
+          "path": "b01/approvals",
+          "alias": [
+            "today/approvals",
+            "governance/approvals"
+          ],
+          "label": "Approvals",
+          "icon": "i-check",
+          "badge": "nav-approvals"
+        },
+        {
+          "view": "automations",
+          "path": "b01/automations",
+          "label": "AI Automations",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b02",
+      "label": "Customers & Work",
+      "kicker": "B02 · CUSTOMERS & WORK",
+      "icon": "i-briefcase",
+      "items": [
+        {
+          "view": "enquiries",
+          "path": "b02/enquiries",
+          "label": "Enquiries",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "customers",
+          "path": "b02/customers",
+          "alias": [
+            "customers/list",
+            "customers",
+            "customers"
+          ],
+          "label": "Customers",
+          "icon": "i-users",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "quotes",
+          "path": "b02/quotes",
+          "label": "Quotes",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "bookings",
+          "path": "b02/bookings",
+          "label": "Bookings",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "jobs",
+          "path": "b02/jobs",
+          "alias": [
+            "customers/jobs",
+            "operations/dispatch"
+          ],
+          "label": "Jobs & Dispatch",
+          "icon": "i-briefcase",
+          "badge": "nav-jobs"
+        },
+        {
+          "view": "stock",
+          "path": "b02/stock",
+          "alias": [
+            "customers/stock",
+            "stock"
+          ],
+          "label": "Stock & Supplies",
+          "icon": "i-briefcase",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "archive",
+          "path": "b02/archive",
+          "label": "Records & Archive",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b03",
+      "label": "People",
+      "kicker": "B03 · PEOPLE",
+      "icon": "i-users",
+      "items": [
+        {
+          "view": "workforce",
+          "path": "b03/workers",
+          "alias": [
+            "people/workers",
+            "workforce/compliance",
+            "people"
+          ],
+          "label": "Workers & Compliance",
+          "icon": "i-users"
+        },
+        {
+          "view": "team",
+          "path": "b03/staff",
+          "alias": [
+            "people/staff",
+            "workforce/staff"
+          ],
+          "label": "Staff Accounts & Roles",
+          "icon": "i-users",
+          "roles": [
+            "owner"
+          ]
+        },
+        {
+          "view": "hiring",
+          "path": "b03/hiring",
+          "alias": [
+            "people/hiring",
+            "hiring"
+          ],
+          "label": "Hiring (owner & admin only)",
+          "icon": "i-briefcase",
+          "roles": [
+            "owner",
+            "admin"
+          ]
+        },
+        {
+          "view": "offshore",
+          "path": "b03/offshore",
+          "label": "Offshore Staff",
+          "icon": "i-users",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b04",
+      "label": "Communications",
+      "kicker": "B04 · COMMUNICATIONS",
+      "icon": "i-bell",
+      "items": [
+        {
+          "view": "comms",
+          "path": "b04/inbox",
+          "alias": [
+            "customers/inbox",
+            "operations/inbox"
+          ],
+          "label": "Inbox (all channels)",
+          "icon": "i-bell",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "unifiedinbox",
+          "path": "b04/unified",
+          "label": "Unified Inbox",
+          "icon": "i-bell",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "voiceflow",
+          "path": "b04/voice",
+          "label": "Call Handling",
+          "icon": "i-bell",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "mail",
+          "path": "b04/email",
+          "label": "Email Centre",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "phone",
+          "path": "b04/numbers",
+          "label": "Phone Numbers",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "calls",
+          "path": "b04/calls",
+          "label": "Calls & SMS",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "receptionist",
+          "path": "b04/receptionist",
+          "label": "AI Receptionist",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "meetings",
+          "path": "b04/meetings",
+          "label": "Video Meetings",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "teamchat",
+          "path": "b04/team-chat",
+          "label": "Team Chat",
+          "icon": "i-users",
+          "roles": null
+        }
+      ]
+    },
+    {
+      "id": "b05",
+      "label": "Content & Growth",
+      "kicker": "B05 · CONTENT & GROWTH",
+      "icon": "i-video",
+      "items": [
+        {
+          "view": "video",
+          "path": "b05/studio",
+          "alias": [
+            "marketing/studio",
+            "workforce/growth",
+            "marketing"
+          ],
+          "label": "Media Studio",
+          "icon": "i-video",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "growth",
+          "path": "b05/growth",
+          "alias": [
+            "marketing/growth",
+            "growth"
+          ],
+          "label": "Growth Engine",
+          "icon": "i-spark",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "businesscampaigns",
+          "path": "b05/campaigns",
+          "label": "Campaign Drafts",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "campaignstudio",
+          "path": "b05/campaign-studio",
+          "label": "Campaign Studio",
+          "icon": "i-video",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "consent",
+          "path": "b05/consent",
+          "label": "Consent & Unsubscribes",
+          "icon": "i-shield",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b06",
+      "label": "Website & Visibility",
+      "kicker": "B06 · WEBSITE & VISIBILITY",
+      "icon": "i-link",
+      "items": [
+        {
+          "view": "seocentre",
+          "path": "b06/seo",
+          "label": "SEO Command Centre",
+          "icon": "i-link",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seoaudit",
+          "path": "b06/audit",
+          "label": "Technical Audit",
+          "icon": "i-shield",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seoclusters",
+          "path": "b06/keywords",
+          "label": "Keyword Clusters",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seogoogle",
+          "path": "b06/google",
+          "label": "Google",
+          "icon": "i-link",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seostudio",
+          "path": "b06/studio",
+          "label": "Website Content Studio",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seobuilder",
+          "path": "b06/builder",
+          "label": "Website Builder",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seolocal",
+          "path": "b06/local",
+          "label": "Local SEO",
+          "icon": "i-users",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seoanalytics",
+          "path": "b06/analytics",
+          "label": "SEO Analytics",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "seoreports",
+          "path": "b06/reports",
+          "label": "SEO Reports",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "website",
+          "path": "b06/website",
+          "label": "Website & Domain",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "visibility",
+          "path": "b06/search",
+          "alias": [
+            "marketing/search",
+            "seo",
+            "visibility"
+          ],
+          "label": "Search & AI Visibility",
+          "icon": "i-spark",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "searchconsole",
+          "path": "b06/search-console",
+          "label": "Search Connection Request",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "backlinks",
+          "path": "b06/backlinks",
+          "label": "Backlink Suggestions",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b07",
+      "label": "Money",
+      "kicker": "B07 · MONEY",
+      "icon": "i-briefcase",
+      "items": [
+        {
+          "view": "finance",
+          "path": "b07/ledger",
+          "alias": [
+            "money/ledger",
+            "finance/ledger",
+            "money"
+          ],
+          "label": "Profit & Payments",
+          "icon": "i-shield",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "businessinvoices",
+          "path": "b07/invoices",
+          "label": "Invoices",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "finsales",
+          "path": "b07/sales",
+          "label": "Quotes & Invoices",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "finpayments",
+          "path": "b07/payments-refunds",
+          "label": "Payments & Refunds",
+          "icon": "i-briefcase",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "finreconcile",
+          "path": "b07/reconcile",
+          "label": "Bank Reconciliation",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "finreports",
+          "path": "b07/reports",
+          "label": "Reports & GST",
+          "icon": "i-grid",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "fincompliance",
+          "path": "b07/compliance",
+          "label": "Finance Settings & Compliance",
+          "icon": "i-shield",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b08",
+      "label": "Setup & Trust",
+      "kicker": "B08 · SETUP & TRUST",
+      "icon": "i-shield",
+      "items": [
+        {
+          "view": "onboarding",
+          "path": "b08/settings",
+          "alias": [
+            "setup/settings",
+            "governance/settings",
+            "setup"
+          ],
+          "label": "Brand & Settings",
+          "icon": "i-building",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "integrations",
+          "path": "b08/connections",
+          "alias": [
+            "marketing/connections",
+            "workforce/connections"
+          ],
+          "label": "Connections (social, WhatsApp, website)",
+          "icon": "i-link",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "migration",
+          "path": "b08/import",
+          "alias": [
+            "setup/import",
+            "governance/migration"
+          ],
+          "label": "Import Your Data",
+          "icon": "i-arrow",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "exports",
+          "path": "b08/print",
+          "alias": [
+            "setup/print",
+            "governance/exports"
+          ],
+          "label": "Print & Export Hub",
+          "icon": "i-doc",
+          "roles": [
+            "owner"
+          ]
+        },
+        {
+          "view": "governance",
+          "path": "b08/trust",
+          "alias": [
+            "setup/trust",
+            "governance/trust"
+          ],
+          "label": "Trust & Security",
+          "icon": "i-shield"
+        },
+        {
+          "view": "automation",
+          "path": "b08/automation",
+          "label": "Automation Settings",
+          "icon": "i-shield",
+          "roles": [
+            "owner",
+            "admin",
+            "manager",
+            "super_admin",
+            "director"
+          ]
+        },
+        {
+          "view": "support",
+          "path": "b08/help",
+          "alias": [
+            "setup/help",
+            "governance/help"
+          ],
+          "label": "Help & Complaints",
+          "icon": "i-bell"
+        },
+        {
+          "view": "supportaccess",
+          "path": "b08/support-access",
+          "label": "Support Access",
+          "icon": "i-shield",
+          "roles": [
+            "owner"
+          ]
+        },
+        {
+          "view": "manual",
+          "path": "b08/manual",
+          "alias": [
+            "setup/manual",
+            "governance/manual"
+          ],
+          "label": "User Manual",
+          "icon": "i-doc"
+        }
+      ]
+    },
+    {
+      "id": "b09",
+      "label": "Plans & Usage",
+      "kicker": "B09 · PLANS & USAGE",
+      "icon": "i-doc",
+      "items": [
+        {
+          "view": "billing",
+          "path": "b09/usage",
+          "alias": [
+            "money/billing",
+            "finance/billing"
+          ],
+          "label": "Plans, Billing & Add-ons",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        },
+        {
+          "view": "finplan",
+          "path": "b09/change-plan",
+          "label": "Change Plan",
+          "icon": "i-doc",
+          "roles": [
+            "owner",
+            "admin",
+            "super_admin"
+          ]
+        }
+      ]
+    }
+  ],
+  "founder": [
+    [
+      "f01",
+      "overview",
+      "Platform overview",
+      "grid",
+      [
+        [
+          "overview",
+          "Overview"
+        ],
+        [
+          "platform/revenue",
+          "Revenue"
+        ],
+        [
+          "system",
+          "Infrastructure"
+        ],
+        [
+          "platform/backups",
+          "Storage & backups"
+        ],
+        [
+          "platform/ai-usage",
+          "AI usage"
+        ]
+      ]
+    ],
+    [
+      "f02",
+      "subscribers",
+      "Subscribers",
+      "users",
+      [
+        [
+          "subscribers",
+          "Businesses"
+        ]
+      ]
+    ],
+    [
+      "f03",
+      "billing",
+      "Billing & usage",
+      "card",
+      [
+        [
+          "invoices",
+          "Subscription invoices"
+        ],
+        [
+          "legacy:subpay",
+          "Payment providers"
+        ],
+        [
+          "legacy:subscribers",
+          "Plans & add-ons"
+        ],
+        [
+          "platform/finance",
+          "Plan prices, renewals & revenue"
+        ]
+      ]
+    ],
+    [
+      "f04",
+      "support",
+      "Support & success",
+      "mail",
+      [
+        [
+          "mail",
+          "Email Centre"
+        ],
+        [
+          "records:ticket",
+          "Tickets"
+        ],
+        [
+          "support-access",
+          "Support access"
+        ]
+      ]
+    ],
+    [
+      "f05",
+      "team",
+      "Super Pro team",
+      "users",
+      [
+        [
+          "records:staff_task",
+          "Team work"
+        ],
+        [
+          "records:hire",
+          "Hiring requests"
+        ]
+      ]
+    ],
+    [
+      "f06",
+      "marketing",
+      "Super Pro marketing",
+      "spark",
+      [
+        [
+          "records:prospect",
+          "Prospect CRM"
+        ],
+        [
+          "records:campaign",
+          "Campaign drafts"
+        ],
+        [
+          "records:content",
+          "Content drafts"
+        ],
+        [
+          "records:announcement_draft",
+          "Announcement drafts"
+        ],
+        [
+          "legacy:searchvisibility",
+          "Website visibility"
+        ],
+        [
+          "platform/seo",
+          "SEO & website"
+        ],
+        [
+          "platform/campaigns",
+          "Newsletter campaigns"
+        ]
+      ]
+    ],
+    [
+      "f07",
+      "operations",
+      "Operations & maintenance",
+      "gear",
+      [
+        [
+          "records:task",
+          "Tasks & releases"
+        ],
+        [
+          "records:incident",
+          "Incidents"
+        ],
+        [
+          "records:cost",
+          "Operating costs"
+        ],
+        [
+          "legacy:connections",
+          "Provider readiness"
+        ],
+        [
+          "platform/automation",
+          "AI automations"
+        ],
+        [
+          "platform/reliability",
+          "Reliability & backups"
+        ]
+      ]
+    ],
+    [
+      "f08",
+      "security",
+      "Security & audit",
+      "shield",
+      [
+        [
+          "audit",
+          "Activity log"
+        ],
+        [
+          "platform/compliance",
+          "Compliance"
+        ]
+      ]
+    ],
+    [
+      "f09",
+      "founder",
+      "Founder controls",
+      "key",
+      [
+        [
+          "complimentary",
+          "Complimentary grants"
+        ],
+        [
+          "staff",
+          "Operator staff & roles"
+        ],
+        [
+          "legacy-inventory",
+          "Legacy inventory"
+        ],
+        [
+          "platform/configuration",
+          "Feature access & configuration"
+        ]
+      ]
+    ]
+  ]
+}

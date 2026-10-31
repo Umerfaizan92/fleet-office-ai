@@ -11,9 +11,9 @@
     <link rel="stylesheet" href="../saas/app.css?v=20261029.2" />
     <link rel="stylesheet" href="../saas/brand.css?v=20261025" />
     <link rel="stylesheet" href="../saas/portal-shell.css?v=20261029.2" />
-    <script defer src="../saas/mail-centre.js?v=20261029.2"></script>
-    <script defer src="../saas/workspace-seo-platform.js?v=20261030"></script><script defer src="../saas/workspace-comms-platform.js?v=20261030"></script><script defer src="../saas/workspace-finance-platform.js?v=20261030"></script><script defer src="console-reliability.js?v=20261030"></script><script defer src="console-platform.js?v=20261030.5"></script><script defer src="console.js?v=20261030.4"></script>
-  <link rel="stylesheet" href="../saas/ds/tokens.css?v=20261030"><link rel="stylesheet" href="../saas/ds/retheme.css?v=20261030"><link rel="stylesheet" href="console-platform.css?v=20261030.5"><link rel="stylesheet" href="../saas/workspace-automations.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-seo-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-comms-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-finance-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-pipeline.css?v=20261030.4"><script src="../saas/ds/motion.js?v=20261030" defer></script><script src="../saas/ds/app-motion.js?v=20261030" defer></script></head>
+    <script defer src="../saas/navigation-shell.js?v=20261031"></script><script defer src="../saas/page-sections.js?v=20261031"></script><script defer src="../saas/mail-centre.js?v=20261031"></script>
+    <script defer src="../saas/workspace-seo-platform.js?v=20261030"></script><script defer src="../saas/workspace-comms-platform.js?v=20261030"></script><script defer src="../saas/workspace-finance-platform.js?v=20261030"></script><script defer src="console-reliability.js?v=20261030"></script><script defer src="console-platform.js?v=20261030.5"></script><script defer src="console.js?v=20261031"></script>
+  <link rel="stylesheet" href="../saas/ds/tokens.css?v=20261030"><link rel="stylesheet" href="../saas/ds/retheme.css?v=20261030"><link rel="stylesheet" href="console-platform.css?v=20261030.5"><link rel="stylesheet" href="../saas/workspace-automations.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-seo-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-comms-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-finance-platform.css?v=20261030"><link rel="stylesheet" href="../saas/workspace-pipeline.css?v=20261030.4"><script src="../saas/ds/motion.js?v=20261030" defer></script><script src="../saas/ds/app-motion.js?v=20261030" defer></script><link rel="stylesheet" href="../saas/navigation-shell.css?v=20261031"></head>
   <body>
     <a href="#console-main" class="sr-only">Skip to content</a>
     <aside
@@ -27,13 +27,13 @@
         type="button"
         class="portal-main-button"
         id="rail-toggle"
-        aria-label="Expand main navigation"
+        aria-label="Collapse navigation"
       >
-        <span class="portal-icon">☰</span><span>Pin navigation</span>
+        <span class="portal-icon">☰</span><span>Collapse navigation</span>
       </button>
       <nav id="console-nav"></nav>
     </aside>
-    <div style="margin-left: var(--portal-rail)">
+    <div class="console-header" style="margin-left: var(--portal-rail)">
       <header class="portal-topbar">
         <div>
           <small id="console-role">PLATFORM OPERATIONS</small>
@@ -71,7 +71,7 @@
       <nav
         class="portal-subtabs"
         id="console-tabs"
-        aria-label="Current section tabs"
+        aria-label="Page sections"
       ></nav>
     </div>
     <main class="portal-main" id="console-main">
@@ -79,7 +79,7 @@
       <div class="portal-view" id="console-content"></div>
       <footer class="portal-footer">
         Super Pro AI · Platform records stay separate from subscriber business
-        records. Preview branch · Manual deployment only.
+        records. Deployment and service readiness are shown under Operations & maintenance.
       </footer>
     </main>
   </body>

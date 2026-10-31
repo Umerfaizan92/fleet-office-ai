@@ -24,6 +24,8 @@ try {
     for (const [hash, text] of TABS) {
       await p.evaluate((h) => { location.hash = h; }, hash);
       await p.locator('.cp-view').waitFor({ timeout: 8000 });
+      const section = p.getByRole('tab', { name: text, exact: true });
+      if (await section.count()) await section.click();
       assert.ok((await p.locator('#console-content').innerText()).includes(text), `${hash} shows ${text}`);
       assert.ok(!(await p.locator('#console-content').innerText()).includes('[object Object]'), `${hash} prints raw data`);
       const over = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

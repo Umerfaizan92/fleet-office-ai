@@ -1,0 +1,78 @@
+/* Stable two-level navigation; replaces hover-driven layout shifts in both portals. */
+body[data-navigation="nested"]{--portal-rail:272px;--navigation-header-height:70px}
+body[data-navigation="nested"][data-navigation-compact="true"]{--portal-rail:68px}
+body[data-navigation="nested"] .nested-rail,
+body[data-navigation="nested"] .nested-rail:is(:hover,:focus-within,[data-expanded="true"],[data-collapsed="true"]){width:var(--portal-rail)!important;overflow-x:hidden;transition:none}
+body[data-navigation="nested"] .nested-rail .navigation-label,
+body[data-navigation="nested"] .nested-rail .portal-brand>span,
+body[data-navigation="nested"] .nested-rail .portal-main-button>span{opacity:1!important}
+body[data-navigation="nested"] .nested-rail .workspace-context{display:flex!important;width:auto;min-width:0;max-width:100%;flex-shrink:0}
+body[data-navigation="nested"] .nested-rail > .portal-brand,
+body[data-navigation="nested"] .nested-rail > .portal-main-button{flex-shrink:0}
+body[data-navigation="nested"] .nested-rail .sidebar-footer{margin-top:auto;flex-shrink:0}
+body[data-navigation="nested"] .nested-rail .portal-main-button{white-space:normal;min-height:44px;cursor:pointer}
+.navigation-label{min-width:0;flex:1;overflow-wrap:anywhere}
+.navigation-chevron{margin-left:auto;font-size:16px}
+.navigation-group{min-width:0}
+.navigation-group-toggle.has-active{color:var(--text);background:var(--brand-soft);border-color:var(--brand-line)}
+.navigation-group-toggle[aria-expanded="true"] .navigation-chevron{rotate:180deg}
+.navigation-children{display:grid;gap:3px;margin:4px 0 10px 20px;padding-left:12px;border-left:1px solid var(--line)}
+.navigation-children[hidden],.navigation-page[hidden],.navigation-group[hidden]{display:none!important}
+.navigation-page{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 10px;color:var(--muted);border:1px solid transparent;border-radius:8px;text-decoration:none;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.navigation-page:hover,.navigation-page[aria-current="page"]{background:var(--brand-soft);border-color:var(--brand-line);color:var(--text)}
+.navigation-page[aria-current="page"]{box-shadow:inset 3px 0 var(--brand);font-weight:750}
+.navigation-badge{margin-left:auto;font-size:12px;color:var(--brand-2)}
+.navigation-breadcrumb{display:flex;gap:7px;flex-wrap:wrap;font-size:12px;color:var(--muted);line-height:1.5;max-width:100%;overflow-wrap:anywhere}
+.navigation-divider{opacity:.6}
+.navigation-page:focus-visible,.navigation-group-toggle:focus-visible,.navigation-mobile-trigger:focus-visible,.context-section-tabs [role="tab"]:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+body[data-navigation="nested"] #workspace{padding-left:var(--portal-rail)!important}
+body[data-navigation="nested"] #workspace .app-main{margin:0!important}
+body[data-navigation="nested"]:has(#console-rail) .portal-main,
+body[data-navigation="nested"] .console-header{margin-left:var(--portal-rail)!important}
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .navigation-label,
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .portal-brand>span:not(.portal-mark),
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .navigation-chevron,
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .workspace-context,
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .sidebar-footer{display:none!important}
+body[data-navigation="nested"][data-navigation-compact="true"] .nested-rail .navigation-children{position:fixed;left:68px;width:264px;max-width:calc(100vw - 76px);max-height:calc(100dvh - 24px);overflow:auto;margin:0;padding:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px #0004;z-index:200}
+.navigation-mobile-trigger{display:none;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);cursor:pointer}
+.navigation-scrim{position:fixed;inset:0;z-index:149;background:#0009;border:0}
+.navigation-scrim[hidden]{display:none}
+.context-section-tabs{display:flex!important;flex-wrap:nowrap!important;gap:6px;align-items:center;overflow-x:auto!important;overflow-y:hidden;scrollbar-width:thin;padding:8px 3px;margin:0 0 14px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky!important;top:var(--navigation-header-height);z-index:80;scroll-padding-inline:8px;max-width:100%;min-width:0}
+.context-section-tabs[hidden],#console-tabs:empty{display:none!important}
+.context-section-tabs [role="tab"],.context-section-tabs [data-section-link]{flex:0 0 auto;min-height:44px;padding:9px 13px;border:1px solid transparent;border-radius:9px;color:var(--muted);background:var(--panel);white-space:nowrap;cursor:pointer;font-size:13px}
+.context-section-index{position:static!important}
+#console-content .cp-view{grid-template-columns:minmax(0,1fr)}
+[data-fx-body],[data-sx-body],[data-cx-body]{min-width:0;max-width:100%}
+.context-section-index [aria-current="location"]{border-color:var(--brand-line);color:var(--text);background:var(--brand-soft)}
+.context-section-index [data-section-link]:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+.context-section-tabs [role="tab"][aria-selected="true"]{color:var(--text);background:var(--brand-soft);border-color:var(--brand-line)}
+.context-section-tabs [role="tab"][hidden]{display:none!important}
+body[data-navigation="nested"] #onboarding-form .settings-nav{display:flex;grid-template-columns:none}
+body[data-navigation="nested"] #console-tabs{padding-inline:16px;margin-bottom:0;top:var(--navigation-header-height)}
+body[data-navigation="nested"] .console-header{position:sticky;top:0;z-index:90;background:var(--bg)}
+body[data-navigation="nested"] .view{scroll-margin-top:calc(var(--navigation-header-height) + 60px)}
+body[data-navigation="nested"] [role="tabpanel"]{scroll-margin-top:calc(var(--navigation-header-height) + 65px)}
+@media(max-width:1024px){
+ body[data-navigation="nested"],body[data-navigation="nested"][data-navigation-compact="true"]{--portal-rail:0px}
+ body[data-navigation="nested"] .nested-rail,body[data-navigation="nested"] .nested-rail:is(:hover,:focus-within,[data-expanded="true"]){width:min(310px,calc(100vw - 44px))!important;transform:translateX(-105%);visibility:hidden;z-index:150}
+ body[data-navigation="nested"] .nested-rail[data-drawer="true"]{transform:none;visibility:visible}
+ .navigation-mobile-trigger{display:inline-flex;align-items:center}
+ .navigation-drawer-open{overflow:hidden}
+ body[data-navigation="nested"][data-navigation-compact] .nested-rail .navigation-label,
+ body[data-navigation="nested"][data-navigation-compact] .nested-rail .portal-brand>span,
+ body[data-navigation="nested"][data-navigation-compact] .nested-rail .navigation-chevron,
+ body[data-navigation="nested"][data-navigation-compact] .nested-rail .workspace-context,
+ body[data-navigation="nested"][data-navigation-compact] .nested-rail .sidebar-footer{display:flex!important}
+ body[data-navigation="nested"] .navigation-children{position:static!important;width:auto!important;max-width:100%;max-height:none!important;background:transparent!important;border-block:0!important;border-right:0!important;box-shadow:none!important;margin:4px 0 10px 20px!important}
+ body[data-navigation="nested"] .app-topbar,body[data-navigation="nested"] .portal-topbar{position:sticky!important;top:0}
+ body[data-navigation="nested"] .content-wrap{min-width:0}
+ body[data-navigation="nested"] .sp-global-trust-footer{margin-left:0!important;width:100%!important}
+ .navigation-breadcrumb{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.nested-rail,.navigation-chevron,.context-section-tabs{transition:none!important;animation:none!important}}
+.focus-inactive{display:none!important}
+.focus-container:not(.focus-inactive){display:block!important;min-width:0}
+@media print{.nested-rail,.navigation-mobile-trigger,.context-section-tabs,.navigation-scrim{display:none!important}body[data-navigation="nested"] #workspace{padding-left:0!important}body[data-navigation="nested"] .portal-main,body[data-navigation="nested"] .console-header{margin-left:0!important}.focus-inactive{display:block!important}}
+/* Founder theme toggle: icon-only, keep the same 40px touch target as the other header buttons. */
+.portal-topbar #console-theme{min-width:40px;min-height:40px;justify-content:center}

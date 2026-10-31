@@ -745,3 +745,17 @@ Do not edit past entries; add a new checkpoint to correct one.
 - Recovery snapshot: refs/recovery/codex/navigation-hierarchy-20261031/20261031T074159Z (7dbaacb)
 - Known errors: none
 - Next exact action: Finish release-check log, stage all reviewed implementation files, regenerate manifest and scan, then commit locally
+
+## CP-054 2026-10-31T15:44:33+08:00 T-065 BLOCKED
+- Phase: Navigation complete locally; source publication approval pending
+- Task: T-065 (BLOCKED)
+- Completed steps: T-064 completed and committed at c10b382587ec87e9001f7c741f6f8616ee06c581; all 94 page routes and sections preserved and verified; source and ordered inventory ready for review; production and GitHub main rechecked unchanged at 3edc118
+- Incomplete steps: Publish reviewed branch and draft PR only after explicit source-publication authorization; rerun CI with pinned Playwright browser before release
+- Files modified (uncommitted at checkpoint): .claude/project-memory/COMPLETED_TASKS.md; .claude/project-memory/PENDING_TASKS.md; .claude/project-memory/PROGRESS.md
+- Tests executed: Committed-tree test:fast; full npm test on identical implementation tree; navigation UI; portal visual; workflow regression matrix; quality smoke integration secrets manifest memory
+- Test results: 69/69 checks; 45 contract files and 73/73 checks; 575 checks; 12 reviewed screens passed repeat comparison; main 34 pipeline 15 automation 11 founder 16 SEO 11 comms 10 finance 11 reliability 7; all repository gates passed
+- Git branch: codex/navigation-hierarchy-20261031
+- Commit: c10b382 (feat(navigation): organise business and founder portal sections); branch not on remote
+- Recovery snapshot: not requested
+- Known errors: none
+- Next exact action: Ask owner to authorize publication of the completed local candidate; after authorization recheck main, push reviewed feature branch and open draft PR. Do not merge or deploy.

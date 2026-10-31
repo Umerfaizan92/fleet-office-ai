@@ -143,8 +143,12 @@ try {
 
   await check('Change Plan: shows the prorated upgrade before anything changes', async () => {
     const v = await go('b09/change-plan', 'finplan');
-    await v.getByLabel('Plan').selectOption({ index: 1 });
-    await v.getByText(/rest of this month|changes on|new plan now/).waitFor();
+    // The view can re-render just after loading, replacing the select; choose again until the quote appears.
+    const quoteText = v.getByText(/rest of this month|changes on|new plan now/);
+    for (let attempt = 1; ; attempt++) {
+      await v.getByLabel('Plan').selectOption({ index: 1 });
+      try { await quoteText.waitFor({ timeout: 8000 }); break; } catch (e) { if (attempt === 3) throw e; await v.getByLabel('Plan').selectOption({ index: 0 }); }
+    }
     assert.deepEqual(await axe(page, '#finplan-view'), [], 'plan change is accessible');
   });
 

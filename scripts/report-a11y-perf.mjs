@@ -21,7 +21,7 @@ const PAGES = [
   ['home', '/', 'site'], ['features', '/features', 'site'], ['feature-money', '/features/money', 'site'], ['industries', '/for', 'site'],
   ['industry-clinics', '/for/clinics', 'site'], ['pricing', '/pricing', 'site'], ['receptionist', '/receptionist', 'site'],
   ['stories', '/stories', 'site'], ['help', '/help', 'site'], ['contact', '/contact', 'site'],
-  ['legacy-landing', '/saas/', 'existing'], ['sign-in', '/saas/sign-in.html', 'existing'], ['create-account', '/saas/create-account.html', 'existing'],
+  ['legacy-landing', '/saas/index.html', 'existing'], ['sign-in', '/saas/sign-in.html', 'existing'], ['create-account', '/saas/create-account.html', 'existing'],
   ['workspace', '/saas/workspace.html', 'app', 'owner'], ['workspace-money', '/saas/workspace.html#money', 'app', 'owner'],
   ['founder-console', '/office/', 'app', 'founder']
 ];

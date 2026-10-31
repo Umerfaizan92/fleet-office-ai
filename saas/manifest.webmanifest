@@ -2,7 +2,7 @@
   "id": "/saas/",
   "name": "Super Pro AI Office Manager",
   "short_name": "Super Pro AI",
-  "start_url": "/saas/",
+  "start_url": "/saas/workspace.html",
   "scope": "/saas/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],

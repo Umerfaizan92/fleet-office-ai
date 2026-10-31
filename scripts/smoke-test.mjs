@@ -46,7 +46,8 @@ let failed = null;
 try {
   await waitForHealth();
   await expect('/healthz', 200);
-  await expect('/saas/', 200);
+  await expect('/saas/', 302); // the old introduction redirects to the homepage
+  await expect('/saas/index.html', 200);
   await expect('/saas/workspace', 200);
   await expect('/office/', 200);
   await expect('/api/product-guide/status', 200);

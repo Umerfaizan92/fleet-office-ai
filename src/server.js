@@ -1043,7 +1043,7 @@ app.get('/robots.txt', (req,res)=>{
 });
 app.get('/sitemap.xml',(req,res)=>{
   const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');
-  const pages=[...publicSitemapEntries(),...['/saas/','/saas/answers.html'] /* Phase 10: trust, privacy and terms pages are noindex, so they are not listed */.map(route=>({route,priority:0.5}))];
+  const pages=[...publicSitemapEntries(),...['/saas/answers.html'] /* Phase 10: trust, privacy and terms pages are noindex, so they are not listed */.map(route=>({route,priority:0.5}))];
   const now=new Date().toISOString().slice(0,10);
   const urls=pages.map(x=>`<url><loc>${base}${x.route}</loc><lastmod>${now}</lastmod><priority>${x.priority.toFixed(1)}</priority></url>`).join('');
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
@@ -1058,8 +1058,14 @@ app.get('/llms.txt',(req,res)=>{
 // Registered ABN for the public structured data. Only emitted when BUSINESS_ABN is a valid 11-digit number; never invented.
 function abnLd(){const d=String(env.BUSINESS_ABN||'').replace(/\s+/g,'');return /^\d{11}$/.test(d)?`,"identifier":{"@type":"PropertyValue","propertyID":"ABN","name":"Australian Business Number","value":"${d}"}`:''}
 function serveSeoPublicHtml(fileName){return (req,res)=>{const base=(env.PUBLIC_BASE_URL||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');const file=path.join(siteRoot,'saas',fileName);const html=fs.readFileSync(file,'utf8').replaceAll('__PUBLIC_BASE_URL__',base).replaceAll('__ABN_LD__',abnLd());res.type('html').send(html)}}
-app.get(['/saas','/saas/','/saas/index.html'],serveSeoPublicHtml('index.html'));
-app.get('/saas/answers.html',serveSeoPublicHtml('answers.html'));
+// The old introduction page at /saas/ is replaced by the public homepage at /. Redirect the bare folder address
+// (old links, bookmarks, installed shortcuts) so nobody lands on the previous version; the file stays reachable
+// only at its explicit /saas/index.html address for preservation checks.
+app.get(['/saas','/saas/'],(req,res)=>res.redirect(302,'/'));
+// Public pages read from disk on each request: a generous per-visitor limit keeps file reads bounded.
+const publicPageLimiter=rateLimit({windowMs:60*1000,limit:300,standardHeaders:true,legacyHeaders:false});
+app.get('/saas/index.html',publicPageLimiter,serveSeoPublicHtml('index.html'));
+app.get('/saas/answers.html',publicPageLimiter,serveSeoPublicHtml('answers.html'));
 app.use('/saas', express.static(path.join(siteRoot, 'saas'), { extensions: ['html'] }));
 app.get('/api/public/preview-status',(req,res)=>res.json({ok:true,isolated_preview:env.SUPERPRO_ISOLATED_PREVIEW==='1',storage:env.SUPERPRO_ISOLATED_PREVIEW==='1'?'temporary_test_data_only':'normal',version:'20.0.0-preview'}));
 app.get(['/office/','/office/index.html'],(req,res)=>res.sendFile(path.join(siteRoot,'office','console.html')));

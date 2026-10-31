@@ -26,11 +26,11 @@ try{
   browser=await chromium.launch({headless:true,...(process.env.UI_CHROMIUM_PATH?{executablePath:process.env.UI_CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']}:{} )});
   const context=await browser.newContext();const page=await context.newPage();page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));
   await check('public landing keeps its palette and compact responsive layout',async()=>{
-    for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.goto(base+'/saas/');await page.locator('.guide-card').waitFor({state:'visible'});assert.equal(await page.locator('.sp-motion-toggle').count(),0);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'landing-'+width);}
+    for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.goto(base+'/saas/index.html');await page.locator('.guide-card').waitFor({state:'visible'});assert.equal(await page.locator('.sp-motion-toggle').count(),0);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot(page,'landing-'+width);}
   });
   await check('landing chat and newsletter avoid viewport-sized blank gaps, including desktop mode on a tall phone',async()=>{
     for(const width of [390,980,1440]){
-      await page.setViewportSize({width,height:1800});await page.goto(base+'/saas/');await page.locator('.guide-card').waitFor();
+      await page.setViewportSize({width,height:1800});await page.goto(base+'/saas/index.html');await page.locator('.guide-card').waitFor();
       const hero=await page.locator('.hero').boundingBox(),copy=await page.locator('.hero-copy').boundingBox(),guide=await page.locator('.guide-shell').boundingBox();
       if(width<=1100)assert.ok(guide.y-copy.y-copy.height<=34,JSON.stringify({width,copy,guide}));
       assert.ok(hero.height<1100,JSON.stringify({width,hero}));assert.ok((await page.locator('.guide-card').boundingBox()).height<=445);
@@ -241,7 +241,7 @@ try{
       await p.locator('[data-copilot-speaker]').click();
       await p.waitForFunction(()=>document.querySelectorAll('.copilot-message.ai:not(.waiting)').length>1);assert.ok((await p.locator('.copilot-message.ai').last().innerText()).length>30);
       assert.equal(await p.locator('.nav-item[data-view="team"]').count(),0);assert.equal(await p.locator('#workspace-operator-link').isVisible(),false);assert.match(await p.locator('#workspace-member-name').innerText(),/UI Test Employee/);
-      await p.setViewportSize({width:390,height:844});assert.ok(await p.locator('#logout').isVisible());await p.locator('#logout').click();await p.waitForURL(base+'/saas/');assert.equal((await employee.request.get(base+'/api/saas/me')).status(),401);
+      await p.setViewportSize({width:390,height:844});assert.ok(await p.locator('#logout').isVisible());await p.locator('#logout').click();await p.waitForURL(base+'/');assert.equal((await employee.request.get(base+'/api/saas/me')).status(),401);
 
     }finally{await employee.request.post(base+'/api/saas/logout',{data:{}});await employee.close()}
   });

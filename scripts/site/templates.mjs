@@ -60,7 +60,7 @@ function nav(current) {
   return `<header class="sp-nav" data-nav>
   <div class="sp-nav__inner">
     <a class="sp-brand" href="/"><img src="/saas/superpro-icon-192.png" alt="" width="34" height="34">Super Pro</a>
-    <nav aria-label="Main"><ul class="sp-nav__links" id="sp-nav-links">${NAV.map(link).join('')}</ul></nav>
+    <nav aria-label="Main"><ul class="sp-nav__links" id="sp-nav-links">${NAV.map(link).join('')}<li class="sp-nav__signin"><a href="/saas/sign-in.html">Sign in</a></li></ul></nav>
     <div class="sp-nav__actions">
       <a class="sp-btn sp-btn--ghost" href="/saas/sign-in.html">Sign in</a>
       <a class="sp-btn sp-btn--primary" href="/start">Start free trial</a>

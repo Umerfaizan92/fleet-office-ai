@@ -5,8 +5,8 @@ import {z} from 'zod';
 import { sendTextMessage } from './notify.js';
 
 export function installNotifications(app, { db, env, requireSaasUser }) {
-  db.exec(`CREATE TABLE IF NOT EXISTS notification_preferences(organisation_id TEXT NOT NULL,user_id TEXT NOT NULL,muted INTEGER NOT NULL DEFAULT 0,sound INTEGER NOT NULL DEFAULT 0,browser INTEGER NOT NULL DEFAULT 0,sms INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(organisation_id,user_id));`);
-  const preferences=(org,user)=>{const row=db.prepare('SELECT muted,sound,browser,sms FROM notification_preferences WHERE organisation_id=? AND user_id=?').get(org,user)||{muted:0,sound:0,browser:0,sms:1};return Object.fromEntries(Object.entries(row).map(([k,v])=>[k,Boolean(v)]))};
+  db.exec(`CREATE TABLE IF NOT EXISTS notification_preferences(organisation_id TEXT NOT NULL,user_id TEXT NOT NULL,muted INTEGER NOT NULL DEFAULT 0,sound INTEGER NOT NULL DEFAULT 1,browser INTEGER NOT NULL DEFAULT 0,sms INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(organisation_id,user_id));`);
+  const preferences=(org,user)=>{const row=db.prepare('SELECT muted,sound,browser,sms FROM notification_preferences WHERE organisation_id=? AND user_id=?').get(org,user)||{muted:0,sound:1,browser:0,sms:1};return Object.fromEntries(Object.entries(row).map(([k,v])=>[k,Boolean(v)]))};
   app.get('/api/saas/notification-preferences',requireSaasUser,(req,res)=>res.json({ok:true,preferences:preferences(req.saas.organisation_id,req.saas.user_id)}));
   app.put('/api/saas/notification-preferences',requireSaasUser,(req,res)=>{
     const p=z.object({muted:z.boolean(),sound:z.boolean(),browser:z.boolean(),sms:z.boolean()}).strict().safeParse(req.body);

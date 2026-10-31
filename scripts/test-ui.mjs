@@ -248,9 +248,15 @@ try{
   await check('notification preferences and delivery activity are visible on mobile',async()=>{
     const releaseNotice=page.locator('#superpro-release-dialog');if(await releaseNotice.isVisible())await releaseNotice.getByRole('button',{name:'Got it',exact:true}).click();
     await page.locator('[aria-label="Notifications"]').click();const dialog=page.locator('#superpro-platform-notices');await dialog.waitFor({state:'visible'});
-    await dialog.locator('input[name=muted]').check();await dialog.getByRole('button',{name:'Save preferences',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-preferences-status]')?.textContent==='Preferences saved.');
+    // Notifications come first; settings are one compact row of toggles that save immediately; sound is on by default.
+    assert.equal((await (await context.request.get(base+'/api/saas/notification-preferences')).json()).preferences.sound,true,'sound on by default');
+    assert.ok(await dialog.evaluate(d=>d.querySelector('[data-platform-notice-list]').compareDocumentPosition(d.querySelector('.notice-prefs'))&Node.DOCUMENT_POSITION_FOLLOWING),'notifications are listed before the settings');
+    assert.ok((await dialog.locator('.notice-prefs').boundingBox()).height<130,'settings row stays compact');
+    const mute=dialog.locator('[data-pref=muted]');await mute.click();await page.waitForFunction(()=>document.querySelector('[data-preferences-status]')?.textContent==='Alerts muted.');
+    assert.equal(await mute.getAttribute('aria-pressed'),'true');
     assert.equal((await (await context.request.get(base+'/api/saas/notification-preferences')).json()).preferences.muted,true);
-    await dialog.locator('input[name=muted]').uncheck();await dialog.getByRole('button',{name:'Save preferences',exact:true}).click();
+    await mute.click();await page.waitForFunction(()=>document.querySelector('[data-preferences-status]')?.textContent==='Alerts on.');
+    assert.equal((await (await context.request.get(base+'/api/saas/notification-preferences')).json()).preferences.muted,false);
     await dialog.locator('[data-delivery-tab]').click();await dialog.getByRole('heading',{name:'Delivery & follow-ups'}).waitFor();
     await dialog.locator('[data-notice-close]').click();
   });

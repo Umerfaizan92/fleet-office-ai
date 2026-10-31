@@ -90,7 +90,7 @@ const integrationRuntime=read('src/integration-runtime.js'),integrationManager=r
 if(!integrationRuntime.includes('decryptBundle')||!integrationRuntime.includes('refreshToken')||!integrationRuntime.includes('testConnection')||!integrationRuntime.includes('revokeConnection'))failures.push('integration token lifecycle runtime is incomplete');
 if(!integrationManager.includes('Test connection')||!integrationManager.includes('Disconnect')||!integrationManager.includes('Save selection'))failures.push('customer integration management UI is incomplete');
 if(!server.includes('loadIntegrationBundle')||!server.includes('persistIntegrationBundle'))failures.push('server does not use encrypted integration token runtime');
-if(!platformNotices.includes('/api/saas/announcements')||!platformNotices.includes('Alerts & updates'))failures.push('platform notice inbox is incomplete');
+if(!platformNotices.includes('/api/saas/announcements')||!platformNotices.includes('data-platform-notice-list')||!platformNotices.includes('data-pref="muted"'))failures.push('platform notice inbox is incomplete');
 if(!db.includes('platform_announcements')||!db.includes('platform_announcement_deliveries'))failures.push('platform announcement storage is missing');
 if(app.includes('button.hidden=!always&&!allowed.has(view)'))failures.push('industry setup must not hide core workspace modules');
 if(app.includes("onclick=\"completeCompliance(")||app.includes("onclick=\"addSkill("))failures.push('Workforce actions must use delegated event listeners, not inline onclick handlers');

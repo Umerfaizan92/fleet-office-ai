@@ -51,7 +51,7 @@ async function sections(p, root, portal, route, width) {
     for (const name of names) {
       const tab = list.getByRole('tab', { name, exact: true }); if (!await tab.isVisible() || await tab.isDisabled()) continue;
       await tab.click(); await settle(p);
-      if (await list.getAttribute('aria-label') === 'Email folders') await root.locator('.portal-mail-list').waitFor();
+      if (await list.getAttribute('aria-label') === 'Email folders') { await root.locator('.portal-mail-list').waitFor(); assert.equal(await p.evaluate(() => document.activeElement?.closest('[aria-label="Email folders"]') ? document.activeElement.textContent.trim() : null), name.trim(), `${route} keeps focus on the selected email folder`); }
       await p.waitForFunction(({ name }) => [...document.querySelectorAll('[role=tab][aria-selected=true]')].some(e => e.textContent.trim() === name.trim()), { name });
       const panel = await tab.getAttribute('aria-controls');
       if (panel) await p.locator('#' + panel).waitFor({state:'visible'});

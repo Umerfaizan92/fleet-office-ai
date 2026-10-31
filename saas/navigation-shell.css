@@ -74,3 +74,5 @@ body[data-navigation="nested"] [role="tabpanel"]{scroll-margin-top:calc(var(--na
 .focus-inactive{display:none!important}
 .focus-container:not(.focus-inactive){display:block!important;min-width:0}
 @media print{.nested-rail,.navigation-mobile-trigger,.context-section-tabs,.navigation-scrim{display:none!important}body[data-navigation="nested"] #workspace{padding-left:0!important}body[data-navigation="nested"] .portal-main,body[data-navigation="nested"] .console-header{margin-left:0!important}.focus-inactive{display:block!important}}
+/* Founder theme toggle: icon-only, keep the same 40px touch target as the other header buttons. */
+.portal-topbar #console-theme{min-width:40px;min-height:40px;justify-content:center}

@@ -68,3 +68,20 @@ Not completed under this pass:
 - Dedicated 768 and 1024 px and light-theme screenshot review of every page.
 - Email-folder focus retention.
 These remain open under T-066.
+
+### Audit fixes, second pass (2026-10-31)
+
+- **Email folders lost keyboard focus.** Selecting a folder (Enter, arrow keys or click) rebuilt the tabs and dropped
+  focus to the page start. `mail-centre.js` now returns focus to the selected folder, and only when a folder tab had
+  focus. `test:navigation-ui` asserts this on both portals at both widths.
+- **Founder theme button was a 27 px touch target** at 390 px (it looked clipped). It is now 40×40 px, matching the
+  other header buttons.
+- **Floating widgets (Office chat, Ask Super Pro):** measured at 390/768/1024/1440 px with the page scrolled to the
+  end; the last control on the page is never covered. Recorded as checked, not a defect.
+- Results:
+  - `npm test`: 73/73.
+  - Navigation: 576.
+  - UI: 34. Console: 16. Comms: 10. Pipeline: 15. Automations: 11. SEO: 11. Reliability: 7.
+  - Finance: 11/11 on re-run. One intermittent timeout on the change-plan page, which this change does not touch.
+  - 66 modules. Quality, smoke, integration, secrets, memory, manifest: pass. npm audit: 0.
+- GitHub CI on `2e5c275`: every check passed after one re-run of the intermittent `recovered-release-ui` job.

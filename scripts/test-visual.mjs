@@ -34,7 +34,7 @@ const PAGES = [
   { name: 'stories', url: '/stories' },
   { name: 'help', url: '/help' },
   { name: 'contact', url: '/contact' },
-  { name: 'legacy-landing', url: '/saas/' },
+  { name: 'legacy-landing', url: '/saas/index.html' },
   { name: 'sign-in', url: '/saas/sign-in.html' },
   { name: 'create-account', url: '/saas/create-account.html' },
   { name: 'workspace-today', url: '/saas/workspace.html', auth: 'owner', ready: '#workspace' },

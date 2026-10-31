@@ -16,7 +16,7 @@ await check('ready (database and job queue)', async () => {
   const j = await r.json(); must(r.status === 200 && j.ok, `status ${r.status} ${JSON.stringify(j)}`); return 'ok';
 });
 await check('security headers on the public site', async () => {
-  const r = await get('/saas/');
+  const r = await get('/');
   must(r.status === 200, `status ${r.status}`);
   for (const h of ['content-security-policy', 'x-content-type-options', 'referrer-policy']) must(r.headers.get(h), `missing ${h}`);
   must(!r.headers.get('x-powered-by'), 'x-powered-by should be hidden');
@@ -24,7 +24,7 @@ await check('security headers on the public site', async () => {
 });
 await check('signed-out visitors are refused', async () => { const r = await get('/api/saas/me'); must(r.status === 401, `status ${r.status}`); return '401'; });
 await check('founder routes refuse without a token', async () => { const r = await get('/api/operator/overview'); must([401, 403].includes(r.status), `status ${r.status}`); return String(r.status); });
-await check('sign-in and pricing pages load', async () => { for (const p of ['/saas/sign-in.html', '/saas/']) { const r = await get(p); must(r.status === 200, `${p} ${r.status}`); } return 'ok'; });
+await check('sign-in and pricing pages load', async () => { for (const p of ['/saas/sign-in.html', '/']) { const r = await get(p); must(r.status === 200, `${p} ${r.status}`); } return 'ok'; });
 if (process.env.OPERATOR_TOKEN) await check('full diagnostics', async () => {
   const r = await get('/api/saas/health/diagnostics', { 'x-admin-key': process.env.OPERATOR_TOKEN });
   const j = await r.json(); must(j.ok !== false && j.status !== 'fail', `status ${j.status}`);

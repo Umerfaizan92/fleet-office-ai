@@ -11,7 +11,7 @@
     const nav = window.SuperProNav, session = window.GDS_SESSION; if (!nav || !session || !window.SuperProNavigation) return;
     if (!rail) {
       document.body.classList.add('portal-workspace'); rail = make('aside', 'portal-rail'); rail.id = 'business-navigation'; rail.setAttribute('aria-label', 'Business navigation');
-      const brand = make('a', 'portal-brand'); brand.href = '#b01/home'; brand.append(make('span', 'portal-mark', 'SP'), make('span', 'navigation-label', 'Super Pro AI'));
+      const brand = make('a', 'portal-brand'); brand.href = '#b01/home'; brand.append((() => { const m = make('span', 'portal-mark'), i = document.createElement('img'); i.src = '/saas/superpro-icon.svg?v=20261031'; i.alt = ''; i.width = i.height = 40; i.style.cssText = 'display:block;width:100%;height:100%;border-radius:inherit'; m.append(i); return m; })(), make('span', 'navigation-label', 'Super Pro AI'));
       const toggle = make('button', 'portal-main-button'); toggle.type = 'button'; toggle.append(make('span', 'portal-icon', '☰'), make('span', 'navigation-label', 'Collapse navigation')); rail.append(brand, toggle);
       const context = document.getElementById('workspace-context'); if (context) rail.append(context);
       rail.append(make('nav')); document.getElementById('workspace').append(rail);
